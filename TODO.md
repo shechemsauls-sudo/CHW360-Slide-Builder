@@ -1,9 +1,10 @@
 # TODO — CHW360 Slide Builder
 
 ## Critical (blocks production)
-- [ ] Create Supabase project and configure .env
-- [ ] Set up OAuth providers (Google, GitHub) in Supabase dashboard
-- [ ] Run `npm install` and verify build
+- [ ] Enable OAuth providers (Google, GitHub) in Supabase dashboard
+- [ ] Add SUPABASE_SERVICE_ROLE_KEY to .env (Settings > API in Supabase)
+- [ ] Run `npm run db:push` to create tables in Supabase
+- [ ] Verify build with `npm run build`
 
 ## Bugs (broken functionality)
 - (none)
