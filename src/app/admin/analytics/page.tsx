@@ -1,6 +1,6 @@
 "use client";
 
-import { Eye, MousePointerClick, Send, TrendingUp } from "lucide-react";
+import { Eye, MousePointerClick, Send } from "lucide-react";
 import { Card, CardContent, CardHeader, CardTitle } from "~/components/ui/card";
 import { api } from "~/trpc/react";
 

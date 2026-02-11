@@ -1,6 +1,6 @@
 "use client";
 
-import { Inbox, Eye, BarChart3, TrendingUp } from "lucide-react";
+import { Inbox, Eye, TrendingUp } from "lucide-react";
 import { Card, CardContent, CardHeader, CardTitle } from "~/components/ui/card";
 import { Badge } from "~/components/ui/badge";
 import { api } from "~/trpc/react";
