@@ -1,32 +1,26 @@
-# Status — CHW360 Slide Builder
+# Status — CHW360
 
-## Current Phase: Initial Scaffold
+## Current Phase: Phase 1 Complete — Ready for Phase 2 (Slide Builder)
 
 ### Completed
-- Project scaffolded with Next.js 15 + tRPC 11 + Drizzle + Supabase
-- Auth pages (login, signup, OAuth callback with Google/GitHub)
-- Dashboard page with slide listing
-- Settings page with sign-out
-- Landing page
-- tRPC slide router (CRUD)
-- Database schema (profiles, slides)
-- Documentation (CLAUDE.md, STATUS.md, TODO.md, ROADMAP.md)
-- Supabase project configured (.env with all connection strings)
-- Supabase MCP server configured (.mcp.json)
-- Dependencies installed
-- Pushed to GitHub (shechemsauls-sudo/CHW360-Slide-Builder)
+- **Phase 1 fully deployed** — schema pushed to Supabase, RLS enabled, Resend key configured
+- Landing page, admin hub, contact form, analytics, auth — all functional
+- Database: 4 tables live with RLS (profiles, slides, contact_submissions, page_views)
+- Scaffold leftovers cleaned up (`/dashboard`, `/settings` routes removed)
+- Build passes, typecheck passes
 
 ### In Progress
 - None
 
 ### Blocked
-- OAuth providers need enabling in Supabase dashboard (Google, GitHub)
-- Service role key needs adding to .env (from Supabase dashboard > Settings > API)
+- (none)
 
 ### Recent Changes
 | Date | Change |
 |------|--------|
+| 2026-02-11 | Schema pushed to Supabase, RLS enabled on all tables, scaffold cleanup |
+| 2026-02-11 | Landing page, admin hub, contact form, analytics, brand assets, docs migration |
 | 2026-02-06 | Initial scaffold, Supabase config, GitHub push, MCP setup |
 
 ---
-*Last updated: 2026-02-06*
+*Last updated: 2026-02-11*
