@@ -2,6 +2,9 @@
 
 import { createClient } from "~/lib/supabase/client";
 import { useState } from "react";
+import Image from "next/image";
+import { Button } from "~/components/ui/button";
+import { Input } from "~/components/ui/input";
 
 export default function LoginPage() {
   const [email, setEmail] = useState("");
@@ -16,114 +19,106 @@ export default function LoginPage() {
     setLoading(true);
     setError(null);
 
-    const { error } = await supabase.auth.signInWithPassword({
-      email,
-      password,
-    });
+    const { error } = await supabase.auth.signInWithPassword({ email, password });
 
     if (error) {
       setError(error.message);
       setLoading(false);
     } else {
-      window.location.href = "/dashboard";
+      window.location.href = "/admin";
     }
   }
 
   async function handleOAuthLogin(provider: "google" | "github") {
     const { error } = await supabase.auth.signInWithOAuth({
       provider,
-      options: {
-        redirectTo: `${window.location.origin}/callback`,
-      },
+      options: { redirectTo: `${window.location.origin}/callback` },
     });
-
-    if (error) {
-      setError(error.message);
-    }
+    if (error) setError(error.message);
   }
 
   return (
-    <div className="flex min-h-screen items-center justify-center">
-      <div className="w-full max-w-sm space-y-6 p-8">
+    <div className="flex min-h-screen items-center justify-center" style={{ backgroundColor: "#F5EDE6" }}>
+      <div className="w-full max-w-sm space-y-6 rounded-xl p-8" style={{ backgroundColor: "#EDE4DA" }}>
         <div className="text-center">
-          <h1 className="text-2xl font-bold">Sign In</h1>
-          <p className="mt-2 text-sm text-neutral-500">
-            Sign in to CHW360 Slide Builder
-          </p>
+          <div className="mb-4 flex items-center justify-center gap-2">
+            <Image src="/chw/logo.png" alt="CHW360" width={40} height={40} />
+            <span className="text-2xl tracking-tight" style={{ color: "#2D5A5A" }}>
+              <span className="font-semibold">CHW</span>
+              <span className="font-light" style={{ color: "#6B8A8A" }}>360</span>
+            </span>
+          </div>
+          <h1 className="text-xl font-bold" style={{ color: "#2D5A5A" }}>Sign In</h1>
+          <p className="mt-1 text-sm" style={{ color: "#4A5568" }}>Access the admin dashboard</p>
         </div>
 
         <div className="space-y-3">
-          <button
+          <Button
+            variant="outline"
+            className="w-full border-gray-200 bg-white text-sm font-medium hover:bg-gray-50"
+            style={{ color: "#4A5568" }}
             onClick={() => handleOAuthLogin("google")}
-            className="flex w-full items-center justify-center gap-2 rounded-lg border border-neutral-300 bg-white px-4 py-2.5 text-sm font-medium text-neutral-700 hover:bg-neutral-50 dark:border-neutral-700 dark:bg-neutral-800 dark:text-neutral-200 dark:hover:bg-neutral-700"
           >
             Continue with Google
-          </button>
-          <button
+          </Button>
+          <Button
+            variant="outline"
+            className="w-full border-gray-200 bg-white text-sm font-medium hover:bg-gray-50"
+            style={{ color: "#4A5568" }}
             onClick={() => handleOAuthLogin("github")}
-            className="flex w-full items-center justify-center gap-2 rounded-lg border border-neutral-300 bg-white px-4 py-2.5 text-sm font-medium text-neutral-700 hover:bg-neutral-50 dark:border-neutral-700 dark:bg-neutral-800 dark:text-neutral-200 dark:hover:bg-neutral-700"
           >
             Continue with GitHub
-          </button>
+          </Button>
         </div>
 
         <div className="relative">
           <div className="absolute inset-0 flex items-center">
-            <span className="w-full border-t border-neutral-300 dark:border-neutral-700" />
+            <span className="w-full border-t border-gray-300" />
           </div>
           <div className="relative flex justify-center text-xs uppercase">
-            <span className="bg-white px-2 text-neutral-500 dark:bg-neutral-950">
-              or
-            </span>
+            <span className="px-2 text-gray-500" style={{ backgroundColor: "#EDE4DA" }}>or</span>
           </div>
         </div>
 
         <form onSubmit={handleEmailLogin} className="space-y-4">
           <div>
-            <label htmlFor="email" className="block text-sm font-medium">
-              Email
-            </label>
-            <input
+            <label htmlFor="email" className="block text-sm font-medium" style={{ color: "#2D5A5A" }}>Email</label>
+            <Input
               id="email"
               type="email"
               value={email}
               onChange={(e) => setEmail(e.target.value)}
               required
-              className="mt-1 block w-full rounded-lg border border-neutral-300 px-3 py-2 text-sm dark:border-neutral-700 dark:bg-neutral-800"
+              className="mt-1 border-gray-200 bg-white"
             />
           </div>
           <div>
-            <label htmlFor="password" className="block text-sm font-medium">
-              Password
-            </label>
-            <input
+            <label htmlFor="password" className="block text-sm font-medium" style={{ color: "#2D5A5A" }}>Password</label>
+            <Input
               id="password"
               type="password"
               value={password}
               onChange={(e) => setPassword(e.target.value)}
               required
-              className="mt-1 block w-full rounded-lg border border-neutral-300 px-3 py-2 text-sm dark:border-neutral-700 dark:bg-neutral-800"
+              className="mt-1 border-gray-200 bg-white"
             />
           </div>
 
-          {error && (
-            <p className="text-sm text-red-600 dark:text-red-400">{error}</p>
-          )}
+          {error && <p className="text-sm text-red-600">{error}</p>}
 
-          <button
+          <Button
             type="submit"
             disabled={loading}
-            className="w-full rounded-lg bg-neutral-900 px-4 py-2.5 text-sm font-medium text-white hover:bg-neutral-800 disabled:opacity-50 dark:bg-neutral-100 dark:text-neutral-900 dark:hover:bg-neutral-200"
+            className="w-full rounded-full text-sm font-medium text-white"
+            style={{ backgroundColor: "#C9725B" }}
           >
             {loading ? "Signing in..." : "Sign In"}
-          </button>
+          </Button>
         </form>
 
-        <p className="text-center text-sm text-neutral-500">
+        <p className="text-center text-sm" style={{ color: "#4A5568" }}>
           Don&apos;t have an account?{" "}
-          <a href="/signup" className="font-medium underline">
-            Sign up
-          </a>
+          <a href="/signup" className="font-medium underline" style={{ color: "#2D5A5A" }}>Sign up</a>
         </p>
       </div>
     </div>

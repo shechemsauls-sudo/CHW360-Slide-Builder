@@ -1,4 +1,4 @@
-import { pgTableCreator, text, timestamp, uuid } from "drizzle-orm/pg-core";
+import { boolean, pgTableCreator, text, timestamp, uuid } from "drizzle-orm/pg-core";
 
 /**
  * Multi-project table prefix to avoid conflicts in shared databases.
@@ -25,4 +25,24 @@ export const slides = createTable("slides", {
   content: text("content"),
   createdAt: timestamp("created_at", { withTimezone: true }).defaultNow().notNull(),
   updatedAt: timestamp("updated_at", { withTimezone: true }).defaultNow().notNull(),
+});
+
+export const contactSubmissions = createTable("contact_submissions", {
+  id: uuid("id").primaryKey().defaultRandom(),
+  name: text("name").notNull(),
+  email: text("email").notNull(),
+  phone: text("phone"),
+  organization: text("organization"),
+  message: text("message").notNull(),
+  isRead: boolean("is_read").notNull().default(false),
+  createdAt: timestamp("created_at", { withTimezone: true }).defaultNow().notNull(),
+});
+
+export const pageViews = createTable("page_views", {
+  id: uuid("id").primaryKey().defaultRandom(),
+  page: text("page").notNull(),
+  event: text("event").notNull(),
+  referrer: text("referrer"),
+  userAgent: text("user_agent"),
+  createdAt: timestamp("created_at", { withTimezone: true }).defaultNow().notNull(),
 });
