@@ -25,8 +25,11 @@ const processEnv = {
   NEXT_PUBLIC_BASE_URL: process.env.NEXT_PUBLIC_BASE_URL,
 };
 
-// Skip validation during build if env vars aren't set
-const skipValidation = !!process.env.SKIP_ENV_VALIDATION;
+// Skip validation during CI/build or when explicitly requested
+const skipValidation =
+  !!process.env.SKIP_ENV_VALIDATION ||
+  !!process.env.CI ||
+  process.env.npm_lifecycle_event === "build";
 
 const merged = server.merge(client);
 
