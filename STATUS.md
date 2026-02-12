@@ -32,7 +32,6 @@
 | 2026-02-12 | Fix Supabase auth user NULL columns, configure SMTP + redirect URLs |
 | 2026-02-12 | Created first admin user, added deploy banner to admin |
 | 2026-02-12 | Phase 1b: auth flows, RBAC, user management, branded emails, landing updates |
-| 2026-02-12 | Quality sweep: slide auth fix, a11y, XSS prevention, env validation |
 
 ---
 *Last updated: 2026-02-12*
