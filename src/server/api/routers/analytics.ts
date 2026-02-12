@@ -3,7 +3,7 @@ import { sql, count, eq, and, gte } from "drizzle-orm";
 import {
   createTRPCRouter,
   publicProcedure,
-  protectedProcedure,
+  adminProcedure,
 } from "~/server/api/trpc";
 import { pageViews } from "~/server/db/schema";
 
@@ -27,7 +27,7 @@ export const analyticsRouter = createTRPCRouter({
       return { success: true };
     }),
 
-  overview: protectedProcedure.query(async ({ ctx }) => {
+  overview: adminProcedure.query(async ({ ctx }) => {
     const now = new Date();
     const todayStart = new Date(now.getFullYear(), now.getMonth(), now.getDate());
     const thirtyDaysAgo = new Date(now.getTime() - 30 * 24 * 60 * 60 * 1000);
@@ -70,7 +70,7 @@ export const analyticsRouter = createTRPCRouter({
     };
   }),
 
-  formStats: protectedProcedure.query(async ({ ctx }) => {
+  formStats: adminProcedure.query(async ({ ctx }) => {
     const [formViews] = await ctx.db
       .select({ count: count() })
       .from(pageViews)

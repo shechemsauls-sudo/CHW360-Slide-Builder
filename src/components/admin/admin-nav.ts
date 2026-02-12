@@ -2,6 +2,7 @@ import {
   LayoutDashboard,
   Inbox,
   BarChart3,
+  Users,
   Layers,
   Palette,
   Settings,
@@ -37,6 +38,11 @@ export const ADMIN_SIDEBAR_NAV: NavItem[] = [
     title: "Analytics",
     href: "/admin/analytics",
     icon: BarChart3,
+  },
+  {
+    title: "Users",
+    href: "/admin/users",
+    icon: Users,
   },
   {
     title: "Slide Builder",

@@ -16,7 +16,6 @@
 ## Enhancements (nice to have)
 - [ ] Slide builder (Phase 2 — AI content, themes, export)
 - [ ] Presentation mode for slides
-- [ ] Email templates with proper branding (Resend + React Email)
 - [ ] Admin: referrer breakdown on analytics page
 - [ ] Admin: export submissions as CSV
 - [ ] Admin: per-page metadata titles for sub-pages

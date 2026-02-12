@@ -49,7 +49,7 @@ function useBreadcrumbs() {
   return [];
 }
 
-export function AdminHeader() {
+export function AdminHeader({ topOffset = 0 }: { topOffset?: number }) {
   const router = useRouter();
   const { isCollapsed } = useAdminSidebar();
   const breadcrumbs = useBreadcrumbs();
@@ -62,8 +62,9 @@ export function AdminHeader() {
 
   return (
     <header
-      className="fixed top-0 right-0 z-20 flex h-14 items-center justify-between border-b px-4 backdrop-blur-sm transition-all duration-200 ease-out"
+      className="fixed right-0 z-20 flex h-14 items-center justify-between border-b px-4 backdrop-blur-sm transition-all duration-200 ease-out"
       style={{
+        top: topOffset,
         left: `${isCollapsed ? SIDEBAR_WIDTH_COLLAPSED : SIDEBAR_WIDTH}px`,
         borderColor: "rgba(45, 90, 90, 0.3)",
         backgroundColor: "rgba(26, 26, 26, 0.95)",

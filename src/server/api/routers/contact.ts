@@ -3,7 +3,7 @@ import { desc, eq, count } from "drizzle-orm";
 import {
   createTRPCRouter,
   publicProcedure,
-  protectedProcedure,
+  adminProcedure,
 } from "~/server/api/trpc";
 import { contactSubmissions } from "~/server/db/schema";
 import { sendContactNotification } from "~/lib/resend";
@@ -37,7 +37,7 @@ export const contactRouter = createTRPCRouter({
       return { success: true, id: submission?.id };
     }),
 
-  list: protectedProcedure
+  list: adminProcedure
     .input(
       z.object({
         filter: z.enum(["all", "read", "unread"]).default("all"),
@@ -69,7 +69,7 @@ export const contactRouter = createTRPCRouter({
       return { items, total: total?.count ?? 0 };
     }),
 
-  markRead: protectedProcedure
+  markRead: adminProcedure
     .input(z.object({ id: z.string().uuid(), isRead: z.boolean() }))
     .mutation(async ({ ctx, input }) => {
       await ctx.db
@@ -79,7 +79,7 @@ export const contactRouter = createTRPCRouter({
       return { success: true };
     }),
 
-  stats: protectedProcedure.query(async ({ ctx }) => {
+  stats: adminProcedure.query(async ({ ctx }) => {
     const [totalResult] = await ctx.db
       .select({ count: count() })
       .from(contactSubmissions);
@@ -95,7 +95,7 @@ export const contactRouter = createTRPCRouter({
     };
   }),
 
-  recent: protectedProcedure
+  recent: adminProcedure
     .input(z.object({ limit: z.number().min(1).max(10).default(5) }))
     .query(async ({ ctx, input }) => {
       return ctx.db

@@ -31,7 +31,7 @@ src/components/admin/       # Admin sidebar, header, layout
 src/components/ui/          # shadcn/ui components
 src/lib/supabase/           # Supabase client (browser + server)
 src/lib/resend.ts           # Email notifications
-src/server/api/routers/     # tRPC routers (slide, contact, analytics)
+src/server/api/routers/     # tRPC routers (slide, contact, analytics, users)
 src/server/db/schema.ts     # Database schema
 src/trpc/                   # tRPC client (RSC + React)
 public/chw/                 # Brand assets (logo, heroes, icons)
@@ -43,11 +43,13 @@ docs/                       # PRD and proposals
 | Route | Purpose |
 |-------|---------|
 | `/` | Landing page (public) |
-| `/login` | Auth login (teal/coral brand) |
-| `/signup` | Auth signup |
-| `/admin` | Dashboard overview |
+| `/login` | Auth login + claim account (teal/coral brand) |
+| `/forgot-password` | Password reset request |
+| `/reset-password` | Set new password (from email link) |
+| `/admin` | Dashboard overview (admin-only) |
 | `/admin/submissions` | Contact form submissions |
 | `/admin/analytics` | Page views and form funnel |
+| `/admin/users` | User management (invite, roles) |
 | `/admin/slides` | Slide builder (coming soon) |
 | `/admin/assets` | Brand assets reference |
 | `/admin/settings` | Account settings |
@@ -56,7 +58,7 @@ docs/                       # PRD and proposals
 
 | Table | Purpose |
 |-------|---------|
-| `profiles` | User profiles linked to Supabase auth |
+| `profiles` | User profiles linked to Supabase auth (includes role column) |
 | `slides` | Slide content (Phase 2) |
 | `contact_submissions` | Landing page contact form entries |
 | `page_views` | Analytics events (views, interactions) |
@@ -79,6 +81,7 @@ docs/                       # PRD and proposals
 - Table prefix: `chw360_` (multi-project safe)
 - `publicProcedure` for unauthenticated routes
 - `protectedProcedure` for authenticated routes
+- `adminProcedure` for admin-only routes (checks profile role)
 - Server components by default; `"use client"` only when needed
 - Admin sidebar uses teal/coral palette (not gold)
 

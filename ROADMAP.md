@@ -1,6 +1,6 @@
 # Roadmap — CHW360
 
-## Phase 1: Foundation
+## Phase 1a: Foundation
 - [x] Project scaffold (Next.js, tRPC, Drizzle, Supabase)
 - [x] Auth (Supabase OAuth + email/password)
 - [x] Database schema (profiles, slides, contact_submissions, page_views)
@@ -12,6 +12,18 @@
 - [x] Email notifications via Resend
 - [x] Analytics tracking (page views, form funnel)
 - [x] Enable OAuth + push schema + add Resend key (env setup)
+
+## Phase 1b: Auth & Polish
+- [x] Role-based access (admin role column + adminProcedure)
+- [x] Admin layout role gate
+- [x] Service role admin client (supabaseAdmin)
+- [x] Invite/claim auth flow (magic link OTP)
+- [x] Forgot password / reset password pages
+- [x] Admin user management UI (invite, roles, claim emails)
+- [x] Branded email templates (contact + claim)
+- [x] Landing page copy and hero image updates
+- [x] Disable public signup (removed signup page)
+- [x] Callback route handles invite/recovery/magiclink tokens
 
 ## Phase 2: Core Slide Builder
 - [ ] Slide editor UI (create, edit, delete slides)

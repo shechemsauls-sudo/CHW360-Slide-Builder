@@ -21,10 +21,11 @@ import { api } from "~/trpc/react";
 const serif = "var(--font-libre-baskerville)";
 
 const heroImages = [
-  { src: "/chw/hero-image.png", alt: "Community Health Worker with tablet" },
-  { src: "/chw/hero-2.jpg", alt: "Diverse group of smiling healthcare professionals in scrubs" },
-  { src: "/chw/hero-3.jpg", alt: "Healthcare team collaborating around a laptop" },
-  { src: "/chw/hero-4.jpg", alt: "Diverse medical team standing together outside hospital" },
+  { src: "/chw/hero-1.png", alt: "Community Health Workers engaging with community members" },
+  { src: "/chw/hero-2.png", alt: "CHW training session in progress" },
+  { src: "/chw/hero-3.png", alt: "Health worker providing community outreach" },
+  { src: "/chw/hero-4.png", alt: "Community Health Worker team collaboration" },
+  { src: "/chw/hero-5.png", alt: "CHW professional development workshop" },
 ];
 
 const coreSupports = [
@@ -37,9 +38,9 @@ const coreSupports = [
 ];
 
 const audiences = [
-  { icon: "chw", title: "Community\nHealth Workers", description: "Ongoing education and support to advance your CHW career." },
-  { icon: "health", title: "Public Health Departments", description: "Enhance outreach and care coordination with skilled CHWs." },
-  { icon: "training", title: "Training\nPrograms", description: "Deliver state-aligned training locally and effectively." },
+  { icon: "chw", title: "Community\nHealth Workers", description: "Ongoing education and professional support to advance your Community Health Worker career in Texas workplaces." },
+  { icon: "health", title: "Public Health Departments", description: "Strengthen outreach, service coordination, and community connection through skilled Community Health Workers." },
+  { icon: "training", title: "Training\nPrograms", description: "Deliver Texas state-aligned Community Health Worker training that meets certification standards and local workforce needs." },
 ];
 
 function CoreSupportIcon({ type }: { type: string }) {
@@ -402,10 +403,10 @@ export default function LandingPage() {
           <div className="grid gap-12 lg:grid-cols-2 lg:gap-16">
             <div>
               <h2 className="mb-4 text-3xl font-normal" style={{ fontFamily: serif, color: "#2D5A5A" }}>
-                Who It&apos;s For
+                Who CHW360 Supports
               </h2>
               <p className="mb-8 text-base leading-relaxed" style={{ color: "#4A5568" }}>
-                CHW360 delivers practical, standards-aligned training that respects the CHW scope of practice and meets Texas state requirements.
+                CHW360 delivers practical, standards-aligned training and support that respects the Community Health Worker scope of practice and meets Texas certification and workforce requirements.
               </p>
               <div className="grid grid-cols-1 gap-4 rounded-xl p-5 sm:grid-cols-3" style={{ backgroundColor: "#FAFAFA" }}>
                 {audiences.map((audience, index) => (
@@ -430,7 +431,7 @@ export default function LandingPage() {
                 Get in Touch
               </h2>
               <p className="mb-6 text-base" style={{ color: "#4A5568" }}>
-                Ready to learn more? Reach out to see how CHW360 can support Community Health Workers in your organization.
+                Ready to learn more? Reach out to see how CHW360 can support Community Health Workers and CHW programs in your organization.
               </p>
               <form className="space-y-4" onSubmit={handleSubmit}>
                 <div>

@@ -1,7 +1,9 @@
 import { initTRPC, TRPCError } from "@trpc/server";
 import superjson from "superjson";
 import { ZodError } from "zod";
+import { eq } from "drizzle-orm";
 import { db } from "~/server/db";
+import { profiles } from "~/server/db/schema";
 import { createClient } from "~/lib/supabase/server";
 
 export const createTRPCContext = async (opts: { headers: Headers }) => {
@@ -48,4 +50,19 @@ export const protectedProcedure = t.procedure.use(({ ctx, next }) => {
       user: ctx.user,
     },
   });
+});
+
+// Admin procedure - requires authenticated user with admin role
+export const adminProcedure = protectedProcedure.use(async ({ ctx, next }) => {
+  const [profile] = await db
+    .select({ role: profiles.role })
+    .from(profiles)
+    .where(eq(profiles.authId, ctx.user.id))
+    .limit(1);
+
+  if (!profile || profile.role !== "admin") {
+    throw new TRPCError({ code: "FORBIDDEN", message: "Admin access required" });
+  }
+
+  return next({ ctx });
 });
