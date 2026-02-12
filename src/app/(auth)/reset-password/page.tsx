@@ -14,13 +14,27 @@ export default function ResetPasswordPage() {
   const [loading, setLoading] = useState(false);
   const [ready, setReady] = useState(false);
   const [success, setSuccess] = useState(false);
+  const [checkFailed, setCheckFailed] = useState(false);
 
   const supabase = createClient();
 
   useEffect(() => {
+    // Listen for PASSWORD_RECOVERY event (hash-based flow)
     const { data: { subscription } } = supabase.auth.onAuthStateChange((event) => {
       if (event === "PASSWORD_RECOVERY") {
         setReady(true);
+      }
+    });
+
+    // Also check if user already has a session (PKCE flow — callback already exchanged the code)
+    supabase.auth.getUser().then(({ data: { user } }) => {
+      if (user) {
+        setReady(true);
+      } else {
+        // Give the auth event listener a moment, then show failure
+        setTimeout(() => {
+          setCheckFailed(true);
+        }, 3000);
       }
     });
 
@@ -86,13 +100,23 @@ export default function ResetPasswordPage() {
               <span className="font-light" style={{ color: "#6B8A8A" }}>360</span>
             </span>
           </div>
-          <Loader2 className="mx-auto h-6 w-6 animate-spin" style={{ color: "#2D5A5A" }} />
-          <p className="text-sm" style={{ color: "#4A5568" }}>
-            Verifying your reset link...
-          </p>
-          <a href="/forgot-password" className="inline-block text-sm font-medium underline" style={{ color: "#2D5A5A" }}>
-            Request a new link
-          </a>
+          {checkFailed ? (
+            <>
+              <p className="text-sm" style={{ color: "#C9725B" }}>
+                This reset link has expired or is invalid.
+              </p>
+              <a href="/forgot-password" className="inline-block text-sm font-medium underline" style={{ color: "#2D5A5A" }}>
+                Request a new link
+              </a>
+            </>
+          ) : (
+            <>
+              <Loader2 className="mx-auto h-6 w-6 animate-spin" style={{ color: "#2D5A5A" }} />
+              <p className="text-sm" style={{ color: "#4A5568" }}>
+                Verifying your reset link...
+              </p>
+            </>
+          )}
         </div>
       </div>
     );
@@ -125,7 +149,7 @@ export default function ResetPasswordPage() {
               onChange={(e) => setPassword(e.target.value)}
               required
               minLength={6}
-              className="mt-1 border-gray-200 bg-white"
+              className="mt-1 border-gray-300 bg-white text-gray-900"
             />
           </div>
           <div>
@@ -137,7 +161,7 @@ export default function ResetPasswordPage() {
               onChange={(e) => setConfirmPassword(e.target.value)}
               required
               minLength={6}
-              className="mt-1 border-gray-200 bg-white"
+              className="mt-1 border-gray-300 bg-white text-gray-900"
             />
           </div>
 
