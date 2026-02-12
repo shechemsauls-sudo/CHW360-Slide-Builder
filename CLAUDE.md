@@ -1,6 +1,6 @@
 # CHW360 — Shechem Community Health
 
-Web app for CHW360: landing page, admin dashboard, and slide builder (Phase 3).
+Web app for CHW360: landing page, admin dashboard, and slide builder (Phase 2).
 
 ## Quick Commands
 
@@ -57,7 +57,7 @@ docs/                       # PRD and proposals
 | Table | Purpose |
 |-------|---------|
 | `profiles` | User profiles linked to Supabase auth |
-| `slides` | Slide content (Phase 3) |
+| `slides` | Slide content (Phase 2) |
 | `contact_submissions` | Landing page contact form entries |
 | `page_views` | Analytics events (views, interactions) |
 

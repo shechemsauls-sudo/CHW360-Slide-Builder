@@ -70,9 +70,11 @@ export default function SubmissionsPage() {
             return (
               <Card key={sub.id} className="border-0 bg-white/5">
                 <CardContent className="p-4">
-                  <div
-                    className="flex cursor-pointer items-start justify-between"
+                  <button
+                    type="button"
+                    className="flex w-full cursor-pointer items-start justify-between text-left"
                     onClick={() => setExpandedId(isExpanded ? null : sub.id)}
+                    aria-expanded={isExpanded}
                   >
                     <div className="min-w-0 flex-1">
                       <div className="flex items-center gap-2">
@@ -112,7 +114,7 @@ export default function SubmissionsPage() {
                         <ChevronDown className="h-4 w-4 text-gray-500" />
                       )}
                     </div>
-                  </div>
+                  </button>
 
                   {isExpanded && (
                     <div className="mt-4 space-y-3 border-t border-white/10 pt-4">

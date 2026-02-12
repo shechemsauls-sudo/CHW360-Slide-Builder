@@ -1,7 +1,20 @@
 import { z } from "zod";
-import { eq } from "drizzle-orm";
+import { eq, and } from "drizzle-orm";
+import { TRPCError } from "@trpc/server";
 import { createTRPCRouter, protectedProcedure, publicProcedure } from "~/server/api/trpc";
-import { slides } from "~/server/db/schema";
+import { slides, profiles } from "~/server/db/schema";
+import type { db as dbInstance } from "~/server/db";
+
+async function getProfileId(db: typeof dbInstance, authUserId: string) {
+  const profile = await db.query.profiles.findFirst({
+    where: eq(profiles.authId, authUserId),
+    columns: { id: true },
+  });
+  if (!profile) {
+    throw new TRPCError({ code: "NOT_FOUND", message: "Profile not found" });
+  }
+  return profile.id;
+}
 
 export const slideRouter = createTRPCRouter({
   getAll: publicProcedure.query(async ({ ctx }) => {
@@ -26,10 +39,11 @@ export const slideRouter = createTRPCRouter({
       }),
     )
     .mutation(async ({ ctx, input }) => {
+      const profileId = await getProfileId(ctx.db, ctx.user.id);
       const [slide] = await ctx.db
         .insert(slides)
         .values({
-          profileId: ctx.user.id,
+          profileId,
           title: input.title,
           content: input.content,
         })
@@ -46,19 +60,30 @@ export const slideRouter = createTRPCRouter({
       }),
     )
     .mutation(async ({ ctx, input }) => {
+      const profileId = await getProfileId(ctx.db, ctx.user.id);
       const { id, ...data } = input;
       const [slide] = await ctx.db
         .update(slides)
         .set({ ...data, updatedAt: new Date() })
-        .where(eq(slides.id, id))
+        .where(and(eq(slides.id, id), eq(slides.profileId, profileId)))
         .returning();
+      if (!slide) {
+        throw new TRPCError({ code: "NOT_FOUND", message: "Slide not found or not owned by you" });
+      }
       return slide;
     }),
 
   delete: protectedProcedure
     .input(z.object({ id: z.string().uuid() }))
     .mutation(async ({ ctx, input }) => {
-      await ctx.db.delete(slides).where(eq(slides.id, input.id));
+      const profileId = await getProfileId(ctx.db, ctx.user.id);
+      const result = await ctx.db
+        .delete(slides)
+        .where(and(eq(slides.id, input.id), eq(slides.profileId, profileId)))
+        .returning({ id: slides.id });
+      if (result.length === 0) {
+        throw new TRPCError({ code: "NOT_FOUND", message: "Slide not found or not owned by you" });
+      }
       return { success: true };
     }),
 });

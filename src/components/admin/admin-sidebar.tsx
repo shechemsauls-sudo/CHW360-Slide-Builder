@@ -236,6 +236,7 @@ export function AdminSidebar() {
         <SidebarContent isCollapsed={isCollapsed} />
         <button
           onClick={toggle}
+          aria-label={isCollapsed ? "Expand sidebar" : "Collapse sidebar"}
           className="absolute -right-3 top-20 flex h-6 w-6 items-center justify-center rounded-full border text-gray-400 transition-colors hover:text-white"
           style={{ borderColor: "rgba(45, 90, 90, 0.4)", backgroundColor: "#1a1a1a" }}
         >

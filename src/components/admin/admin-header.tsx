@@ -101,6 +101,7 @@ export function AdminHeader() {
 
       <button
         onClick={handleSignOut}
+        aria-label="Sign out"
         className="flex items-center gap-2 text-sm text-gray-400 transition-colors hover:text-white"
       >
         <LogOut className="h-4 w-4" />

@@ -48,7 +48,7 @@ function CoreSupportIcon({ type }: { type: string }) {
     case "training":
       return (
         <div className={iconStyles} style={{ backgroundColor: "#F5E6DC" }}>
-          <svg width="32" height="32" viewBox="0 0 40 40" fill="none">
+          <svg width="32" height="32" viewBox="0 0 40 40" fill="none" aria-hidden="true">
             <rect x="8" y="12" width="16" height="20" rx="2" fill="#D4A574" />
             <rect x="12" y="8" width="16" height="20" rx="2" fill="#E8C4A0" />
             <rect x="16" y="4" width="16" height="20" rx="2" fill="#C9725B" />
@@ -59,7 +59,7 @@ function CoreSupportIcon({ type }: { type: string }) {
     case "workforce":
       return (
         <div className={iconStyles} style={{ backgroundColor: "#F5E6DC" }}>
-          <svg width="32" height="32" viewBox="0 0 40 40" fill="none">
+          <svg width="32" height="32" viewBox="0 0 40 40" fill="none" aria-hidden="true">
             <rect x="6" y="14" width="28" height="18" rx="3" fill="#C9725B" />
             <rect x="14" y="8" width="12" height="8" rx="1" fill="#A85A48" />
             <rect x="10" y="18" width="20" height="2" fill="#FFF" opacity="0.5" />
@@ -69,7 +69,7 @@ function CoreSupportIcon({ type }: { type: string }) {
     case "digital":
       return (
         <div className={iconStyles} style={{ backgroundColor: "#E8F4F0" }}>
-          <svg width="32" height="32" viewBox="0 0 40 40" fill="none">
+          <svg width="32" height="32" viewBox="0 0 40 40" fill="none" aria-hidden="true">
             <rect x="6" y="8" width="28" height="20" rx="2" fill="#5B8A8A" />
             <rect x="8" y="10" width="24" height="14" fill="#A8D4D4" />
             <rect x="14" y="28" width="12" height="4" fill="#5B8A8A" />
@@ -80,7 +80,7 @@ function CoreSupportIcon({ type }: { type: string }) {
     case "community":
       return (
         <div className={iconStyles} style={{ backgroundColor: "#E8F4F0" }}>
-          <svg width="32" height="32" viewBox="0 0 40 40" fill="none">
+          <svg width="32" height="32" viewBox="0 0 40 40" fill="none" aria-hidden="true">
             <circle cx="12" cy="14" r="5" fill="#5B8A8A" />
             <circle cx="28" cy="14" r="5" fill="#5B8A8A" />
             <circle cx="20" cy="24" r="5" fill="#3D7A7A" />
@@ -91,7 +91,7 @@ function CoreSupportIcon({ type }: { type: string }) {
     case "application":
       return (
         <div className={iconStyles} style={{ backgroundColor: "#E8F4E8" }}>
-          <svg width="32" height="32" viewBox="0 0 40 40" fill="none">
+          <svg width="32" height="32" viewBox="0 0 40 40" fill="none" aria-hidden="true">
             <rect x="10" y="6" width="20" height="28" rx="2" fill="#A8C4A0" />
             <rect x="14" y="12" width="12" height="2" fill="#5B8A5B" />
             <rect x="14" y="18" width="12" height="2" fill="#5B8A5B" />
@@ -103,7 +103,7 @@ function CoreSupportIcon({ type }: { type: string }) {
     case "application2":
       return (
         <div className={iconStyles} style={{ backgroundColor: "#E8F4E8" }}>
-          <svg width="32" height="32" viewBox="0 0 40 40" fill="none">
+          <svg width="32" height="32" viewBox="0 0 40 40" fill="none" aria-hidden="true">
             <rect x="8" y="4" width="18" height="24" rx="2" fill="#A8C4A0" />
             <rect x="14" y="6" width="18" height="24" rx="2" fill="#C4D4BC" />
             <rect x="18" y="12" width="10" height="2" fill="#5B8A5B" />
@@ -160,6 +160,26 @@ export default function LandingPage() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
+  // Track form_view when the contact section becomes visible
+  const contactRef = useRef<HTMLElement>(null);
+  const formViewTracked = useRef(false);
+  useEffect(() => {
+    const el = contactRef.current;
+    if (!el) return;
+    const observer = new IntersectionObserver(
+      ([entry]) => {
+        if (entry?.isIntersecting && !formViewTracked.current) {
+          formViewTracked.current = true;
+          trackEvent.mutate({ page: "landing", event: "form_view" });
+        }
+      },
+      { threshold: 0.3 },
+    );
+    observer.observe(el);
+    return () => observer.disconnect();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
   const handleFormFocus = () => {
     if (!formTracked.current) {
       formTracked.current = true;
@@ -179,10 +199,16 @@ export default function LandingPage() {
 
   return (
     <div className="min-h-screen overflow-hidden bg-white">
+      <a href="#main-content" className="sr-only focus:not-sr-only focus:fixed focus:left-4 focus:top-4 focus:z-50 focus:rounded-md focus:bg-white focus:px-4 focus:py-2 focus:text-[#2D5A5A] focus:shadow-lg">
+        Skip to main content
+      </a>
       <style jsx global>{`
         @keyframes continuousScroll {
           0% { transform: translateX(0); }
           100% { transform: translateX(-50%); }
+        }
+        @media (prefers-reduced-motion: reduce) {
+          * { animation-duration: 0.01ms !important; animation-iteration-count: 1 !important; }
         }
       `}</style>
 
@@ -220,6 +246,8 @@ export default function LandingPage() {
             <button
               className="rounded-lg p-2 text-white md:hidden"
               onClick={() => setMobileMenuOpen(!mobileMenuOpen)}
+              aria-label={mobileMenuOpen ? "Close menu" : "Open menu"}
+              aria-expanded={mobileMenuOpen}
             >
               {mobileMenuOpen ? <X className="h-6 w-6" /> : <Menu className="h-6 w-6" />}
             </button>
@@ -232,7 +260,7 @@ export default function LandingPage() {
               <a
                 key={item}
                 href={`#${item.toLowerCase().replace(/\s+/g, "-")}`}
-                className="block py-3 text-sm font-medium text-white/90"
+                className="block min-h-[44px] py-3 text-sm font-medium leading-[44px] text-white/90"
                 onClick={() => setMobileMenuOpen(false)}
               >
                 {item}
@@ -252,6 +280,7 @@ export default function LandingPage() {
         )}
       </nav>
 
+      <main id="main-content">
       {/* Hero Section */}
       <section className="relative overflow-hidden" style={{ backgroundColor: "#F5EDE6" }}>
         <div className="absolute bottom-0 right-0 top-0 hidden w-[60%] border-0 lg:block">
@@ -268,9 +297,9 @@ export default function LandingPage() {
                 </div>
               ))}
               {heroImages.map((image, index) => (
-                <div key={`second-${index}`} className="relative h-full flex-shrink-0 px-3" style={{ width: "300px" }}>
+                <div key={`second-${index}`} className="relative h-full flex-shrink-0 px-3" style={{ width: "300px" }} aria-hidden="true">
                   <div className="relative h-full w-full overflow-hidden rounded-xl shadow-lg">
-                    <Image src={image.src} alt={image.alt} fill className="border-0 object-cover" style={{ objectPosition: "center center", border: "none" }} />
+                    <Image src={image.src} alt="" fill className="border-0 object-cover" style={{ objectPosition: "center center", border: "none" }} />
                   </div>
                 </div>
               ))}
@@ -330,9 +359,9 @@ export default function LandingPage() {
               </div>
             ))}
             {heroImages.map((image, index) => (
-              <div key={`mobile-second-${index}`} className="relative h-full flex-shrink-0 px-2" style={{ width: "200px" }}>
+              <div key={`mobile-second-${index}`} className="relative h-full flex-shrink-0 px-2" style={{ width: "200px" }} aria-hidden="true">
                 <div className="relative h-full w-full overflow-hidden rounded-lg shadow-md">
-                  <Image src={image.src} alt={image.alt} fill className="object-cover" style={{ objectPosition: "center center" }} />
+                  <Image src={image.src} alt="" fill className="object-cover" style={{ objectPosition: "center center" }} />
                 </div>
               </div>
             ))}
@@ -368,7 +397,7 @@ export default function LandingPage() {
       </section>
 
       {/* Who It's For + Contact Form */}
-      <section id="contact" className="px-4 py-16" style={{ backgroundColor: "#F5EDE6" }}>
+      <section id="contact" ref={contactRef} className="px-4 py-16" style={{ backgroundColor: "#F5EDE6" }}>
         <div className="mx-auto max-w-6xl">
           <div className="grid gap-12 lg:grid-cols-2 lg:gap-16">
             <div>
@@ -378,7 +407,7 @@ export default function LandingPage() {
               <p className="mb-8 text-base leading-relaxed" style={{ color: "#4A5568" }}>
                 CHW360 delivers practical, standards-aligned training that respects the CHW scope of practice and meets Texas state requirements.
               </p>
-              <div className="grid grid-cols-3 gap-4 rounded-xl p-5" style={{ backgroundColor: "#FAFAFA" }}>
+              <div className="grid grid-cols-1 gap-4 rounded-xl p-5 sm:grid-cols-3" style={{ backgroundColor: "#FAFAFA" }}>
                 {audiences.map((audience, index) => (
                   <div key={index} className="flex flex-col text-center">
                     <div className="flex h-20 items-center justify-center">
@@ -404,42 +433,58 @@ export default function LandingPage() {
                 Ready to learn more? Reach out to see how CHW360 can support Community Health Workers in your organization.
               </p>
               <form className="space-y-4" onSubmit={handleSubmit}>
-                <Input
-                  placeholder="Name *"
-                  value={formData.name}
-                  onChange={(e) => setFormData((p) => ({ ...p, name: e.target.value }))}
-                  onFocus={handleFormFocus}
-                  className="h-11 rounded-md border border-gray-100"
-                  style={{ backgroundColor: "#FFFFFF" }}
-                  required
-                />
-                <Input
-                  type="email"
-                  placeholder="Email *"
-                  value={formData.email}
-                  onChange={(e) => setFormData((p) => ({ ...p, email: e.target.value }))}
-                  onFocus={handleFormFocus}
-                  className="h-11 rounded-md border border-gray-100"
-                  style={{ backgroundColor: "#FFFFFF" }}
-                  required
-                />
-                <Input
-                  placeholder="Organization"
-                  value={formData.organization}
-                  onChange={(e) => setFormData((p) => ({ ...p, organization: e.target.value }))}
-                  onFocus={handleFormFocus}
-                  className="h-11 rounded-md border border-gray-100"
-                  style={{ backgroundColor: "#FFFFFF" }}
-                />
-                <Textarea
-                  placeholder="Message *"
-                  value={formData.message}
-                  onChange={(e) => setFormData((p) => ({ ...p, message: e.target.value }))}
-                  onFocus={handleFormFocus}
-                  className="min-h-[100px] rounded-md border border-gray-100"
-                  style={{ backgroundColor: "#FFFFFF" }}
-                  required
-                />
+                <div>
+                  <label htmlFor="contact-name" className="sr-only">Name</label>
+                  <Input
+                    id="contact-name"
+                    placeholder="Name *"
+                    value={formData.name}
+                    onChange={(e) => setFormData((p) => ({ ...p, name: e.target.value }))}
+                    onFocus={handleFormFocus}
+                    className="h-11 rounded-md border border-gray-100"
+                    style={{ backgroundColor: "#FFFFFF" }}
+                    required
+                  />
+                </div>
+                <div>
+                  <label htmlFor="contact-email" className="sr-only">Email</label>
+                  <Input
+                    id="contact-email"
+                    type="email"
+                    placeholder="Email *"
+                    value={formData.email}
+                    onChange={(e) => setFormData((p) => ({ ...p, email: e.target.value }))}
+                    onFocus={handleFormFocus}
+                    className="h-11 rounded-md border border-gray-100"
+                    style={{ backgroundColor: "#FFFFFF" }}
+                    required
+                  />
+                </div>
+                <div>
+                  <label htmlFor="contact-org" className="sr-only">Organization</label>
+                  <Input
+                    id="contact-org"
+                    placeholder="Organization"
+                    value={formData.organization}
+                    onChange={(e) => setFormData((p) => ({ ...p, organization: e.target.value }))}
+                    onFocus={handleFormFocus}
+                    className="h-11 rounded-md border border-gray-100"
+                    style={{ backgroundColor: "#FFFFFF" }}
+                  />
+                </div>
+                <div>
+                  <label htmlFor="contact-message" className="sr-only">Message</label>
+                  <Textarea
+                    id="contact-message"
+                    placeholder="Message *"
+                    value={formData.message}
+                    onChange={(e) => setFormData((p) => ({ ...p, message: e.target.value }))}
+                    onFocus={handleFormFocus}
+                    className="min-h-[100px] rounded-md border border-gray-100"
+                    style={{ backgroundColor: "#FFFFFF" }}
+                    required
+                  />
+                </div>
                 <Button
                   type="submit"
                   disabled={submitMutation.isPending}
@@ -461,6 +506,8 @@ export default function LandingPage() {
         </div>
       </section>
 
+      </main>
+
       {/* Footer */}
       <footer style={{ backgroundColor: "#2D5A5A" }}>
         <div className="mx-auto max-w-6xl px-4 py-10">
@@ -480,22 +527,26 @@ export default function LandingPage() {
               ))}
             </div>
             <div className="flex gap-3">
-              {[Facebook, Linkedin, Linkedin, Twitter].map((Icon, i) => (
-                <a key={i} href="#" className="flex h-8 w-8 items-center justify-center rounded-full bg-white/10 transition-colors hover:bg-white/20">
+              {[
+                { Icon: Facebook, label: "Facebook" },
+                { Icon: Linkedin, label: "LinkedIn" },
+                { Icon: Twitter, label: "Twitter" },
+              ].map(({ Icon, label }) => (
+                <a key={label} href={`#${label.toLowerCase()}`} aria-label={label} className="flex h-10 w-10 items-center justify-center rounded-full bg-white/10 transition-colors hover:bg-white/20">
                   <Icon className="h-4 w-4 text-white" />
                 </a>
               ))}
             </div>
           </div>
           <div className="flex flex-wrap justify-center gap-6 py-6 text-sm text-white/70">
-            <span className="flex items-center gap-2">
+            <a href="mailto:info@chw360.org" className="flex items-center gap-2 transition-colors hover:text-white">
               <Mail className="h-4 w-4" />
               info@chw360.org
-            </span>
-            <span className="flex items-center gap-2">
+            </a>
+            <a href="tel:+12212345678" className="flex items-center gap-2 transition-colors hover:text-white">
               <Phone className="h-4 w-4" />
               (22) 123-4567
-            </span>
+            </a>
           </div>
           <div className="text-center text-xs text-white/50">
             &copy; {new Date().getFullYear()} CHW360 | Educational Use Only. | Not Medical Advice.
