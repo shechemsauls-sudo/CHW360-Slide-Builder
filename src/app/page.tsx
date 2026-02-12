@@ -442,7 +442,7 @@ export default function LandingPage() {
                     value={formData.name}
                     onChange={(e) => setFormData((p) => ({ ...p, name: e.target.value }))}
                     onFocus={handleFormFocus}
-                    className="h-11 rounded-md border border-gray-100"
+                    className="h-11 rounded-md border border-gray-200 text-gray-900 placeholder:text-gray-500"
                     style={{ backgroundColor: "#FFFFFF" }}
                     required
                   />
@@ -456,7 +456,7 @@ export default function LandingPage() {
                     value={formData.email}
                     onChange={(e) => setFormData((p) => ({ ...p, email: e.target.value }))}
                     onFocus={handleFormFocus}
-                    className="h-11 rounded-md border border-gray-100"
+                    className="h-11 rounded-md border border-gray-200 text-gray-900 placeholder:text-gray-500"
                     style={{ backgroundColor: "#FFFFFF" }}
                     required
                   />
@@ -469,7 +469,7 @@ export default function LandingPage() {
                     value={formData.organization}
                     onChange={(e) => setFormData((p) => ({ ...p, organization: e.target.value }))}
                     onFocus={handleFormFocus}
-                    className="h-11 rounded-md border border-gray-100"
+                    className="h-11 rounded-md border border-gray-200 text-gray-900 placeholder:text-gray-500"
                     style={{ backgroundColor: "#FFFFFF" }}
                   />
                 </div>
@@ -481,7 +481,7 @@ export default function LandingPage() {
                     value={formData.message}
                     onChange={(e) => setFormData((p) => ({ ...p, message: e.target.value }))}
                     onFocus={handleFormFocus}
-                    className="min-h-[100px] rounded-md border border-gray-100"
+                    className="min-h-[100px] rounded-md border border-gray-200 text-gray-900 placeholder:text-gray-500"
                     style={{ backgroundColor: "#FFFFFF" }}
                     required
                   />

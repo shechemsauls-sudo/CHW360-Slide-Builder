@@ -17,10 +17,11 @@ const colors = [
 ];
 
 const heroImages = [
-  { src: "/chw/hero-image.png", name: "Hero - CHW with Tablet" },
-  { src: "/chw/hero-2.jpg", name: "Hero - Team Portrait" },
-  { src: "/chw/hero-3.jpg", name: "Hero - Team Collaboration" },
-  { src: "/chw/hero-4.jpg", name: "Hero - Medical Team" },
+  { src: "/chw/hero-1.png", name: "Hero - Community Outreach" },
+  { src: "/chw/hero-2.png", name: "Hero - Home Visit" },
+  { src: "/chw/hero-3.png", name: "Hero - Field Engagement" },
+  { src: "/chw/hero-4.png", name: "Hero - Wellness Coaching" },
+  { src: "/chw/hero-5.png", name: "Hero - Training Workshop" },
 ];
 
 const icons = [
