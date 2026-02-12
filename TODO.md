@@ -1,10 +1,16 @@
 # TODO — CHW360
 
 ## Critical (blocks production)
-- (none)
+- [ ] Vercel env debug session: DATABASE_URL likely missing/wrong — `/admin` returns `server_error`
+- [ ] Verify all Vercel env vars match local `.env` (need client's Vercel access)
+- [ ] Undo CI env validation bypass (`src/env.js`) once Vercel env is confirmed
 
 ## Bugs (broken functionality)
+- [ ] `/admin` crashes on production (database query fails → redirects to `/login?error=server_error`)
+- [ ] Password reset flow redirects to broken `/admin` on production
+- [ ] Claim email flow redirects to broken `/admin` on production
 - [ ] Verify admin login works end-to-end after NULL column fix (manual test needed)
+- [ ] Verify test user `mmicel583@gmail.com` has no NULL column issues (created via raw SQL)
 
 ## Tech Debt (code quality)
 - [ ] Add RLS policies to all tables (currently RLS enabled but no policies)

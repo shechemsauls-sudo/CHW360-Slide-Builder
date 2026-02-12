@@ -1,9 +1,9 @@
 # Status — CHW360
 
-## Current Phase: Phase 1 Complete — Ready for Phase 2 (Slide Builder)
+## Current Phase: Phase 1 Code Complete — Production Env Needs Debug
 
 ### Completed
-- **Phase 1a + 1b fully deployed** — all auth, roles, email, landing page updates done
+- **Phase 1a + 1b code complete** — all auth, roles, email, landing page updates done
 - RBAC: `adminProcedure` + admin layout role gate (non-admins redirected)
 - Auth flows: forgot password, reset password, magic link claim, invite-only (no public signup)
 - Admin user management: invite users, send claim emails, toggle roles
@@ -20,11 +20,14 @@
 - None
 
 ### Blocked
-- None
+- **Production `/admin` broken** — database query fails on Vercel (likely missing `DATABASE_URL`)
+- Need debug session with client (Vercel access) to verify env vars
+- CI env validation bypass in `src/env.js` should be reverted once env is confirmed
 
 ### Recent Changes
 | Date | Change |
 |------|--------|
+| 2026-02-12 | Production debug: `/admin` server_error — DATABASE_URL likely missing on Vercel |
 | 2026-02-12 | Fix login page (remove OAuth, add claim/forgot), contact form readability, asset cleanup |
 | 2026-02-12 | Fix Supabase auth user NULL columns, configure SMTP + redirect URLs |
 | 2026-02-12 | Created first admin user, added deploy banner to admin |
