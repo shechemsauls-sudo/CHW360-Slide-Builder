@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { useParams, useRouter } from "next/navigation";
 import { api } from "~/trpc/react";
 import { getTheme } from "~/lib/themes";
@@ -16,10 +16,14 @@ export default function PresentPage() {
   const { data: deck, isLoading } = api.deck.getById.useQuery({ id: deckId });
   const [currentIndex, setCurrentIndex] = useState(0);
   const [showNotes, setShowNotes] = useState(false);
+  const [presenterMode, setPresenterMode] = useState(false);
+  const isExiting = useRef(false);
+  const audienceWindow = useRef<Window | null>(null);
 
   const slides = (deck?.slides ?? []) as SlideData[];
   const currentSlide = slides[currentIndex];
   const theme = getTheme(deck?.themeId ?? "chw-teal");
+  const storageKey = `presenter-slide-${deckId}`;
 
   const goNext = useCallback(() => {
     setCurrentIndex((i) => Math.min(i + 1, slides.length - 1));
@@ -29,12 +33,52 @@ export default function PresentPage() {
     setCurrentIndex((i) => Math.max(i - 1, 0));
   }, []);
 
+  // Sync slide index to localStorage for audience window
+  useEffect(() => {
+    if (presenterMode) {
+      localStorage.setItem(storageKey, String(currentIndex));
+    }
+  }, [currentIndex, presenterMode, storageKey]);
+
   const exitPresent = useCallback(() => {
+    if (isExiting.current) return;
+    isExiting.current = true;
+
+    // Close audience window if open
+    if (audienceWindow.current && !audienceWindow.current.closed) {
+      audienceWindow.current.close();
+    }
+    audienceWindow.current = null;
+    localStorage.removeItem(storageKey);
+
     if (document.fullscreenElement) {
       void document.exitFullscreen();
     }
     router.push(`/admin/slides/${deckId}`);
-  }, [router, deckId]);
+  }, [router, deckId, storageKey]);
+
+  const togglePresenterMode = useCallback(() => {
+    if (presenterMode) {
+      // Close audience window
+      if (audienceWindow.current && !audienceWindow.current.closed) {
+        audienceWindow.current.close();
+      }
+      audienceWindow.current = null;
+      localStorage.removeItem(storageKey);
+      setPresenterMode(false);
+    } else {
+      // Open audience window and sync current index
+      localStorage.setItem(storageKey, String(currentIndex));
+      const popup = window.open(
+        `/admin/slides/${deckId}/audience`,
+        `audience-${deckId}`,
+        "width=1280,height=720,menubar=no,toolbar=no",
+      );
+      audienceWindow.current = popup;
+      setPresenterMode(true);
+      setShowNotes(true);
+    }
+  }, [presenterMode, deckId, currentIndex, storageKey]);
 
   // Request fullscreen on mount
   useEffect(() => {
@@ -52,6 +96,18 @@ export default function PresentPage() {
     };
   }, []);
 
+  // Exit when fullscreen ends (handles browser ESC natively)
+  useEffect(() => {
+    const handleFullscreenChange = () => {
+      if (!document.fullscreenElement) {
+        exitPresent();
+      }
+    };
+
+    document.addEventListener("fullscreenchange", handleFullscreenChange);
+    return () => document.removeEventListener("fullscreenchange", handleFullscreenChange);
+  }, [exitPresent]);
+
   // Keyboard navigation
   useEffect(() => {
     const handleKey = (e: KeyboardEvent) => {
@@ -65,19 +121,34 @@ export default function PresentPage() {
           e.preventDefault();
           goPrev();
           break;
-        case "Escape":
-          exitPresent();
-          break;
         case "n":
         case "N":
           setShowNotes((v) => !v);
           break;
+        case "p":
+        case "P":
+          togglePresenterMode();
+          break;
+        // ESC handled by browser fullscreen exit → fullscreenchange listener
       }
     };
 
     window.addEventListener("keydown", handleKey);
     return () => window.removeEventListener("keydown", handleKey);
-  }, [goNext, goPrev, exitPresent]);
+  }, [goNext, goPrev, togglePresenterMode]);
+
+  // Check if audience window was closed externally
+  useEffect(() => {
+    if (!presenterMode) return;
+    const interval = setInterval(() => {
+      if (audienceWindow.current?.closed) {
+        audienceWindow.current = null;
+        localStorage.removeItem(storageKey);
+        setPresenterMode(false);
+      }
+    }, 1000);
+    return () => clearInterval(interval);
+  }, [presenterMode, storageKey]);
 
   if (isLoading) {
     return (
@@ -100,13 +171,19 @@ export default function PresentPage() {
       className="relative flex h-screen w-screen cursor-none items-center justify-center bg-black"
       onClick={goNext}
     >
+      {/* Presenter mode badge */}
+      {presenterMode && (
+        <div className="absolute left-4 top-4 z-10 rounded-full bg-[#2D5A5A] px-3 py-1 text-xs font-medium text-white/90">
+          Presenter Mode Active
+        </div>
+      )}
+
       {/* Slide */}
       <div className="relative w-full max-w-[calc(100vh*16/9)] px-4">
         {currentSlide && (
           <SlideRenderer
             slide={currentSlide}
             theme={theme}
-            scale={1}
           />
         )}
       </div>
@@ -170,7 +247,7 @@ function NavigationHint() {
 
   return (
     <div className="absolute bottom-12 left-1/2 -translate-x-1/2 animate-pulse text-xs text-white/30">
-      Arrow keys or click to navigate &middot; N for notes &middot; ESC to exit
+      Arrow keys or click to navigate &middot; N for notes &middot; P for presenter mode &middot; ESC to exit
     </div>
   );
 }

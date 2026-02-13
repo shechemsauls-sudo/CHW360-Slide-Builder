@@ -9,11 +9,12 @@ import { Input } from "~/components/ui/input";
 import { Card, CardContent } from "~/components/ui/card";
 import { ContentInput } from "~/components/slides/content-input";
 import { ProviderSelector } from "~/components/slides/provider-selector";
+import { BlockSelector } from "~/components/slides/block-selector";
 import { GenerationStatus } from "~/components/slides/generation-status";
 import { ThemeSelector } from "~/components/slides/theme-selector";
 import { api } from "~/trpc/react";
 import { toast } from "sonner";
-import type { FidelityLevel } from "~/lib/ai/types";
+import type { FidelityLevel, VisualBlockType } from "~/lib/ai/types";
 
 const FIDELITY_OPTIONS: {
   value: FidelityLevel;
@@ -54,6 +55,7 @@ export default function NewDeckPage() {
   const [detectedFidelity, setDetectedFidelity] = useState<FidelityLevel | null>(null);
   const [userOverrodeFidelity, setUserOverrodeFidelity] = useState(false);
   const [uploadedFile, setUploadedFile] = useState<{ name: string; format: string } | null>(null);
+  const [selectedBlocks, setSelectedBlocks] = useState<VisualBlockType[]>([]);
   const [genStatus, setGenStatus] = useState<"idle" | "generating" | "error">("idle");
   const [genError, setGenError] = useState("");
 
@@ -151,6 +153,7 @@ export default function NewDeckPage() {
       imageProvider: imageProvider as "dalle3" | "gpt-image-1" | "disabled",
       themeId,
       fidelity,
+      selectedBlocks: selectedBlocks.length > 0 ? selectedBlocks : undefined,
     });
   };
 
@@ -305,6 +308,17 @@ export default function NewDeckPage() {
                   selected={imageProvider}
                   onSelect={setImageProvider}
                 />
+
+                <BlockSelector
+                  selected={selectedBlocks}
+                  onSelect={setSelectedBlocks}
+                  disabled={fidelity === "verbatim"}
+                />
+                {fidelity === "verbatim" && (
+                  <p className="text-xs text-gray-500">
+                    Visual blocks are disabled in verbatim mode
+                  </p>
+                )}
               </CardContent>
             </Card>
           )}

@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { useParams, useRouter } from "next/navigation";
 import Link from "next/link";
 import {
@@ -17,6 +17,7 @@ import {
   Loader2,
   Play,
   Palette,
+  Keyboard,
 } from "lucide-react";
 import { Button } from "~/components/ui/button";
 import { Card, CardContent } from "~/components/ui/card";
@@ -47,7 +48,14 @@ export default function DeckViewPage() {
   const [showSource, setShowSource] = useState(false);
   const [showRegenOptions, setShowRegenOptions] = useState(false);
   const [regenFidelity, setRegenFidelity] = useState<FidelityLevel>("balanced");
+  const [regenSlideCount, setRegenSlideCount] = useState<number>(20);
   const [showThemePicker, setShowThemePicker] = useState(false);
+  const [showShortcuts, setShowShortcuts] = useState(false);
+
+  // Sync slide count default from current deck when data loads
+  useEffect(() => {
+    if (deck?.slideCount) setRegenSlideCount(deck.slideCount);
+  }, [deck?.slideCount]);
 
   const deleteDeck = api.deck.delete.useMutation({
     onSuccess: () => {
@@ -87,6 +95,7 @@ export default function DeckViewPage() {
     regenerateDeck.mutate({
       id: deckId,
       fidelity: regenFidelity,
+      slideCount: regenSlideCount,
     });
   };
 
@@ -161,16 +170,56 @@ export default function DeckViewPage() {
 
         <div className="flex items-center gap-2">
           {slides.length > 0 && (
-            <Link href={`/admin/slides/${deckId}/present`}>
-              <Button
-                size="sm"
-                className="gap-1.5"
-                style={{ backgroundColor: "#C9725B" }}
-              >
-                <Play className="h-3.5 w-3.5" />
-                Present
-              </Button>
-            </Link>
+            <>
+              <div className="relative">
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  className="gap-1.5 text-gray-400 hover:text-[#5B8A8A]"
+                  onClick={() => setShowShortcuts(!showShortcuts)}
+                >
+                  <Keyboard className="h-4 w-4" />
+                  Shortcuts
+                </Button>
+                {showShortcuts && (
+                  <div className="absolute right-0 top-full z-10 mt-2 w-56 rounded-lg border border-white/10 bg-[#1a1a2e] p-3 shadow-xl">
+                    <p className="mb-2 text-xs font-medium text-gray-300">Presentation Shortcuts</p>
+                    <div className="space-y-1.5 text-xs text-gray-400">
+                      <div className="flex justify-between">
+                        <span>Next slide</span>
+                        <span className="font-mono text-gray-500">→ / Space</span>
+                      </div>
+                      <div className="flex justify-between">
+                        <span>Previous slide</span>
+                        <span className="font-mono text-gray-500">←</span>
+                      </div>
+                      <div className="flex justify-between">
+                        <span>Toggle notes</span>
+                        <span className="font-mono text-gray-500">N</span>
+                      </div>
+                      <div className="flex justify-between">
+                        <span>Presenter mode</span>
+                        <span className="font-mono text-gray-500">P</span>
+                      </div>
+                      <div className="flex justify-between">
+                        <span>Exit presentation</span>
+                        <span className="font-mono text-gray-500">ESC</span>
+                      </div>
+                    </div>
+                  </div>
+                )}
+              </div>
+              <Link href={`/admin/slides/${deckId}/present`}>
+                <Button
+                  size="sm"
+                  className="gap-1.5"
+                  style={{ backgroundColor: "#C9725B" }}
+                >
+                  <Play className="h-3.5 w-3.5" />
+                  Present
+                </Button>
+              </Link>
+            </>
           )}
 
           <Button
@@ -220,6 +269,24 @@ export default function DeckViewPage() {
                         {opt.label}
                       </button>
                     ))}
+                  </div>
+                  <div className="mb-3">
+                    <p className="mb-2 text-xs font-medium text-gray-300">
+                      Max Slides
+                    </p>
+                    <div className="flex items-center gap-3">
+                      <input
+                        type="range"
+                        min={5}
+                        max={120}
+                        value={regenSlideCount}
+                        onChange={(e) => setRegenSlideCount(Number(e.target.value))}
+                        className="h-1.5 flex-1 cursor-pointer appearance-none rounded-full bg-white/10 accent-[#2D5A5A]"
+                      />
+                      <span className="w-8 text-center text-xs font-medium text-white tabular-nums">
+                        {regenSlideCount}
+                      </span>
+                    </div>
                   </div>
                   <Button
                     size="sm"

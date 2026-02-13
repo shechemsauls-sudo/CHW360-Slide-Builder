@@ -1,4 +1,4 @@
-import type { FidelityLevel, GenerateInput, RegenerateInput } from "../types";
+import type { FidelityLevel, GenerateInput, RegenerateInput, VisualBlockType } from "../types";
 
 const FIDELITY_INSTRUCTIONS: Record<FidelityLevel, string> = {
   verbatim: `## Source Fidelity: VERBATIM
@@ -22,7 +22,8 @@ Preserve the source content's meaning, structure, and key phrases. You may impro
 - You may split long sections into multiple slides or add section dividers
 - Do NOT drop sections — include ALL content from the source
 - Speaker notes should expand on slide content with teaching context, not repeat the body
-- Prefer the source's exact phrasing when it is clear and effective`,
+- Prefer the source's exact phrasing when it is clear and effective
+- **Visual blocks ARE encouraged** — reformatting content into :::block directives (checklists, info-boxes, charts, etc.) is a formatting enhancement, NOT a rewrite. Use them freely on 30-40% of content slides.`,
 
   creative: `## Source Fidelity: CREATIVE
 
@@ -34,29 +35,29 @@ Use the source content as inspiration. Restructure, summarize, and enhance freel
 - Speaker notes should provide teaching guidance and discussion prompts`,
 };
 
-const BLOCK_SYNTAX_DOCS = `## Visual Block Components
-
-You can use special block directives in slide bodies to create rich visual elements. Use the :::block-type syntax:
-
-### Available Blocks
-
-**:::info-box Title**
+const BLOCK_DOCS: Record<VisualBlockType, { doc: string; hint: string }> = {
+  "info-box": {
+    doc: `**:::info-box Title**
 Colored callout box with a left accent border. Use for tips, notes, warnings, or key definitions.
 \`\`\`
 :::info-box Key Definition
 A Community Health Worker (CHW) is a frontline health agent...
 :::
-\`\`\`
-
-**:::key-stat Number Label**
+\`\`\``,
+    hint: "Definitions or key terms → `:::info-box`",
+  },
+  "key-stat": {
+    doc: `**:::key-stat Number Label**
 Large statistic display. Use for impactful numbers.
 \`\`\`
 :::key-stat 95% Vaccination Rate
 Among children under 5 in the program area
 :::
-\`\`\`
-
-**:::numbered-steps**
+\`\`\``,
+    hint: "Statistics or metrics → `:::key-stat`",
+  },
+  "numbered-steps": {
+    doc: `**:::numbered-steps**
 Vertical numbered step list with connector dots. Use for processes and procedures.
 \`\`\`
 :::numbered-steps
@@ -64,17 +65,21 @@ Assess the patient's symptoms
 Record vital signs
 Refer to nearest health facility if needed
 :::
-\`\`\`
-
-**:::flow-diagram**
+\`\`\``,
+    hint: "Step-by-step instructions → `:::numbered-steps`",
+  },
+  "flow-diagram": {
+    doc: `**:::flow-diagram**
 Horizontal flow with arrows. Use for workflows and processes (3-5 items).
 \`\`\`
 :::flow-diagram
 Assessment -> Diagnosis -> Treatment -> Follow-up
 :::
-\`\`\`
-
-**:::comparison-table**
+\`\`\``,
+    hint: "Processes or workflows → `:::flow-diagram`",
+  },
+  "comparison-table": {
+    doc: `**:::comparison-table**
 Side-by-side comparison. First row is headers, use | to separate columns.
 \`\`\`
 :::comparison-table
@@ -82,9 +87,11 @@ Prevention | Treatment
 Vaccines, bed nets | Medication, IV fluids
 Low cost | Higher cost
 :::
-\`\`\`
-
-**:::checklist**
+\`\`\``,
+    hint: "Side-by-side comparisons → `:::comparison-table`",
+  },
+  "checklist": {
+    doc: `**:::checklist**
 Visual checkbox list. Use for action items or requirements.
 \`\`\`
 :::checklist
@@ -92,25 +99,31 @@ Complete patient intake form
 Verify immunization records
 Schedule follow-up visit
 :::
-\`\`\`
-
-**:::quote-block Attribution**
+\`\`\``,
+    hint: "Action items or requirements → `:::checklist`",
+  },
+  "quote-block": {
+    doc: `**:::quote-block Attribution**
 Styled pull quote. Use for impactful quotes or testimonials.
 \`\`\`
 :::quote-block WHO Guidelines
 Every child deserves access to quality healthcare regardless of geography.
 :::
-\`\`\`
-
-**:::highlight-box**
+\`\`\``,
+    hint: "Quotes or testimonials → `:::quote-block`",
+  },
+  "highlight-box": {
+    doc: `**:::highlight-box**
 Full-width colored banner. Use for key takeaways or important messages.
 \`\`\`
 :::highlight-box
 Remember: Always wash hands before and after patient contact!
 :::
-\`\`\`
-
-**:::timeline**
+\`\`\``,
+    hint: "Key takeaways or emphasis → `:::highlight-box`",
+  },
+  "timeline": {
+    doc: `**:::timeline**
 Horizontal timeline with labeled points. Use for phases or milestones. Format: Label: Description
 \`\`\`
 :::timeline
@@ -118,9 +131,11 @@ Week 1: Initial training
 Week 2: Field practice
 Week 3: Assessment
 :::
-\`\`\`
-
-**:::icon-grid**
+\`\`\``,
+    hint: "Phases or milestones → `:::timeline`",
+  },
+  "icon-grid": {
+    doc: `**:::icon-grid**
 Grid of items with icon circles. Use for categories, roles, or features.
 \`\`\`
 :::icon-grid
@@ -129,14 +144,141 @@ Treatment
 Education
 Referral
 :::
+\`\`\``,
+    hint: "Categories, roles, or features → `:::icon-grid`",
+  },
+  "bar-chart": {
+    doc: `**:::bar-chart Title | Series1, Series2**
+Bar chart comparing values across categories. Use \`|\` to separate title from optional series names. Each line: \`Label: value\` or \`Label: value1, value2\` for multi-series.
 \`\`\`
+:::bar-chart Coverage by Region | Target, Actual
+North: 90, 85
+South: 85, 78
+East: 92, 91
+West: 88, 72
+:::
+\`\`\``,
+    hint: "Categorical comparisons with numbers → `:::bar-chart`",
+  },
+  "pie-chart": {
+    doc: `**:::pie-chart Title**
+Pie/donut chart showing proportions. Each line: \`Label: value\`.
+\`\`\`
+:::pie-chart Disease Distribution
+Malaria: 45
+Pneumonia: 25
+Diarrhea: 20
+Other: 10
+:::
+\`\`\``,
+    hint: "Proportions or percentage breakdowns → `:::pie-chart`",
+  },
+  "line-chart": {
+    doc: `**:::line-chart Title | Series1, Series2**
+Line chart for trends over time. Each line: \`Label: value\` or multi-series with commas.
+\`\`\`
+:::line-chart Monthly Visits
+Jan: 120
+Feb: 145
+Mar: 180
+Apr: 210
+:::
+\`\`\``,
+    hint: "Trends over time → `:::line-chart`",
+  },
+  "area-chart": {
+    doc: `**:::area-chart Title | Series1, Series2**
+Filled area chart for cumulative or volume trends. Same format as line-chart.
+\`\`\`
+:::area-chart Cumulative Vaccinations
+Week 1: 50
+Week 2: 130
+Week 3: 240
+Week 4: 380
+:::
+\`\`\``,
+    hint: "Cumulative totals or volume trends → `:::area-chart`",
+  },
+  "radar-chart": {
+    doc: `**:::radar-chart Title**
+Radar/spider chart for multi-factor assessments. Each line: \`Factor: score\`.
+\`\`\`
+:::radar-chart Health Worker Skills
+Communication: 85
+Clinical Knowledge: 70
+Community Trust: 90
+Record Keeping: 65
+Referral Accuracy: 80
+:::
+\`\`\``,
+    hint: "Multi-factor assessments or skill profiles → `:::radar-chart`",
+  },
+  "progress-bars": {
+    doc: `**:::progress-bars Title**
+Visual progress bars showing completion percentages. Each line: \`Label: percentage\`.
+\`\`\`
+:::progress-bars Training Completion
+Module 1: 100
+Module 2: 85
+Module 3: 60
+Module 4: 25
+:::
+\`\`\``,
+    hint: "Completion rates or goal progress → `:::progress-bars`",
+  },
+  "metric-row": {
+    doc: `**:::metric-row Title**
+Dashboard-style metric cards in a row. Each line: \`Value | Label\`.
+\`\`\`
+:::metric-row Program Impact
+2,450 | Households Visited
+95% | Immunization Rate
+12 | Active CHWs
+89% | Follow-up Rate
+:::
+\`\`\``,
+    hint: "KPI summaries or dashboard metrics → `:::metric-row`",
+  },
+};
+
+function buildBlockDocs(selectedBlocks?: VisualBlockType[]): string {
+  const blocks = selectedBlocks?.length
+    ? selectedBlocks
+    : (Object.keys(BLOCK_DOCS) as VisualBlockType[]);
+
+  const blockDocs = blocks.map((b) => BLOCK_DOCS[b].doc).join("\n\n");
+  const hints = blocks.map((b) => `- ${BLOCK_DOCS[b].hint}`).join("\n");
+
+  const restriction = selectedBlocks?.length
+    ? `\n\n**IMPORTANT: Use ONLY these ${blocks.length} block types. Do NOT use any other block types.**`
+    : "";
+
+  return `## Visual Block Components
+
+You can use special block directives in slide bodies to create rich visual elements. Use the :::block-type syntax:
+
+### Available Blocks
+
+${blockDocs}
+
+### When to Use Each Block
+Match content patterns to the right block type:
+${hints}
 
 ### Block Usage Guidelines
+- **Use visual blocks on 30-40% of content slides** — they make presentations more engaging and scannable
 - Use 1-3 blocks per slide maximum — don't overload
 - Blocks work best on "content", "bullets", and "activity" slide types
 - You can mix regular markdown with blocks in the same slide body
 - Do NOT use blocks on "title" or "closing" slides
-- Choose the block that best fits the content — don't force blocks where plain text works better`;
+
+### Chart & Data Block Guidelines
+- **Chart blocks are best when source content contains numerical data** — do NOT fabricate numbers
+- Use bar-chart for categorical comparisons, pie-chart for proportions, line/area-chart for trends, radar-chart for multi-factor assessments
+- Use progress-bars for completion rates and metric-row for KPI summaries
+- Keep chart data concise: 3-8 data points per chart for readability
+- One chart per slide is ideal — combine with a text block if needed for context${restriction}`;
+}
 
 export function buildGeneratePrompt(input: GenerateInput): string {
   const slideCount = input.slideCount ?? 20;
@@ -148,7 +290,7 @@ export function buildGeneratePrompt(input: GenerateInput): string {
 Create a professional slide deck from the provided content. The deck should be educational, engaging, and actionable for community health workers.
 
 ${FIDELITY_INSTRUCTIONS[fidelity]}
-${includeBlocks ? "\n" + BLOCK_SYNTAX_DOCS : ""}
+${includeBlocks ? "\n" + buildBlockDocs(input.selectedBlocks) : ""}
 
 ## Slide Count
 
@@ -166,6 +308,7 @@ If the source content does NOT contain slide markers (it's just prose, notes, or
 - Body content should use Markdown formatting (bold, lists, etc.)
 - Keep slide titles concise (under 10 words)
 - Keep bullet points to 4-6 per slide maximum
+- **CRITICAL: You MUST use :::block directives on at least 30% of content/bullets/activity slides.** Do NOT create a deck of only plain text slides. Use checklists, info-boxes, numbered-steps, flow-diagrams, key-stats, charts, progress-bars, metric-rows, etc. to make slides visually rich. See the Visual Block Components section for syntax.
 
 ## Slide Types
 - **title**: Opening slide with deck title and subtitle in body
@@ -192,22 +335,60 @@ ${input.description ? `Description: ${input.description}` : ""}
 ${input.content}
 
 ## Output Format
-Return a JSON object with a "slides" array. Each slide object must have:
+Return a JSON object with a "slides" array. Each slide has: id, order, type, title, body, speakerNotes, imageUrl, imagePrompt, layout.
+
+**IMPORTANT: The body field MUST contain :::block directives on content slides.** Use \\n for newlines in JSON strings. Here are complete example slides showing correct block usage:
+
 {
   "slides": [
     {
       "id": "slide-1",
       "order": 1,
       "type": "title",
-      "title": "...",
-      "body": "...",
-      "speakerNotes": "...",
+      "title": "Training Program Overview",
+      "body": "Building healthier communities through skilled CHW practice",
+      "speakerNotes": "Welcome to the training...",
       "imageUrl": null,
-      "imagePrompt": null or "descriptive prompt...",
+      "imagePrompt": null,
       "layout": "centered"
+    },
+    {
+      "id": "slide-2",
+      "order": 2,
+      "type": "bullets",
+      "title": "Learning Objectives",
+      "body": ":::checklist\\nExplain why organizational skills are essential\\nIdentify core tasks performed by CHWs\\nRecognize how organization supports accountability\\nDescribe strategies for organizing time and information\\n:::",
+      "speakerNotes": "These objectives guide our learning...",
+      "imageUrl": null,
+      "imagePrompt": null,
+      "layout": "full"
+    },
+    {
+      "id": "slide-3",
+      "order": 3,
+      "type": "content",
+      "title": "Key Responsibilities",
+      "body": "CHWs manage multiple organizational tasks daily:\\n\\n:::numbered-steps\\nSchedule and track appointments\\nDocument client interactions\\nCoordinate referrals with partners\\nFollow up on pending cases\\n:::",
+      "speakerNotes": "Let's walk through each responsibility...",
+      "imageUrl": null,
+      "imagePrompt": "A CHW organizing files at a desk",
+      "layout": "split-right"
+    },
+    {
+      "id": "slide-4",
+      "order": 4,
+      "type": "content",
+      "title": "Program Impact",
+      "body": ":::metric-row\\n2,450 | Households Visited\\n95% | Follow-up Rate\\n12 | Active CHWs\\n:::\\n\\n:::info-box Key Insight\\nOrganized CHWs achieve 40% higher follow-up rates than their peers.\\n:::",
+      "speakerNotes": "These metrics demonstrate the power of organization...",
+      "imageUrl": null,
+      "imagePrompt": null,
+      "layout": "full"
     }
   ]
-}`;
+}
+
+Follow this exact pattern. Use :::block-type on the FIRST line, content on subsequent lines, and ::: alone to close. Separate with \\n. You MUST include :::block directives in at least 30% of your content slides — do NOT output only plain text slides`;
 }
 
 export function buildRegeneratePrompt(input: RegenerateInput): string {

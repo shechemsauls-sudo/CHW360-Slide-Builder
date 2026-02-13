@@ -21,12 +21,35 @@ export interface SlideData {
 
 export type FidelityLevel = "verbatim" | "balanced" | "creative";
 
+export const VISUAL_BLOCK_TYPES = [
+  "info-box",
+  "key-stat",
+  "numbered-steps",
+  "flow-diagram",
+  "comparison-table",
+  "checklist",
+  "quote-block",
+  "highlight-box",
+  "timeline",
+  "icon-grid",
+  "bar-chart",
+  "pie-chart",
+  "line-chart",
+  "area-chart",
+  "radar-chart",
+  "progress-bars",
+  "metric-row",
+] as const;
+
+export type VisualBlockType = (typeof VISUAL_BLOCK_TYPES)[number];
+
 export interface GenerateInput {
   content: string;
   title: string;
   description?: string;
   slideCount?: number;
   fidelity?: FidelityLevel;
+  selectedBlocks?: VisualBlockType[];
 }
 
 export interface RegenerateInput {

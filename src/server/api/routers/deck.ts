@@ -7,7 +7,8 @@ import { getLLMProvider, getAvailableLLMProviders } from "~/lib/ai/llm";
 import { getAvailableImageProviders } from "~/lib/ai/image";
 import { detectFidelity } from "~/lib/ai/fidelity";
 import { parseContent, detectFormat } from "~/lib/parsers";
-import type { SlideData } from "~/lib/ai/types";
+import { VISUAL_BLOCK_TYPES } from "~/lib/ai/types";
+import type { SlideData, VisualBlockType } from "~/lib/ai/types";
 import type { db as dbInstance } from "~/server/db";
 
 async function getProfileId(db: typeof dbInstance, authUserId: string) {
@@ -103,6 +104,7 @@ export const deckRouter = createTRPCRouter({
         themeId: z.string().default("chw-teal"),
         slideCount: z.number().min(5).max(120).optional(),
         fidelity: z.enum(["verbatim", "balanced", "creative"]).optional(),
+        selectedBlocks: z.array(z.enum(VISUAL_BLOCK_TYPES)).optional(),
       }),
     )
     .mutation(async ({ ctx, input }) => {
@@ -142,6 +144,7 @@ export const deckRouter = createTRPCRouter({
           description: input.description,
           slideCount: input.slideCount,
           fidelity: input.fidelity,
+          selectedBlocks: input.selectedBlocks as VisualBlockType[] | undefined,
         });
 
         // Update deck with generated slides
@@ -246,6 +249,7 @@ export const deckRouter = createTRPCRouter({
         fidelity: z.enum(["verbatim", "balanced", "creative"]).optional(),
         llmProvider: z.enum(["openai", "anthropic"]).optional(),
         slideCount: z.number().min(5).max(120).optional(),
+        selectedBlocks: z.array(z.enum(VISUAL_BLOCK_TYPES)).optional(),
       }),
     )
     .mutation(async ({ ctx, input }) => {
@@ -280,6 +284,7 @@ export const deckRouter = createTRPCRouter({
           description: deck.description ?? undefined,
           slideCount: input.slideCount ?? deck.slideCount ?? 20,
           fidelity: input.fidelity,
+          selectedBlocks: input.selectedBlocks as VisualBlockType[] | undefined,
         });
 
         const [updated] = await ctx.db

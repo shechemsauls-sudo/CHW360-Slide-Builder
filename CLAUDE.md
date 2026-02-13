@@ -58,6 +58,7 @@ docs/                       # PRD and proposals
 | `/admin/slides` | Deck list (my decks) |
 | `/admin/slides/new` | Create deck wizard (content + provider selection) |
 | `/admin/slides/[deckId]` | Deck viewer (slide list + detail) |
+| `/admin/slides/[deckId]/audience` | Audience view (presenter mode sync via localStorage) |
 | `/admin/assets` | Brand assets reference |
 | `/admin/settings` | Account settings |
 
