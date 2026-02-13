@@ -195,7 +195,7 @@ export default function LandingPage() {
       return;
     }
     trackEvent.mutate({ page: "landing", event: "form_submit" });
-    submitMutation.mutate(formData);
+    submitMutation.mutate({ ...formData, source: "Contact Form · Landing Page" });
   };
 
   return (
@@ -540,9 +540,9 @@ export default function LandingPage() {
             </div>
           </div>
           <div className="flex flex-wrap justify-center gap-6 py-6 text-sm text-white/70">
-            <a href="mailto:info@chw360.org" className="flex items-center gap-2 transition-colors hover:text-white">
+            <a href="mailto:info@chw360.com" className="flex items-center gap-2 transition-colors hover:text-white">
               <Mail className="h-4 w-4" />
-              info@chw360.org
+              info@chw360.com
             </a>
             <a href="tel:+12212345678" className="flex items-center gap-2 transition-colors hover:text-white">
               <Phone className="h-4 w-4" />

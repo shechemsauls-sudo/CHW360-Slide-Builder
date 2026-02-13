@@ -40,7 +40,7 @@ export default function LoginPage() {
 
     const { error } = await supabase.auth.signInWithOtp({
       email,
-      options: { emailRedirectTo: `${window.location.origin}/callback?next=/admin` },
+      options: { emailRedirectTo: `${window.location.origin}/callback?next=/set-password` },
     });
 
     if (error) {

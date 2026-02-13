@@ -35,6 +35,7 @@ export const contactSubmissions = createTable("contact_submissions", {
   phone: text("phone"),
   organization: text("organization"),
   message: text("message").notNull(),
+  source: text("source").notNull().default("Contact Form · Landing Page"),
   isRead: boolean("is_read").notNull().default(false),
   createdAt: timestamp("created_at", { withTimezone: true }).defaultNow().notNull(),
 });

@@ -18,11 +18,12 @@ interface AdminSidebarContextValue {
   isMobileOpen: boolean;
   toggleMobile: () => void;
   closeMobile: () => void;
+  userRole: string;
 }
 
 const AdminSidebarContext = createContext<AdminSidebarContextValue | null>(null);
 
-export function AdminSidebarProvider({ children }: { children: ReactNode }) {
+export function AdminSidebarProvider({ children, userRole = "user" }: { children: ReactNode; userRole?: string }) {
   const [isCollapsed, setIsCollapsed] = useState(false);
   const [isMobileOpen, setIsMobileOpen] = useState(false);
   const [isHydrated, setIsHydrated] = useState(false);
@@ -56,7 +57,7 @@ export function AdminSidebarProvider({ children }: { children: ReactNode }) {
 
   return (
     <AdminSidebarContext.Provider
-      value={{ isCollapsed, toggle, setCollapsed, isMobileOpen, toggleMobile, closeMobile }}
+      value={{ isCollapsed, toggle, setCollapsed, isMobileOpen, toggleMobile, closeMobile, userRole }}
     >
       {children}
     </AdminSidebarContext.Provider>

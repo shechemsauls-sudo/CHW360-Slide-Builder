@@ -1,15 +1,29 @@
 "use client";
 
+import { useEffect } from "react";
+import { useRouter } from "next/navigation";
 import { Inbox, Eye, TrendingUp } from "lucide-react";
 import { Card, CardContent, CardHeader, CardTitle } from "~/components/ui/card";
 import { Badge } from "~/components/ui/badge";
 import { api } from "~/trpc/react";
+import { useAdminSidebar } from "~/components/admin/admin-sidebar-context";
 
 export default function AdminOverview() {
-  const { data: contactStats } = api.contact.stats.useQuery();
-  const { data: analyticsOverview } = api.analytics.overview.useQuery();
-  const { data: formStats } = api.analytics.formStats.useQuery();
-  const { data: recentSubmissions } = api.contact.recent.useQuery({ limit: 5 });
+  const { userRole } = useAdminSidebar();
+  const router = useRouter();
+
+  useEffect(() => {
+    if (userRole !== "admin") {
+      router.replace("/admin/slides");
+    }
+  }, [userRole, router]);
+
+  const { data: contactStats } = api.contact.stats.useQuery(undefined, { enabled: userRole === "admin" });
+  const { data: analyticsOverview } = api.analytics.overview.useQuery(undefined, { enabled: userRole === "admin" });
+  const { data: formStats } = api.analytics.formStats.useQuery(undefined, { enabled: userRole === "admin" });
+  const { data: recentSubmissions } = api.contact.recent.useQuery({ limit: 5 }, { enabled: userRole === "admin" });
+
+  if (userRole !== "admin") return null;
 
   const kpis = [
     {

@@ -1,12 +1,31 @@
 "use client";
 
+import { useState } from "react";
 import { Eye, MousePointerClick, Send } from "lucide-react";
 import { Card, CardContent, CardHeader, CardTitle } from "~/components/ui/card";
+import { Button } from "~/components/ui/button";
 import { api } from "~/trpc/react";
 
+const PAGE_LABELS: Record<string, string> = {
+  landing: "Landing Page",
+};
+
+function pageLabel(page: string) {
+  return PAGE_LABELS[page] ?? page.charAt(0).toUpperCase() + page.slice(1);
+}
+
 export default function AnalyticsPage() {
-  const { data: overview } = api.analytics.overview.useQuery();
-  const { data: formStats } = api.analytics.formStats.useQuery();
+  const [page, setPage] = useState<string | undefined>(undefined);
+
+  const { data: pagesData } = api.analytics.pages.useQuery();
+  const { data: overview } = api.analytics.overview.useQuery(
+    page ? { page } : undefined
+  );
+  const { data: formStats } = api.analytics.formStats.useQuery(
+    page ? { page } : undefined
+  );
+
+  const pages = pagesData ?? [];
 
   const stats = [
     { title: "Total Page Views", value: overview?.totalViews ?? 0, icon: Eye, color: "#2D5A5A" },
@@ -18,6 +37,40 @@ export default function AnalyticsPage() {
   return (
     <div className="space-y-6">
       <h1 className="text-2xl font-bold text-white">Analytics</h1>
+
+      {/* Page Source Filter */}
+      {pages.length > 1 && (
+        <div className="flex flex-wrap gap-2">
+          <Button
+            variant="ghost"
+            size="sm"
+            onClick={() => setPage(undefined)}
+            className={
+              !page
+                ? "bg-[#2D5A5A]/20 text-[#5B8A8A] hover:bg-[#2D5A5A]/30 hover:text-[#5B8A8A]"
+                : "text-gray-400 hover:bg-white/5 hover:text-white"
+            }
+          >
+            All Pages
+          </Button>
+          {pages.map((p) => (
+            <Button
+              key={p.page}
+              variant="ghost"
+              size="sm"
+              onClick={() => setPage(p.page)}
+              className={
+                page === p.page
+                  ? "bg-[#2D5A5A]/20 text-[#5B8A8A] hover:bg-[#2D5A5A]/30 hover:text-[#5B8A8A]"
+                  : "text-gray-400 hover:bg-white/5 hover:text-white"
+              }
+            >
+              {pageLabel(p.page)}
+              <span className="ml-1.5 text-xs text-gray-500">{p.count}</span>
+            </Button>
+          ))}
+        </div>
+      )}
 
       {/* Stats Grid */}
       <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
@@ -44,7 +97,9 @@ export default function AnalyticsPage() {
       {/* Views Chart */}
       <Card className="border-0 bg-white/5">
         <CardHeader>
-          <CardTitle className="text-white">Page Views (Last 30 Days)</CardTitle>
+          <CardTitle className="text-white">
+            Page Views (Last 30 Days){page ? ` — ${pageLabel(page)}` : ""}
+          </CardTitle>
         </CardHeader>
         <CardContent>
           {!overview?.viewsPerDay || overview.viewsPerDay.length === 0 ? (
@@ -77,7 +132,9 @@ export default function AnalyticsPage() {
       {/* Form Funnel */}
       <Card className="border-0 bg-white/5">
         <CardHeader>
-          <CardTitle className="text-white">Contact Form Funnel</CardTitle>
+          <CardTitle className="text-white">
+            Contact Form Funnel{page ? ` — ${pageLabel(page)}` : ""}
+          </CardTitle>
         </CardHeader>
         <CardContent>
           <div className="space-y-4">

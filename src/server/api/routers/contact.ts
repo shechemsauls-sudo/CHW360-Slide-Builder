@@ -1,11 +1,11 @@
 import { z } from "zod";
-import { desc, eq, count } from "drizzle-orm";
+import { desc, eq, and, count } from "drizzle-orm";
 import {
   createTRPCRouter,
   publicProcedure,
   adminProcedure,
 } from "~/server/api/trpc";
-import { contactSubmissions } from "~/server/db/schema";
+import { contactSubmissions, profiles } from "~/server/db/schema";
 import { sendContactNotification } from "~/lib/resend";
 
 export const contactRouter = createTRPCRouter({
@@ -16,6 +16,7 @@ export const contactRouter = createTRPCRouter({
         email: z.string().email(),
         organization: z.string().max(200).optional(),
         message: z.string().min(1).max(5000),
+        source: z.string().max(200).optional(),
       })
     )
     .mutation(async ({ ctx, input }) => {
@@ -26,12 +27,21 @@ export const contactRouter = createTRPCRouter({
           email: input.email,
           organization: input.organization,
           message: input.message,
+          source: input.source ?? "Contact Form · Landing Page",
         })
         .returning();
 
       // Fire email notification (don't block response on failure)
       if (process.env.RESEND_API_KEY) {
-        sendContactNotification(input).catch(console.error);
+        ctx.db
+          .select({ email: profiles.email })
+          .from(profiles)
+          .where(eq(profiles.role, "admin"))
+          .then((admins) => {
+            const adminEmails = admins.map((a) => a.email);
+            return sendContactNotification(input, adminEmails);
+          })
+          .catch(console.error);
       }
 
       return { success: true, id: submission?.id };
@@ -41,6 +51,7 @@ export const contactRouter = createTRPCRouter({
     .input(
       z.object({
         filter: z.enum(["all", "read", "unread"]).default("all"),
+        source: z.string().optional(),
         limit: z.number().min(1).max(100).default(20),
         offset: z.number().min(0).default(0),
       })
@@ -49,8 +60,9 @@ export const contactRouter = createTRPCRouter({
       const conditions = [];
       if (input.filter === "read") conditions.push(eq(contactSubmissions.isRead, true));
       if (input.filter === "unread") conditions.push(eq(contactSubmissions.isRead, false));
+      if (input.source) conditions.push(eq(contactSubmissions.source, input.source));
 
-      const where = conditions.length > 0 ? conditions[0] : undefined;
+      const where = conditions.length > 0 ? and(...conditions) : undefined;
 
       const [items, [total]] = await Promise.all([
         ctx.db
@@ -104,4 +116,17 @@ export const contactRouter = createTRPCRouter({
         .orderBy(desc(contactSubmissions.createdAt))
         .limit(input.limit);
     }),
+
+  sources: adminProcedure.query(async ({ ctx }) => {
+    const rows = await ctx.db
+      .select({
+        source: contactSubmissions.source,
+        count: count(),
+      })
+      .from(contactSubmissions)
+      .groupBy(contactSubmissions.source)
+      .orderBy(desc(count()));
+
+    return rows;
+  }),
 });

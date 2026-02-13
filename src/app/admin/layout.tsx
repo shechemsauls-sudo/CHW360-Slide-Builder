@@ -19,19 +19,20 @@ export default async function AdminLayout({
     redirect("/login");
   }
 
+  let profile: { role: string } | undefined;
   try {
-    const [profile] = await db
+    [profile] = await db
       .select({ role: profiles.role })
       .from(profiles)
       .where(eq(profiles.authId, user.id))
       .limit(1);
-
-    if (!profile || profile.role !== "admin") {
-      redirect("/?error=access_denied");
-    }
   } catch {
     redirect("/login?error=server_error");
   }
 
-  return <AdminDashboardLayout>{children}</AdminDashboardLayout>;
+  if (!profile) {
+    redirect("/?error=access_denied");
+  }
+
+  return <AdminDashboardLayout userRole={profile.role}>{children}</AdminDashboardLayout>;
 }

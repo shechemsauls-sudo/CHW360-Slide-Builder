@@ -6,6 +6,17 @@ import { profiles } from "~/server/db/schema";
 import { supabaseAdmin } from "~/lib/supabase/admin";
 import { sendClaimEmail } from "~/lib/resend";
 
+function buildClaimLink(hashedToken: string): string {
+  const baseUrl = process.env.NEXT_PUBLIC_BASE_URL ?? "http://localhost:3000";
+  // Route directly to our callback with token_hash — bypasses Supabase's verify
+  // endpoint so PKCE code_verifier isn't needed (admin-generated links have none)
+  const url = new URL(`${baseUrl}/callback`);
+  url.searchParams.set("token_hash", hashedToken);
+  url.searchParams.set("type", "magiclink");
+  url.searchParams.set("next", "/set-password");
+  return url.toString();
+}
+
 export const usersRouter = createTRPCRouter({
   list: adminProcedure.query(async ({ ctx }) => {
     return ctx.db
@@ -69,8 +80,8 @@ export const usersRouter = createTRPCRouter({
               email: input.email,
             });
 
-          if (!linkError && linkData?.properties?.action_link) {
-            await sendClaimEmail(input.email, linkData.properties.action_link);
+          if (!linkError && linkData?.properties?.hashed_token) {
+            await sendClaimEmail(input.email, buildClaimLink(linkData.properties.hashed_token));
           }
         } catch {
           // Email send failure shouldn't fail the invite
@@ -90,14 +101,14 @@ export const usersRouter = createTRPCRouter({
           email: input.email,
         });
 
-      if (linkError || !linkData?.properties?.action_link) {
+      if (linkError || !linkData?.properties?.hashed_token) {
         throw new TRPCError({
           code: "INTERNAL_SERVER_ERROR",
           message: linkError?.message ?? "Failed to generate magic link",
         });
       }
 
-      await sendClaimEmail(input.email, linkData.properties.action_link);
+      await sendClaimEmail(input.email, buildClaimLink(linkData.properties.hashed_token));
       return { success: true };
     }),
 

@@ -29,6 +29,24 @@ import { ADMIN_SIDEBAR_NAV, type NavItem, type NavSubItem } from "./admin-nav";
 export const SIDEBAR_WIDTH = 240;
 export const SIDEBAR_WIDTH_COLLAPSED = 64;
 
+function SectionDivider({ label, isCollapsed }: { label: string; isCollapsed: boolean }) {
+  if (isCollapsed) {
+    return (
+      <div className="mx-3 my-2" style={{ borderTop: "1px solid rgba(45, 90, 90, 0.3)" }} />
+    );
+  }
+
+  return (
+    <div className="flex items-center gap-2 px-3 pt-4 pb-1">
+      <div className="h-px flex-1" style={{ backgroundColor: "rgba(45, 90, 90, 0.3)" }} />
+      <span className="text-[10px] font-medium uppercase tracking-wider text-gray-600 select-none">
+        {label}
+      </span>
+      <div className="h-px flex-1" style={{ backgroundColor: "rgba(45, 90, 90, 0.3)" }} />
+    </div>
+  );
+}
+
 function NavLink({
   item,
   isCollapsed,
@@ -182,6 +200,10 @@ function NavGroup({
 
 function SidebarContent({ isCollapsed }: { isCollapsed: boolean }) {
   const pathname = usePathname();
+  const { userRole } = useAdminSidebar();
+  const isAdmin = userRole === "admin";
+
+  const visibleItems = ADMIN_SIDEBAR_NAV.filter((item) => !item.adminOnly || isAdmin);
 
   return (
     <div className="flex h-full flex-col">
@@ -195,21 +217,36 @@ function SidebarContent({ isCollapsed }: { isCollapsed: boolean }) {
         {!isCollapsed && (
           <div>
             <p className="text-sm font-semibold text-white">CHW360</p>
-            <p className="text-xs text-gray-500">Admin</p>
+            <p className="text-xs text-gray-500">{isAdmin ? "Admin" : "Dashboard"}</p>
           </div>
         )}
       </div>
 
-      <nav className="flex-1 space-y-1 overflow-y-auto p-2">
-        {ADMIN_SIDEBAR_NAV.map((item) => (
-          <NavGroup key={item.title} item={item} isCollapsed={isCollapsed} pathname={pathname} />
-        ))}
+      <nav className="flex-1 space-y-0.5 overflow-y-auto p-2">
+        {visibleItems.map((item) => {
+          // Check if this item's section label should render.
+          // A section label renders if: (1) the item has a section, and
+          // (2) this is the first visible item with that section value
+          // (i.e., the section hasn't already appeared on an earlier visible item).
+          const showSection =
+            item.section &&
+            visibleItems.find((vi) => vi.section === item.section) === item;
+
+          return (
+            <div key={item.title}>
+              {showSection && (
+                <SectionDivider label={item.section!} isCollapsed={isCollapsed} />
+              )}
+              <NavGroup item={item} isCollapsed={isCollapsed} pathname={pathname} />
+            </div>
+          );
+        })}
       </nav>
     </div>
   );
 }
 
-export function AdminSidebar() {
+export function AdminSidebar({ topOffset = 0 }: { topOffset?: number }) {
   const { isCollapsed, toggle, isMobileOpen, closeMobile } = useAdminSidebar();
   const [mounted, setMounted] = useState(false);
   useEffect(() => setMounted(true), []);
@@ -217,8 +254,14 @@ export function AdminSidebar() {
   if (!mounted) {
     return (
       <aside
-        className="fixed inset-y-0 left-0 z-30 hidden border-r md:block"
-        style={{ width: SIDEBAR_WIDTH, borderColor: "rgba(45, 90, 90, 0.3)", backgroundColor: "#1a1a1a" }}
+        className="fixed left-0 z-30 hidden border-r md:block"
+        style={{
+          top: topOffset,
+          height: `calc(100vh - ${topOffset}px)`,
+          width: SIDEBAR_WIDTH,
+          borderColor: "rgba(45, 90, 90, 0.3)",
+          backgroundColor: "#1a1a1a",
+        }}
       />
     );
   }
@@ -226,8 +269,10 @@ export function AdminSidebar() {
   return (
     <TooltipProvider>
       <aside
-        className="fixed inset-y-0 left-0 z-30 hidden border-r transition-all duration-200 ease-out md:block"
+        className="fixed left-0 z-30 hidden border-r transition-all duration-200 ease-out md:block"
         style={{
+          top: topOffset,
+          height: `calc(100vh - ${topOffset}px)`,
           width: isCollapsed ? SIDEBAR_WIDTH_COLLAPSED : SIDEBAR_WIDTH,
           borderColor: "rgba(45, 90, 90, 0.3)",
           backgroundColor: "#1a1a1a",

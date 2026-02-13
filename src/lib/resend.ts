@@ -2,8 +2,7 @@ import { Resend } from "resend";
 
 const resend = new Resend(process.env.RESEND_API_KEY);
 
-const ADMIN_EMAIL = process.env.ADMIN_EMAIL ?? "matt@miraclemind.dev";
-const FROM_EMAIL = "CHW360 <noreply@miraclemind.dev>";
+const FROM_EMAIL = "CHW360 <noreply@chw360.com>";
 
 function escapeHtml(str: string): string {
   return str
@@ -39,7 +38,7 @@ function brandedEmailWrapper(content: string): string {
           <tr>
             <td style="background-color:#FAF7F4;padding:16px 24px;border-radius:0 0 12px 12px;border-top:1px solid #E8E4E0;">
               <p style="margin:0;font-size:12px;color:#6B7280;text-align:center;">
-                CHW360 | info@chw360.org
+                CHW360 | info@chw360.com
               </p>
             </td>
           </tr>
@@ -51,31 +50,40 @@ function brandedEmailWrapper(content: string): string {
 </html>`;
 }
 
-export async function sendContactNotification(submission: {
-  name: string;
-  email: string;
-  organization?: string | null;
-  message: string;
-}) {
+export async function sendContactNotification(
+  submission: {
+    name: string;
+    email: string;
+    organization?: string | null;
+    message: string;
+  },
+  adminEmails: string[],
+) {
   const name = escapeHtml(submission.name);
   const email = escapeHtml(submission.email);
   const org = submission.organization ? escapeHtml(submission.organization) : null;
   const message = escapeHtml(submission.message);
 
-  // Notify admin
-  await resend.emails.send({
-    from: FROM_EMAIL,
-    to: ADMIN_EMAIL,
-    subject: `New CHW360 Contact: ${submission.name}`,
-    html: brandedEmailWrapper(`
-      <h2 style="margin:0 0 16px;font-size:20px;color:#2D5A5A;">New Contact Form Submission</h2>
-      <p style="margin:0 0 8px;font-size:14px;color:#4A5568;"><strong>Name:</strong> ${name}</p>
-      <p style="margin:0 0 8px;font-size:14px;color:#4A5568;"><strong>Email:</strong> ${email}</p>
-      ${org ? `<p style="margin:0 0 8px;font-size:14px;color:#4A5568;"><strong>Organization:</strong> ${org}</p>` : ""}
-      <p style="margin:0 0 8px;font-size:14px;color:#4A5568;"><strong>Message:</strong></p>
-      <p style="margin:0;font-size:14px;color:#4A5568;">${message}</p>
-    `),
-  });
+  const adminHtml = brandedEmailWrapper(`
+    <h2 style="margin:0 0 16px;font-size:20px;color:#2D5A5A;">New Contact Form Submission</h2>
+    <p style="margin:0 0 8px;font-size:14px;color:#4A5568;"><strong>Name:</strong> ${name}</p>
+    <p style="margin:0 0 8px;font-size:14px;color:#4A5568;"><strong>Email:</strong> ${email}</p>
+    ${org ? `<p style="margin:0 0 8px;font-size:14px;color:#4A5568;"><strong>Organization:</strong> ${org}</p>` : ""}
+    <p style="margin:0 0 8px;font-size:14px;color:#4A5568;"><strong>Message:</strong></p>
+    <p style="margin:0;font-size:14px;color:#4A5568;">${message}</p>
+  `);
+
+  // Notify all admin users
+  await Promise.all(
+    adminEmails.map((adminEmail) =>
+      resend.emails.send({
+        from: FROM_EMAIL,
+        to: adminEmail,
+        subject: `New CHW360 Contact: ${submission.name}`,
+        html: adminHtml,
+      })
+    ),
+  );
 
   // Send confirmation to submitter
   await resend.emails.send({

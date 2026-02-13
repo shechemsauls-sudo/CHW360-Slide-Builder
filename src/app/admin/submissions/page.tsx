@@ -1,7 +1,7 @@
 "use client";
 
 import { useState } from "react";
-import { Inbox, Mail, MailOpen, ChevronDown, ChevronUp } from "lucide-react";
+import { Inbox, Mail, MailOpen, ChevronDown, ChevronUp, FileText } from "lucide-react";
 import { Card, CardContent } from "~/components/ui/card";
 import { Badge } from "~/components/ui/badge";
 import { Button } from "~/components/ui/button";
@@ -11,10 +11,14 @@ type Filter = "all" | "read" | "unread";
 
 export default function SubmissionsPage() {
   const [filter, setFilter] = useState<Filter>("all");
+  const [source, setSource] = useState<string | undefined>(undefined);
   const [expandedId, setExpandedId] = useState<string | null>(null);
+
+  const { data: sourcesData } = api.contact.sources.useQuery();
 
   const { data, refetch } = api.contact.list.useQuery({
     filter,
+    source,
     limit: 50,
     offset: 0,
   });
@@ -29,6 +33,8 @@ export default function SubmissionsPage() {
     { label: "Read", value: "read" },
   ];
 
+  const sources = sourcesData ?? [];
+
   return (
     <div className="space-y-6">
       <div className="flex items-center justify-between">
@@ -37,22 +43,60 @@ export default function SubmissionsPage() {
       </div>
 
       {/* Filters */}
-      <div className="flex gap-2">
-        {filters.map((f) => (
-          <Button
-            key={f.value}
-            variant="ghost"
-            size="sm"
-            onClick={() => setFilter(f.value)}
-            className={
-              filter === f.value
-                ? "bg-[#C9725B]/10 text-[#C9725B] hover:bg-[#C9725B]/20 hover:text-[#C9725B]"
-                : "text-gray-400 hover:bg-white/5 hover:text-white"
-            }
-          >
-            {f.label}
-          </Button>
-        ))}
+      <div className="flex flex-wrap items-center gap-4">
+        <div className="flex gap-2">
+          {filters.map((f) => (
+            <Button
+              key={f.value}
+              variant="ghost"
+              size="sm"
+              onClick={() => setFilter(f.value)}
+              className={
+                filter === f.value
+                  ? "bg-[#C9725B]/10 text-[#C9725B] hover:bg-[#C9725B]/20 hover:text-[#C9725B]"
+                  : "text-gray-400 hover:bg-white/5 hover:text-white"
+              }
+            >
+              {f.label}
+            </Button>
+          ))}
+        </div>
+
+        {sources.length > 1 && (
+          <>
+            <div className="h-5 w-px bg-white/10" />
+            <div className="flex gap-2">
+              <Button
+                variant="ghost"
+                size="sm"
+                onClick={() => setSource(undefined)}
+                className={
+                  !source
+                    ? "bg-[#2D5A5A]/20 text-[#5B8A8A] hover:bg-[#2D5A5A]/30 hover:text-[#5B8A8A]"
+                    : "text-gray-400 hover:bg-white/5 hover:text-white"
+                }
+              >
+                All Sources
+              </Button>
+              {sources.map((s) => (
+                <Button
+                  key={s.source}
+                  variant="ghost"
+                  size="sm"
+                  onClick={() => setSource(s.source)}
+                  className={
+                    source === s.source
+                      ? "bg-[#2D5A5A]/20 text-[#5B8A8A] hover:bg-[#2D5A5A]/30 hover:text-[#5B8A8A]"
+                      : "text-gray-400 hover:bg-white/5 hover:text-white"
+                  }
+                >
+                  {s.source}
+                  <span className="ml-1.5 text-xs text-gray-500">{s.count}</span>
+                </Button>
+              ))}
+            </div>
+          </>
+        )}
       </div>
 
       {/* Submissions List */}
@@ -104,14 +148,22 @@ export default function SubmissionsPage() {
                         </p>
                       )}
                     </div>
-                    <div className="ml-4 flex flex-shrink-0 items-center gap-2">
-                      <span className="text-xs text-gray-500">
-                        {new Date(sub.createdAt).toLocaleDateString()}
-                      </span>
-                      {isExpanded ? (
-                        <ChevronUp className="h-4 w-4 text-gray-500" />
-                      ) : (
-                        <ChevronDown className="h-4 w-4 text-gray-500" />
+                    <div className="ml-4 flex flex-shrink-0 flex-col items-end gap-1">
+                      <div className="flex items-center gap-2">
+                        <span className="text-xs text-gray-500">
+                          {new Date(sub.createdAt).toLocaleDateString()}
+                        </span>
+                        {isExpanded ? (
+                          <ChevronUp className="h-4 w-4 text-gray-500" />
+                        ) : (
+                          <ChevronDown className="h-4 w-4 text-gray-500" />
+                        )}
+                      </div>
+                      {sources.length > 1 && (
+                        <span className="flex items-center gap-1 text-[10px] text-gray-500">
+                          <FileText className="h-3 w-3" />
+                          {sub.source}
+                        </span>
                       )}
                     </div>
                   </button>
