@@ -1,6 +1,7 @@
 import {
   LayoutDashboard,
   Inbox,
+  Contact2,
   BarChart3,
   Users,
   Layers,
@@ -38,6 +39,12 @@ export const ADMIN_SIDEBAR_NAV: NavItem[] = [
     icon: Inbox,
     adminOnly: true,
     section: "Engagement",
+  },
+  {
+    title: "Contacts",
+    href: "/admin/crm",
+    icon: Contact2,
+    adminOnly: true,
   },
   {
     title: "Analytics",

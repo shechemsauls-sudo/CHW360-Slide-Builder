@@ -5,7 +5,7 @@ import {
   publicProcedure,
   adminProcedure,
 } from "~/server/api/trpc";
-import { contactSubmissions, profiles } from "~/server/db/schema";
+import { contactSubmissions, crmContacts, profiles } from "~/server/db/schema";
 import { sendContactNotification } from "~/lib/resend";
 
 export const contactRouter = createTRPCRouter({
@@ -20,6 +20,44 @@ export const contactRouter = createTRPCRouter({
       })
     )
     .mutation(async ({ ctx, input }) => {
+      const submissionSource = input.source ?? "Contact Form · Landing Page";
+
+      // Upsert CRM contact (dedup by email)
+      const [existing] = await ctx.db
+        .select({ id: crmContacts.id })
+        .from(crmContacts)
+        .where(eq(crmContacts.email, input.email))
+        .limit(1);
+
+      let crmContactId: string;
+
+      if (existing) {
+        await ctx.db
+          .update(crmContacts)
+          .set({
+            name: input.name,
+            phone: input.organization ? undefined : undefined,
+            organization: input.organization ?? undefined,
+            lastContactAt: new Date(),
+            updatedAt: new Date(),
+          })
+          .where(eq(crmContacts.id, existing.id));
+        crmContactId = existing.id;
+      } else {
+        const [newContact] = await ctx.db
+          .insert(crmContacts)
+          .values({
+            email: input.email,
+            name: input.name,
+            organization: input.organization,
+            source: submissionSource,
+            firstContactAt: new Date(),
+            lastContactAt: new Date(),
+          })
+          .returning({ id: crmContacts.id });
+        crmContactId = newContact!.id;
+      }
+
       const [submission] = await ctx.db
         .insert(contactSubmissions)
         .values({
@@ -27,7 +65,8 @@ export const contactRouter = createTRPCRouter({
           email: input.email,
           organization: input.organization,
           message: input.message,
-          source: input.source ?? "Contact Form · Landing Page",
+          source: submissionSource,
+          crmContactId,
         })
         .returning();
 

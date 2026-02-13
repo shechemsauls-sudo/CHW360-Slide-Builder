@@ -31,7 +31,7 @@ src/components/admin/       # Admin sidebar, header, layout
 src/components/ui/          # shadcn/ui components
 src/lib/supabase/           # Supabase client (browser + server)
 src/lib/resend.ts           # Email notifications
-src/server/api/routers/     # tRPC routers (slide, contact, analytics, users)
+src/server/api/routers/     # tRPC routers (slide, contact, analytics, users, crm)
 src/server/db/schema.ts     # Database schema
 src/trpc/                   # tRPC client (RSC + React)
 public/chw/                 # Brand assets (logo, heroes, icons)
@@ -48,6 +48,7 @@ docs/                       # PRD and proposals
 | `/reset-password` | Set new password (from email link) |
 | `/admin` | Dashboard overview (admin-only) |
 | `/admin/submissions` | Contact form submissions |
+| `/admin/crm` | CRM contacts (search, email, notes) |
 | `/admin/analytics` | Page views and form funnel |
 | `/admin/users` | User management (invite, roles) |
 | `/admin/slides` | Slide builder (coming soon) |
@@ -60,7 +61,8 @@ docs/                       # PRD and proposals
 |-------|---------|
 | `profiles` | User profiles linked to Supabase auth (includes role column) |
 | `slides` | Slide content (Phase 2) |
-| `contact_submissions` | Form submissions with `source` column (e.g., "Contact Form · Landing Page") |
+| `crm_contacts` | Unified contact records (email-dedup, notes, source tracking) |
+| `contact_submissions` | Form submissions with `source` column, linked to `crm_contacts` via `crm_contact_id` FK |
 | `page_views` | Analytics events — `page` column identifies source (e.g., "landing"), `event` column for type |
 
 ## Brand Reference

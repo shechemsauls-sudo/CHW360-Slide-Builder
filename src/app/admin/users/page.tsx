@@ -48,15 +48,14 @@ export default function UsersPage() {
     <div className="space-y-6">
       <div className="flex items-center justify-between">
         <div>
-          <h1 className="text-2xl font-bold" style={{ color: "#2D5A5A" }}>Users</h1>
-          <p className="text-sm" style={{ color: "#4A5568" }}>
+          <h1 className="text-2xl font-bold text-white">Users</h1>
+          <p className="text-sm text-gray-400">
             Manage user accounts and roles
           </p>
         </div>
         <Button
           onClick={() => setShowInvite(!showInvite)}
-          className="rounded-full text-sm font-medium text-white"
-          style={{ backgroundColor: "#C9725B" }}
+          className="rounded-full bg-[#C9725B] text-sm font-medium text-white hover:bg-[#B5624D]"
         >
           <UserPlus className="mr-2 h-4 w-4" />
           Invite User
@@ -64,11 +63,11 @@ export default function UsersPage() {
       </div>
 
       {showInvite && (
-        <div className="rounded-lg border p-4" style={{ backgroundColor: "#FAF7F4", borderColor: "#E8E4E0" }}>
-          <h2 className="mb-3 text-sm font-semibold" style={{ color: "#2D5A5A" }}>Invite New User</h2>
+        <div className="rounded-lg border border-white/10 bg-white/5 p-4">
+          <h2 className="mb-3 text-sm font-semibold text-white">Invite New User</h2>
           <form onSubmit={handleInvite} className="flex flex-wrap items-end gap-3">
             <div className="min-w-[200px] flex-1">
-              <label htmlFor="invite-email" className="mb-1 block text-xs font-medium" style={{ color: "#4A5568" }}>
+              <label htmlFor="invite-email" className="mb-1 block text-xs font-medium text-gray-400">
                 Email
               </label>
               <Input
@@ -78,18 +77,18 @@ export default function UsersPage() {
                 onChange={(e) => setInviteEmail(e.target.value)}
                 required
                 placeholder="user@example.com"
-                className="border-gray-200 bg-white"
+                className="border-white/10 bg-white/5 text-white placeholder-gray-500"
               />
             </div>
             <div>
-              <label htmlFor="invite-role" className="mb-1 block text-xs font-medium" style={{ color: "#4A5568" }}>
+              <label htmlFor="invite-role" className="mb-1 block text-xs font-medium text-gray-400">
                 Role
               </label>
               <select
                 id="invite-role"
                 value={inviteRole}
                 onChange={(e) => setInviteRole(e.target.value as "user" | "admin")}
-                className="h-9 rounded-md border border-gray-200 bg-white px-3 text-sm"
+                className="h-9 rounded-md border border-white/10 bg-white/5 px-3 text-sm text-white"
               >
                 <option value="user">User</option>
                 <option value="admin">Admin</option>
@@ -98,8 +97,7 @@ export default function UsersPage() {
             <Button
               type="submit"
               disabled={inviteMutation.isPending}
-              className="rounded-full text-sm font-medium text-white"
-              style={{ backgroundColor: "#2D5A5A" }}
+              className="rounded-full bg-[#2D5A5A] text-sm font-medium text-white hover:bg-[#2D5A5A]/80"
             >
               {inviteMutation.isPending ? (
                 <><Loader2 className="mr-2 h-4 w-4 animate-spin" />Inviting...</>
@@ -113,45 +111,44 @@ export default function UsersPage() {
 
       {isLoading ? (
         <div className="flex items-center justify-center py-12">
-          <Loader2 className="h-6 w-6 animate-spin" style={{ color: "#2D5A5A" }} />
+          <Loader2 className="h-6 w-6 animate-spin text-[#5B8A8A]" />
         </div>
       ) : !users?.length ? (
-        <div className="py-12 text-center text-sm" style={{ color: "#4A5568" }}>
+        <div className="py-12 text-center text-sm text-gray-400">
           No users found. Invite your first user above.
         </div>
       ) : (
-        <div className="overflow-hidden rounded-lg border" style={{ borderColor: "#E8E4E0" }}>
+        <div className="overflow-hidden rounded-lg border border-white/10">
           <table className="w-full text-left text-sm">
             <thead>
-              <tr style={{ backgroundColor: "#FAF7F4" }}>
-                <th className="px-4 py-3 font-medium" style={{ color: "#2D5A5A" }}>Email</th>
-                <th className="px-4 py-3 font-medium" style={{ color: "#2D5A5A" }}>Name</th>
-                <th className="px-4 py-3 font-medium" style={{ color: "#2D5A5A" }}>Role</th>
-                <th className="px-4 py-3 font-medium" style={{ color: "#2D5A5A" }}>Joined</th>
-                <th className="px-4 py-3 font-medium" style={{ color: "#2D5A5A" }}>Actions</th>
+              <tr className="bg-white/5">
+                <th className="px-4 py-3 font-medium text-gray-400">Email</th>
+                <th className="px-4 py-3 font-medium text-gray-400">Name</th>
+                <th className="px-4 py-3 font-medium text-gray-400">Role</th>
+                <th className="px-4 py-3 font-medium text-gray-400">Joined</th>
+                <th className="px-4 py-3 font-medium text-gray-400">Actions</th>
               </tr>
             </thead>
             <tbody>
               {users.map((user) => (
-                <tr key={user.id} className="border-t" style={{ borderColor: "#E8E4E0" }}>
-                  <td className="px-4 py-3" style={{ color: "#4A5568" }}>{user.email}</td>
-                  <td className="px-4 py-3" style={{ color: "#4A5568" }}>
-                    {user.displayName ?? "—"}
+                <tr key={user.id} className="border-t border-white/10">
+                  <td className="px-4 py-3 text-gray-300">{user.email}</td>
+                  <td className="px-4 py-3 text-gray-300">
+                    {user.displayName ?? "\u2014"}
                   </td>
                   <td className="px-4 py-3">
                     <span
-                      className="inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-xs font-medium"
-                      style={
+                      className={`inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-xs font-medium ${
                         user.role === "admin"
-                          ? { backgroundColor: "#E8F4F0", color: "#2D5A5A" }
-                          : { backgroundColor: "#F5EDE6", color: "#4A5568" }
-                      }
+                          ? "bg-[#2D5A5A]/20 text-[#5B8A8A]"
+                          : "bg-white/10 text-gray-400"
+                      }`}
                     >
                       {user.role === "admin" ? <Shield className="h-3 w-3" /> : <User className="h-3 w-3" />}
                       {user.role}
                     </span>
                   </td>
-                  <td className="px-4 py-3 text-xs" style={{ color: "#6B7280" }}>
+                  <td className="px-4 py-3 text-xs text-gray-500">
                     {new Date(user.createdAt).toLocaleDateString()}
                   </td>
                   <td className="px-4 py-3">
@@ -159,9 +156,8 @@ export default function UsersPage() {
                       <button
                         onClick={() => sendClaimMutation.mutate({ email: user.email })}
                         disabled={sendClaimMutation.isPending}
-                        className="rounded p-1 text-xs hover:bg-gray-100"
+                        className="rounded p-1 text-xs text-[#C9725B] hover:bg-white/10"
                         title="Send claim email"
-                        style={{ color: "#C9725B" }}
                       >
                         <Mail className="h-4 w-4" />
                       </button>
@@ -173,9 +169,8 @@ export default function UsersPage() {
                           })
                         }
                         disabled={updateRoleMutation.isPending}
-                        className="rounded p-1 text-xs hover:bg-gray-100"
+                        className="rounded p-1 text-xs text-[#5B8A8A] hover:bg-white/10"
                         title={user.role === "admin" ? "Demote to user" : "Promote to admin"}
-                        style={{ color: "#2D5A5A" }}
                       >
                         <Shield className="h-4 w-4" />
                       </button>

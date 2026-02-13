@@ -28,6 +28,20 @@ export const slides = createTable("slides", {
   updatedAt: timestamp("updated_at", { withTimezone: true }).defaultNow().notNull(),
 });
 
+export const crmContacts = createTable("crm_contacts", {
+  id: uuid("id").primaryKey().defaultRandom(),
+  email: text("email").notNull().unique(),
+  name: text("name").notNull(),
+  phone: text("phone"),
+  organization: text("organization"),
+  source: text("source").notNull(),
+  notes: text("notes"),
+  firstContactAt: timestamp("first_contact_at", { withTimezone: true }).defaultNow().notNull(),
+  lastContactAt: timestamp("last_contact_at", { withTimezone: true }).defaultNow().notNull(),
+  createdAt: timestamp("created_at", { withTimezone: true }).defaultNow().notNull(),
+  updatedAt: timestamp("updated_at", { withTimezone: true }).defaultNow().notNull(),
+});
+
 export const contactSubmissions = createTable("contact_submissions", {
   id: uuid("id").primaryKey().defaultRandom(),
   name: text("name").notNull(),
@@ -37,6 +51,7 @@ export const contactSubmissions = createTable("contact_submissions", {
   message: text("message").notNull(),
   source: text("source").notNull().default("Contact Form · Landing Page"),
   isRead: boolean("is_read").notNull().default(false),
+  crmContactId: uuid("crm_contact_id").references(() => crmContacts.id, { onDelete: "set null" }),
   createdAt: timestamp("created_at", { withTimezone: true }).defaultNow().notNull(),
 });
 

@@ -100,6 +100,15 @@ export async function sendContactNotification(
   });
 }
 
+export async function sendCustomEmail(to: string, subject: string, htmlBody: string) {
+  await resend.emails.send({
+    from: FROM_EMAIL,
+    to,
+    subject,
+    html: brandedEmailWrapper(htmlBody),
+  });
+}
+
 export async function sendClaimEmail(email: string, magicLink: string) {
   await resend.emails.send({
     from: FROM_EMAIL,
