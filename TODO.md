@@ -18,7 +18,7 @@
 - [ ] Add loading skeletons to admin pages
 - [ ] Add Drizzle `relations()` to schema (needed for Phase 2 relational queries)
 - [ ] Split landing page into server + client components (SSR/SEO improvement)
-- [ ] Replace admin header/layout `!important` CSS with Tailwind approach
+- [ ] Replace admin header `!important` CSS with Tailwind approach (banner no longer needs it)
 - [ ] Don't create auth users via raw SQL — use Supabase admin API instead
 
 ## Enhancements (nice to have)

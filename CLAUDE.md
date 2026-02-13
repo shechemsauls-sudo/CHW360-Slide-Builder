@@ -60,8 +60,8 @@ docs/                       # PRD and proposals
 |-------|---------|
 | `profiles` | User profiles linked to Supabase auth (includes role column) |
 | `slides` | Slide content (Phase 2) |
-| `contact_submissions` | Landing page contact form entries |
-| `page_views` | Analytics events (views, interactions) |
+| `contact_submissions` | Form submissions with `source` column (e.g., "Contact Form · Landing Page") |
+| `page_views` | Analytics events — `page` column identifies source (e.g., "landing"), `event` column for type |
 
 ## Brand Reference
 
@@ -83,7 +83,11 @@ docs/                       # PRD and proposals
 - `protectedProcedure` for authenticated routes
 - `adminProcedure` for admin-only routes (checks profile role)
 - Server components by default; `"use client"` only when needed
-- Admin sidebar uses teal/coral palette (not gold)
+- Admin sidebar uses teal/coral palette (not gold), with section dividers (Engagement, Management, Tools, Account)
+- Submissions filterable by read status (coral pills) and source (teal pills) — source filter only shows with 2+ sources
+- Analytics filterable by page source (teal pills) — filter only shows with 2+ tracked pages
+- New form submissions should include `source: "Form Name · Page Name"` in the `contact.submit` call
+- New tracked pages should use a consistent slug in `analytics.trackEvent` `page` field (add label to `PAGE_LABELS` map in analytics page)
 
 ## Env Variables
 
