@@ -1,40 +1,24 @@
 # Status — CHW360
 
-## Current Phase: Phase 1 Code Complete — Production Env Needs Debug
+## Current Phase: Phase 2b Complete — Image Generation Next
 
 ### Completed
-- **Phase 1a + 1b code complete** — all auth, roles, email, landing page updates done
-- **Admin sidebar refactor** — section dividers (Engagement, Management, Tools, Account), role-aware filtering, full-width deploy banner
-- **Source-filterable submissions** — `source` column on contact_submissions, filter pills, per-card source badge
-- **Source-filterable analytics** — page filter on overview/formStats, filter pills, new `pages` query
-- RBAC: `adminProcedure` + admin layout role gate (non-admins redirected)
-- Auth flows: forgot password, reset password, magic link claim, invite-only (no public signup)
-- Admin user management: invite users, send claim emails, toggle roles
-- Branded email templates (contact notifications + claim invites)
-- Landing page copy + 5 hero carousel images, readable contact form
-- Callback route handles magiclink, recovery, invite tokens
-- Database: role column on profiles, source column on contact_submissions, admin user created
-- Deploy banner on admin dashboard (build-time timestamp, full window width)
-- Supabase configured: SMTP (Resend), redirect URLs, auth callbacks
-- Admin brand assets page shows all 5 hero images
-- Build passes, typecheck passes
-
-### In Progress
-- None
+- **Phase 1a + 1b** — Auth, roles, email, landing page, admin dashboard, CRM, analytics
+- **Phase 2a: Core Generation Pipeline** — AI slide generation from uploaded content (OpenAI + Anthropic), deck CRUD, provider selector, file upload (PDF/DOCX/MD/TXT), slide count slider (max 120)
+- **Phase 2a.1: Source Fidelity** — Smart fidelity detection, fidelity slider (Verbatim/Balanced/Creative), fidelity-aware prompts, markdown rendering via block system
+- **Phase 2b: Themes + Visuals + Presentation** — 4 built-in themes, theme selector, slide renderer (16:9, 5 layouts), 10 pre-built visual blocks, presentation mode with speaker notes
 
 ### Blocked
-- **Production `/admin` broken** — database query fails on Vercel (likely missing `DATABASE_URL`)
-- Need debug session with client (Vercel access) to verify env vars
-- CI env validation bypass in `src/env.js` should be reverted once env is confirmed
+- **Production `/admin` broken** — DATABASE_URL likely missing on Vercel (needs client debug session)
 
 ### Recent Changes
 | Date | Change |
 |------|--------|
-| 2026-02-12 | Admin sidebar: section dividers, role-aware nav, full-width deploy banner |
-| 2026-02-12 | Submissions: source column, filter by source, source badge on cards |
-| 2026-02-12 | Analytics: page filter on overview/formStats/funnel, pages query |
-| 2026-02-12 | Production debug: `/admin` server_error — DATABASE_URL likely missing on Vercel |
-| 2026-02-12 | Fix login page (remove OAuth, add claim/forgot), contact form readability |
+| 2026-02-13 | Phase 2b complete: 4 themes, slide renderer, 10 visual blocks, presentation mode |
+| 2026-02-12 | Phase 2a.1 complete: fidelity detection, fidelity slider, prompt tightening |
+| 2026-02-12 | Phase 2a complete: decks table, AI providers, parsers, deck router, new/view pages |
+| 2026-02-12 | Fix DOCX upload (double-parse bug), fix delete button (Link nesting), bump slide count max to 120 |
+| 2026-02-12 | Detailed ROADMAP.md with Phases 2a.1 through 3 |
 
 ---
-*Last updated: 2026-02-12*
+*Last updated: 2026-02-13*

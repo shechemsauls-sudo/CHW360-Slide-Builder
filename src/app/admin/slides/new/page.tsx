@@ -1,0 +1,333 @@
+"use client";
+
+import { useEffect, useState, useCallback } from "react";
+import { useRouter } from "next/navigation";
+import { ArrowLeft, Sparkles, SlidersHorizontal } from "lucide-react";
+import Link from "next/link";
+import { Button } from "~/components/ui/button";
+import { Input } from "~/components/ui/input";
+import { Card, CardContent } from "~/components/ui/card";
+import { ContentInput } from "~/components/slides/content-input";
+import { ProviderSelector } from "~/components/slides/provider-selector";
+import { GenerationStatus } from "~/components/slides/generation-status";
+import { ThemeSelector } from "~/components/slides/theme-selector";
+import { api } from "~/trpc/react";
+import { toast } from "sonner";
+import type { FidelityLevel } from "~/lib/ai/types";
+
+const FIDELITY_OPTIONS: {
+  value: FidelityLevel;
+  label: string;
+  description: string;
+}[] = [
+  {
+    value: "verbatim",
+    label: "Verbatim",
+    description:
+      "Preserve source text exactly. AI only assigns slide types, layouts, and speaker notes.",
+  },
+  {
+    value: "balanced",
+    label: "Balanced",
+    description:
+      "Preserve key content and structure. AI may improve formatting and add transitions.",
+  },
+  {
+    value: "creative",
+    label: "Creative",
+    description:
+      "AI freely restructures and enhances for maximum presentation impact.",
+  },
+];
+
+export default function NewDeckPage() {
+  const router = useRouter();
+  const [title, setTitle] = useState("");
+  const [description, setDescription] = useState("");
+  const [content, setContent] = useState("");
+  const [sourceFormat, setSourceFormat] = useState<"plaintext" | "markdown" | "pdf" | "docx">("plaintext");
+  const [slideCount, setSlideCount] = useState(20);
+  const [llmProvider, setLlmProvider] = useState("openai");
+  const [imageProvider, setImageProvider] = useState("disabled");
+  const [themeId, setThemeId] = useState("chw-teal");
+  const [fidelity, setFidelity] = useState<FidelityLevel>("balanced");
+  const [detectedFidelity, setDetectedFidelity] = useState<FidelityLevel | null>(null);
+  const [userOverrodeFidelity, setUserOverrodeFidelity] = useState(false);
+  const [uploadedFile, setUploadedFile] = useState<{ name: string; format: string } | null>(null);
+  const [genStatus, setGenStatus] = useState<"idle" | "generating" | "error">("idle");
+  const [genError, setGenError] = useState("");
+
+  const { data: providers } = api.deck.providers.useQuery();
+  const { data: prefs } = api.deck.getPreferences.useQuery();
+
+  const detectFidelityMut = api.deck.detectFidelity.useMutation({
+    onSuccess: (data) => {
+      setDetectedFidelity(data.level);
+      if (!userOverrodeFidelity) {
+        setFidelity(data.level);
+      }
+    },
+  });
+
+  useEffect(() => {
+    if (prefs?.llmProvider) setLlmProvider(prefs.llmProvider);
+    if (prefs?.imageProvider) setImageProvider(prefs.imageProvider);
+    if (prefs?.fidelity) setFidelity(prefs.fidelity as FidelityLevel);
+  }, [prefs]);
+
+  // Auto-detect fidelity when content changes (debounced)
+  useEffect(() => {
+    if (!content.trim() || content.length < 50) {
+      setDetectedFidelity(null);
+      return;
+    }
+
+    const timer = setTimeout(() => {
+      detectFidelityMut.mutate({ content });
+    }, 500);
+
+    return () => clearTimeout(timer);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [content]);
+
+  const parseFile = api.deck.parseFile.useMutation({
+    onSuccess: (data) => {
+      setContent(data.text);
+      setSourceFormat(data.format as typeof sourceFormat);
+    },
+    onError: (err) => toast.error(err.message),
+  });
+
+  const generate = api.deck.generate.useMutation({
+    onSuccess: (deck) => {
+      if (deck) {
+        setGenStatus("idle");
+        toast.success("Deck generated!");
+        router.push(`/admin/slides/${deck.id}`);
+      }
+    },
+    onError: (err) => {
+      setGenStatus("error");
+      setGenError(err.message);
+    },
+  });
+
+  const handleFileUpload = (base64: string, filename: string) => {
+    setUploadedFile({ name: filename, format: filename.split(".").pop() ?? "unknown" });
+    parseFile.mutate({ base64, filename });
+  };
+
+  const handleClearFile = () => {
+    setUploadedFile(null);
+    setContent("");
+    setSourceFormat("plaintext");
+  };
+
+  const handleFidelityChange = useCallback((level: FidelityLevel) => {
+    setFidelity(level);
+    setUserOverrodeFidelity(true);
+  }, []);
+
+  const handleGenerate = () => {
+    if (!title.trim()) {
+      toast.error("Please enter a deck title");
+      return;
+    }
+    if (!content.trim()) {
+      toast.error("Please provide some content");
+      return;
+    }
+
+    setGenStatus("generating");
+    setGenError("");
+
+    generate.mutate({
+      title: title.trim(),
+      description: description.trim() || undefined,
+      content,
+      sourceFormat,
+      slideCount,
+      llmProvider: llmProvider as "openai" | "anthropic",
+      imageProvider: imageProvider as "dalle3" | "gpt-image-1" | "disabled",
+      themeId,
+      fidelity,
+    });
+  };
+
+  const isGenerating = genStatus === "generating";
+
+  return (
+    <div className="space-y-6">
+      <div className="flex items-center gap-3">
+        <Link href="/admin/slides">
+          <Button variant="ghost" size="icon" className="h-8 w-8 text-gray-400 hover:text-white">
+            <ArrowLeft className="h-4 w-4" />
+          </Button>
+        </Link>
+        <h1 className="text-2xl font-bold text-white">New Deck</h1>
+      </div>
+
+      {isGenerating ? (
+        <Card className="border-0 bg-white/5">
+          <CardContent className="p-6">
+            <GenerationStatus status="generating" provider={llmProvider} />
+          </CardContent>
+        </Card>
+      ) : (
+        <div className="space-y-6">
+          {genStatus === "error" && (
+            <GenerationStatus status="error" error={genError} />
+          )}
+
+          <Card className="border-0 bg-white/5">
+            <CardContent className="space-y-5 p-6">
+              <div className="space-y-3">
+                <label className="text-sm font-medium text-gray-300">
+                  Deck Title
+                </label>
+                <Input
+                  placeholder="e.g., CHW Malaria Prevention Training"
+                  value={title}
+                  onChange={(e) => setTitle(e.target.value)}
+                  className="border-white/10 bg-white/5 text-white placeholder:text-gray-500 focus-visible:border-[#2D5A5A]/50 focus-visible:ring-[#2D5A5A]/50"
+                />
+              </div>
+
+              <div className="space-y-3">
+                <label className="text-sm font-medium text-gray-300">
+                  Description <span className="text-gray-500">(optional)</span>
+                </label>
+                <Input
+                  placeholder="Brief description of the training content"
+                  value={description}
+                  onChange={(e) => setDescription(e.target.value)}
+                  className="border-white/10 bg-white/5 text-white placeholder:text-gray-500 focus-visible:border-[#2D5A5A]/50 focus-visible:ring-[#2D5A5A]/50"
+                />
+              </div>
+
+              <ContentInput
+                value={content}
+                onChange={(v) => {
+                  setContent(v);
+                  if (!uploadedFile) setSourceFormat("plaintext");
+                }}
+                onFileUpload={handleFileUpload}
+                isUploading={parseFile.isPending}
+                uploadedFile={uploadedFile}
+                onClearFile={handleClearFile}
+              />
+
+              {/* Fidelity Slider */}
+              <div className="space-y-3">
+                <div className="flex items-center gap-2">
+                  <SlidersHorizontal className="h-4 w-4 text-gray-400" />
+                  <label className="text-sm font-medium text-gray-300">
+                    Source Fidelity
+                  </label>
+                  {detectedFidelity && (
+                    <span className="rounded-full bg-[#2D5A5A]/20 px-2 py-0.5 text-[10px] font-medium text-[#5B8A8A]">
+                      Auto-detected: {detectedFidelity}
+                    </span>
+                  )}
+                </div>
+
+                <div className="grid grid-cols-3 gap-2">
+                  {FIDELITY_OPTIONS.map((opt) => (
+                    <button
+                      key={opt.value}
+                      type="button"
+                      onClick={() => handleFidelityChange(opt.value)}
+                      className={`rounded-lg border p-3 text-left transition-all ${
+                        fidelity === opt.value
+                          ? "border-[#5B8A8A] bg-[#2D5A5A]/15"
+                          : "border-white/10 bg-white/5 hover:border-white/20"
+                      }`}
+                    >
+                      <div className="mb-1 text-sm font-medium text-white">
+                        {opt.label}
+                      </div>
+                      <p className="text-[11px] leading-snug text-gray-400">
+                        {opt.description}
+                      </p>
+                    </button>
+                  ))}
+                </div>
+              </div>
+
+              <div className="space-y-3">
+                <label className="text-sm font-medium text-gray-300">
+                  Slide Count
+                </label>
+                <div className="flex items-center gap-4">
+                  <input
+                    type="range"
+                    min={5}
+                    max={120}
+                    value={slideCount}
+                    onChange={(e) => setSlideCount(Number(e.target.value))}
+                    className="h-1.5 flex-1 cursor-pointer appearance-none rounded-full bg-white/10 accent-[#2D5A5A]"
+                  />
+                  <span className="w-12 text-center text-sm font-medium text-white">
+                    {slideCount}
+                  </span>
+                </div>
+                <p className="text-xs text-gray-500">
+                  Maximum slides to generate (fewer if content is shorter)
+                </p>
+              </div>
+            </CardContent>
+          </Card>
+
+          {providers && (
+            <Card className="border-0 bg-white/5">
+              <CardContent className="space-y-6 p-6">
+                <ProviderSelector
+                  label="AI Text Provider"
+                  providers={providers.llm}
+                  selected={llmProvider}
+                  onSelect={setLlmProvider}
+                />
+
+                <ProviderSelector
+                  label="Image Generation"
+                  providers={[
+                    {
+                      id: "disabled",
+                      name: "No Images",
+                      description: "Generate slides without AI images",
+                      pros: ["Fastest generation", "No extra cost"],
+                      cons: [],
+                      costTier: "low",
+                      configured: true,
+                    },
+                    ...providers.image,
+                  ]}
+                  selected={imageProvider}
+                  onSelect={setImageProvider}
+                />
+              </CardContent>
+            </Card>
+          )}
+
+          <Card className="border-0 bg-white/5">
+            <CardContent className="p-6">
+              <ThemeSelector selected={themeId} onSelect={setThemeId} />
+            </CardContent>
+          </Card>
+
+          <div className="flex justify-end">
+            <Button
+              onClick={handleGenerate}
+              disabled={!title.trim() || !content.trim() || isGenerating}
+              className="gap-1.5 px-6"
+              style={{ backgroundColor: "#C9725B" }}
+            >
+              <Sparkles className="h-4 w-4" />
+              Generate Deck
+            </Button>
+          </div>
+        </div>
+      )}
+    </div>
+  );
+}

@@ -1,4 +1,4 @@
-import { boolean, pgTableCreator, text, timestamp, uuid } from "drizzle-orm/pg-core";
+import { boolean, integer, jsonb, pgTableCreator, text, timestamp, uuid } from "drizzle-orm/pg-core";
 
 /**
  * Multi-project table prefix to avoid conflicts in shared databases.
@@ -17,14 +17,36 @@ export const profiles = createTable("profiles", {
   updatedAt: timestamp("updated_at", { withTimezone: true }).defaultNow().notNull(),
 });
 
-export const slides = createTable("slides", {
+export const decks = createTable("decks", {
   id: uuid("id").primaryKey().defaultRandom(),
   profileId: uuid("profile_id")
     .notNull()
     .references(() => profiles.id, { onDelete: "cascade" }),
   title: text("title").notNull(),
-  content: text("content"),
+  description: text("description"),
+  sourceContent: text("source_content"),
+  sourceFormat: text("source_format"),
+  themeId: text("theme_id").notNull().default("chw-teal"),
+  llmProvider: text("llm_provider"),
+  imageProvider: text("image_provider"),
+  slides: jsonb("slides").notNull().default([]),
+  videoRecs: jsonb("video_recs"),
+  status: text("status").notNull().default("draft"),
+  generationLog: jsonb("generation_log"),
+  slideCount: integer("slide_count").default(0),
   createdAt: timestamp("created_at", { withTimezone: true }).defaultNow().notNull(),
+  updatedAt: timestamp("updated_at", { withTimezone: true }).defaultNow().notNull(),
+});
+
+export const providerPreferences = createTable("provider_preferences", {
+  id: uuid("id").primaryKey().defaultRandom(),
+  profileId: uuid("profile_id")
+    .notNull()
+    .unique()
+    .references(() => profiles.id, { onDelete: "cascade" }),
+  llmProvider: text("llm_provider").default("openai"),
+  imageProvider: text("image_provider").default("dalle3"),
+  fidelity: text("fidelity").default("balanced"),
   updatedAt: timestamp("updated_at", { withTimezone: true }).defaultNow().notNull(),
 });
 

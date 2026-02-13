@@ -1,12 +1,12 @@
 import { createCallerFactory, createTRPCRouter } from "~/server/api/trpc";
-import { slideRouter } from "./routers/slide";
+import { deckRouter } from "./routers/deck";
 import { contactRouter } from "./routers/contact";
 import { analyticsRouter } from "./routers/analytics";
 import { usersRouter } from "./routers/users";
 import { crmRouter } from "./routers/crm";
 
 export const appRouter = createTRPCRouter({
-  slide: slideRouter,
+  deck: deckRouter,
   contact: contactRouter,
   analytics: analyticsRouter,
   users: usersRouter,

@@ -69,7 +69,6 @@ export const ADMIN_SIDEBAR_NAV: NavItem[] = [
     title: "Slide Builder",
     href: "/admin/slides",
     icon: Layers,
-    badge: "Soon",
     section: "Tools",
   },
   {

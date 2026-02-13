@@ -19,6 +19,7 @@ npm run db:studio  # Open Drizzle Studio
 - **Database:** Drizzle ORM + Supabase (PostgreSQL)
 - **Auth:** Supabase Auth (OAuth: Google, GitHub)
 - **Styling:** Tailwind CSS 4 + shadcn/ui
+- **AI:** OpenAI (GPT-4o, DALL-E 3) + Anthropic (Claude Sonnet)
 - **Email:** Resend
 - **Toasts:** Sonner
 
@@ -31,7 +32,10 @@ src/components/admin/       # Admin sidebar, header, layout
 src/components/ui/          # shadcn/ui components
 src/lib/supabase/           # Supabase client (browser + server)
 src/lib/resend.ts           # Email notifications
-src/server/api/routers/     # tRPC routers (slide, contact, analytics, users, crm)
+src/lib/ai/                 # AI provider layer (LLM + image)
+src/lib/parsers/            # Content parsers (markdown, plaintext, PDF, DOCX)
+src/components/slides/      # Slide builder components
+src/server/api/routers/     # tRPC routers (deck, contact, analytics, users, crm)
 src/server/db/schema.ts     # Database schema
 src/trpc/                   # tRPC client (RSC + React)
 public/chw/                 # Brand assets (logo, heroes, icons)
@@ -51,7 +55,9 @@ docs/                       # PRD and proposals
 | `/admin/crm` | CRM contacts (search, email, notes) |
 | `/admin/analytics` | Page views and form funnel |
 | `/admin/users` | User management (invite, roles) |
-| `/admin/slides` | Slide builder (coming soon) |
+| `/admin/slides` | Deck list (my decks) |
+| `/admin/slides/new` | Create deck wizard (content + provider selection) |
+| `/admin/slides/[deckId]` | Deck viewer (slide list + detail) |
 | `/admin/assets` | Brand assets reference |
 | `/admin/settings` | Account settings |
 
@@ -60,7 +66,8 @@ docs/                       # PRD and proposals
 | Table | Purpose |
 |-------|---------|
 | `profiles` | User profiles linked to Supabase auth (includes role column) |
-| `slides` | Slide content (Phase 2) |
+| `decks` | AI-generated slide decks (slides stored as JSONB, status: draft/generating/ready/error) |
+| `provider_preferences` | Per-user AI provider preferences (LLM + image provider) |
 | `crm_contacts` | Unified contact records (email-dedup, notes, source tracking) |
 | `contact_submissions` | Form submissions with `source` column, linked to `crm_contacts` via `crm_contact_id` FK |
 | `page_views` | Analytics events — `page` column identifies source (e.g., "landing"), `event` column for type |
@@ -97,3 +104,5 @@ docs/                       # PRD and proposals
 - `NEXT_PUBLIC_SUPABASE_URL` / `NEXT_PUBLIC_SUPABASE_ANON_KEY` — Supabase client
 - `SUPABASE_SERVICE_ROLE_KEY` — Server admin operations
 - `RESEND_API_KEY` — Email notifications (optional, form works without it)
+- `OPENAI_API_KEY` — OpenAI GPT-4o + DALL-E (optional, slide generation)
+- `ANTHROPIC_API_KEY` — Claude Sonnet (optional, slide generation)
