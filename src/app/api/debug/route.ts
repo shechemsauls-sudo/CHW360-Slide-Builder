@@ -3,40 +3,32 @@ import { NextResponse } from "next/server";
 export async function GET() {
   const checks: Record<string, string> = {};
 
-  // 1. Check env vars
-  checks.DATABASE_URL = process.env.DATABASE_URL ? "set" : "MISSING";
-  checks.POSTGRES_URL = process.env.POSTGRES_URL
-    ? process.env.POSTGRES_URL === ""
-      ? "EMPTY_STRING"
-      : "set"
-    : "MISSING";
-  checks.NEXT_PUBLIC_SUPABASE_URL = process.env.NEXT_PUBLIC_SUPABASE_URL
-    ? "set"
-    : "MISSING";
-  checks.SUPABASE_SERVICE_ROLE_KEY = process.env.SUPABASE_SERVICE_ROLE_KEY
-    ? "set"
-    : "MISSING";
+  try { await import("~/server/api/routers/deck"); checks.router_deck = "ok"; }
+  catch (e) { checks.router_deck = e instanceof Error ? e.message : String(e); }
 
-  // 2. Try importing db
-  try {
-    const { db } = await import("~/server/db");
-    checks.db_import = "ok";
+  try { await import("~/server/api/routers/contact"); checks.router_contact = "ok"; }
+  catch (e) { checks.router_contact = e instanceof Error ? e.message : String(e); }
 
-    // 3. Try a simple query
-    const { sql } = await import("drizzle-orm");
-    const result = await db.execute(sql`SELECT 1 as test`);
-    checks.db_query = `ok (${JSON.stringify(result)})`.slice(0, 100);
-  } catch (e) {
-    checks.db_error = e instanceof Error ? e.message : String(e);
-  }
+  try { await import("~/server/api/routers/analytics"); checks.router_analytics = "ok"; }
+  catch (e) { checks.router_analytics = e instanceof Error ? e.message : String(e); }
 
-  // 4. Try importing appRouter
-  try {
-    await import("~/server/api/root");
-    checks.router_import = "ok";
-  } catch (e) {
-    checks.router_error = e instanceof Error ? e.message : String(e);
-  }
+  try { await import("~/server/api/routers/users"); checks.router_users = "ok"; }
+  catch (e) { checks.router_users = e instanceof Error ? e.message : String(e); }
 
-  return NextResponse.json(checks);
+  try { await import("~/server/api/routers/crm"); checks.router_crm = "ok"; }
+  catch (e) { checks.router_crm = e instanceof Error ? e.message : String(e); }
+
+  try { await import("~/lib/ai/llm"); checks.lib_llm = "ok"; }
+  catch (e) { checks.lib_llm = e instanceof Error ? e.message : String(e); }
+
+  try { await import("~/lib/ai/image"); checks.lib_image = "ok"; }
+  catch (e) { checks.lib_image = e instanceof Error ? e.message : String(e); }
+
+  try { await import("~/lib/parsers"); checks.lib_parsers = "ok"; }
+  catch (e) { checks.lib_parsers = e instanceof Error ? e.message : String(e); }
+
+  try { await import("~/lib/storage/upload-image"); checks.lib_storage = "ok"; }
+  catch (e) { checks.lib_storage = e instanceof Error ? e.message : String(e); }
+
+  return NextResponse.json(checks, { status: 200 });
 }
