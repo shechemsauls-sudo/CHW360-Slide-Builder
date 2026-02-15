@@ -269,6 +269,7 @@ function SplitLayout({
       style={{ backgroundColor: theme.colors.surface }}
     >
       {slide.imageUrl ? (
+        /* eslint-disable-next-line @next/next/no-img-element */
         <img
           src={slide.imageUrl}
           alt=""

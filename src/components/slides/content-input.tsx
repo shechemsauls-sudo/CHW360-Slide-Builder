@@ -1,7 +1,7 @@
 "use client";
 
 import { useCallback, useRef, useState } from "react";
-import { Upload, FileText, X, File } from "lucide-react";
+import { Upload, X, File } from "lucide-react";
 import { Textarea } from "~/components/ui/textarea";
 import { Button } from "~/components/ui/button";
 
@@ -13,13 +13,6 @@ interface ContentInputProps {
   uploadedFile: { name: string; format: string } | null;
   onClearFile: () => void;
 }
-
-const ACCEPTED_TYPES: Record<string, string> = {
-  "application/pdf": ".pdf",
-  "application/vnd.openxmlformats-officedocument.wordprocessingml.document": ".docx",
-  "text/plain": ".txt",
-  "text/markdown": ".md",
-};
 
 export function ContentInput({
   value,

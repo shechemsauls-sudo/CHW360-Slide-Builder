@@ -4,12 +4,16 @@ import { TRPCError } from "@trpc/server";
 import { createTRPCRouter, protectedProcedure } from "~/server/api/trpc";
 import { decks, profiles, providerPreferences } from "~/server/db/schema";
 import { getLLMProvider, getAvailableLLMProviders } from "~/lib/ai/llm";
-import { getAvailableImageProviders } from "~/lib/ai/image";
+import { getImageProvider, getAvailableImageProviders } from "~/lib/ai/image";
 import { detectFidelity } from "~/lib/ai/fidelity";
 import { parseContent, detectFormat } from "~/lib/parsers";
 import { VISUAL_BLOCK_TYPES } from "~/lib/ai/types";
 import type { SlideData, VisualBlockType } from "~/lib/ai/types";
 import type { db as dbInstance } from "~/server/db";
+import {
+  uploadSlideImage,
+  deleteDeckImages,
+} from "~/lib/storage/upload-image";
 
 async function getProfileId(db: typeof dbInstance, authUserId: string) {
   const profile = await db.query.profiles.findFirst({
@@ -242,6 +246,136 @@ export const deckRouter = createTRPCRouter({
       return updated;
     }),
 
+  generateSlideImage: protectedProcedure
+    .input(
+      z.object({
+        deckId: z.string().uuid(),
+        slideId: z.string(),
+        imagePrompt: z.string().optional(),
+        imageProvider: z.enum(["dalle3", "gpt-image-1"]).default("dalle3"),
+      }),
+    )
+    .mutation(async ({ ctx, input }) => {
+      const profileId = await getProfileId(ctx.db, ctx.user.id);
+      const deck = await ctx.db.query.decks.findFirst({
+        where: and(eq(decks.id, input.deckId), eq(decks.profileId, profileId)),
+      });
+      if (!deck) {
+        throw new TRPCError({ code: "NOT_FOUND", message: "Deck not found" });
+      }
+
+      const currentSlides = (deck.slides ?? []) as SlideData[];
+      const slideIndex = currentSlides.findIndex((s) => s.id === input.slideId);
+      if (slideIndex === -1) {
+        throw new TRPCError({ code: "NOT_FOUND", message: "Slide not found" });
+      }
+
+      const slide = currentSlides[slideIndex]!;
+      const prompt = input.imagePrompt ?? slide.imagePrompt;
+      if (!prompt) {
+        throw new TRPCError({ code: "BAD_REQUEST", message: "No image prompt available" });
+      }
+
+      // Generate image
+      const provider = getImageProvider(input.imageProvider);
+      const buffer = await provider.generateImage(prompt);
+
+      // Upload to storage
+      const contentType = input.imageProvider === "gpt-image-1" ? "image/webp" : "image/png";
+      const imageUrl = await uploadSlideImage(input.deckId, input.slideId, buffer, contentType);
+
+      // Update slide with image URL and prompt
+      currentSlides[slideIndex] = {
+        ...slide,
+        imageUrl,
+        imagePrompt: prompt,
+      };
+
+      const [updated] = await ctx.db
+        .update(decks)
+        .set({ slides: currentSlides, updatedAt: new Date() })
+        .where(eq(decks.id, input.deckId))
+        .returning();
+
+      return updated;
+    }),
+
+  generateImages: protectedProcedure
+    .input(z.object({ deckId: z.string().uuid() }))
+    .query(async ({ ctx, input }) => {
+      const profileId = await getProfileId(ctx.db, ctx.user.id);
+      const deck = await ctx.db.query.decks.findFirst({
+        where: and(eq(decks.id, input.deckId), eq(decks.profileId, profileId)),
+      });
+      if (!deck) {
+        throw new TRPCError({ code: "NOT_FOUND", message: "Deck not found" });
+      }
+
+      const slides = (deck.slides ?? []) as SlideData[];
+      const slideIds = slides
+        .filter((s) => s.imagePrompt && !s.imageUrl)
+        .map((s) => s.id);
+
+      return { slideIds };
+    }),
+
+  regenerateSlide: protectedProcedure
+    .input(
+      z.object({
+        deckId: z.string().uuid(),
+        slideId: z.string(),
+        feedback: z.string().min(1),
+        llmProvider: z.enum(["openai", "anthropic"]).optional(),
+      }),
+    )
+    .mutation(async ({ ctx, input }) => {
+      const profileId = await getProfileId(ctx.db, ctx.user.id);
+      const deck = await ctx.db.query.decks.findFirst({
+        where: and(eq(decks.id, input.deckId), eq(decks.profileId, profileId)),
+      });
+      if (!deck) {
+        throw new TRPCError({ code: "NOT_FOUND", message: "Deck not found" });
+      }
+
+      const currentSlides = (deck.slides ?? []) as SlideData[];
+      const slideIndex = currentSlides.findIndex((s) => s.id === input.slideId);
+      if (slideIndex === -1) {
+        throw new TRPCError({ code: "NOT_FOUND", message: "Slide not found" });
+      }
+
+      const slide = currentSlides[slideIndex]!;
+      const prevSlide = slideIndex > 0 ? currentSlides[slideIndex - 1] : undefined;
+      const nextSlide = slideIndex < currentSlides.length - 1 ? currentSlides[slideIndex + 1] : undefined;
+
+      const llmId = input.llmProvider ?? deck.llmProvider ?? "openai";
+      const provider = getLLMProvider(llmId);
+      const regenerated = await provider.regenerateSlide({
+        slide,
+        feedback: input.feedback,
+        context: {
+          prevSlide,
+          nextSlide,
+          deckTitle: deck.title,
+        },
+      });
+
+      // Preserve existing imageUrl from the original slide
+      currentSlides[slideIndex] = {
+        ...regenerated,
+        id: slide.id,
+        order: slide.order,
+        imageUrl: slide.imageUrl,
+      };
+
+      const [updated] = await ctx.db
+        .update(decks)
+        .set({ slides: currentSlides, updatedAt: new Date() })
+        .where(eq(decks.id, input.deckId))
+        .returning();
+
+      return updated;
+    }),
+
   regenerate: protectedProcedure
     .input(
       z.object({
@@ -337,6 +471,12 @@ export const deckRouter = createTRPCRouter({
       if (result.length === 0) {
         throw new TRPCError({ code: "NOT_FOUND", message: "Deck not found" });
       }
+
+      // Clean up storage images
+      await deleteDeckImages(input.id).catch(() => {
+        // Non-fatal — deck is already deleted from DB
+      });
+
       return { success: true };
     }),
 

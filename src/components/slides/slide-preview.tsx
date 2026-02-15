@@ -9,18 +9,6 @@ interface SlidePreviewProps {
   onClick?: () => void;
 }
 
-const TYPE_ICONS: Record<string, string> = {
-  title: "T",
-  section: "S",
-  content: "C",
-  bullets: "B",
-  comparison: "2",
-  image: "I",
-  activity: "A",
-  quote: "Q",
-  closing: "X",
-};
-
 export function SlidePreview({ slide, index, isActive, onClick }: SlidePreviewProps) {
   return (
     <button
@@ -39,6 +27,17 @@ export function SlidePreview({ slide, index, isActive, onClick }: SlidePreviewPr
         <span className="rounded bg-[#2D5A5A]/20 px-1.5 py-0.5 text-[10px] font-medium text-[#5B8A8A]">
           {slide.type}
         </span>
+        {slide.imagePrompt && (
+          <span
+            className={`rounded px-1.5 py-0.5 text-[10px] font-medium ${
+              slide.imageUrl
+                ? "bg-emerald-500/20 text-emerald-400"
+                : "bg-amber-500/20 text-amber-400"
+            }`}
+          >
+            {slide.imageUrl ? "IMG" : "IMG?"}
+          </span>
+        )}
       </div>
       <h4 className="mb-1 truncate text-sm font-medium text-white">{slide.title}</h4>
       <p className="line-clamp-2 text-xs text-gray-400">{stripMarkdown(slide.body)}</p>

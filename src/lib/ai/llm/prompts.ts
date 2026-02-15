@@ -304,7 +304,25 @@ If the source content does NOT contain slide markers (it's just prose, notes, or
 - Last slide must be type "closing" with key takeaways
 - Use a mix of slide types: section, content, bullets, comparison, activity, quote
 - Include "imagePrompt" on 3-5 slides where a visual would enhance learning (descriptive prompt for health/community imagery)
-- Write detailed speaker notes (2-4 sentences) for every slide
+- Write structured speaker notes for every slide using this markdown format:
+
+**Talking Points**
+- Conversational, direct address ("you", "we") talking points that explain WHY, not just WHAT
+- 2-5 points per slide, written as a natural speaking track
+- Should elaborate on slide content, not repeat it verbatim
+
+**Presenter Tips**
+- Delivery mechanics: timing, group activities, facilitation prompts, engagement questions
+- Include on activity/discussion slides; optional on pure content slides
+
+**Transition**
+"A quoted bridge sentence leading into the next slide's topic."
+
+Guidelines for speaker notes:
+- Talking Points are REQUIRED on every slide
+- Presenter Tips are encouraged on activity, section, and interactive slides
+- Transition is optional — use on section boundaries and topic shifts
+- Use a warm, pedagogical tone throughout
 - Body content should use Markdown formatting (bold, lists, etc.)
 - Keep slide titles concise (under 10 words)
 - Keep bullet points to 4-6 per slide maximum
@@ -347,7 +365,7 @@ Return a JSON object with a "slides" array. Each slide has: id, order, type, tit
       "type": "title",
       "title": "Training Program Overview",
       "body": "Building healthier communities through skilled CHW practice",
-      "speakerNotes": "Welcome to the training...",
+      "speakerNotes": "**Talking Points**\\n- Welcome to the Organizational Skills training. This is the first of four modules designed to strengthen your daily practice as a community health worker.\\n- Today we'll focus on practical, immediately applicable strategies that you can use starting tomorrow.\\n\\n**Presenter Tips**\\n- Ask participants to share one organizational challenge they currently face\\n- Allow 2-3 minutes for initial discussion before moving on\\n\\n**Transition**\\n\\"Let's start by looking at what we'll cover today.\\"",
       "imageUrl": null,
       "imagePrompt": null,
       "layout": "centered"
@@ -358,7 +376,7 @@ Return a JSON object with a "slides" array. Each slide has: id, order, type, tit
       "type": "bullets",
       "title": "Learning Objectives",
       "body": ":::checklist\\nExplain why organizational skills are essential\\nIdentify core tasks performed by CHWs\\nRecognize how organization supports accountability\\nDescribe strategies for organizing time and information\\n:::",
-      "speakerNotes": "These objectives guide our learning...",
+      "speakerNotes": "**Talking Points**\\n- By the end of this session, you'll be able to do each of these four things confidently.\\n- Notice that we're not just learning what to do — we're learning why it matters for the communities we serve.\\n\\n**Transition**\\n\\"Let's begin with understanding the core responsibilities that make organization so critical.\\"",
       "imageUrl": null,
       "imagePrompt": null,
       "layout": "full"
@@ -369,7 +387,7 @@ Return a JSON object with a "slides" array. Each slide has: id, order, type, tit
       "type": "content",
       "title": "Key Responsibilities",
       "body": "CHWs manage multiple organizational tasks daily:\\n\\n:::numbered-steps\\nSchedule and track appointments\\nDocument client interactions\\nCoordinate referrals with partners\\nFollow up on pending cases\\n:::",
-      "speakerNotes": "Let's walk through each responsibility...",
+      "speakerNotes": "**Talking Points**\\n- Each of these four tasks happens every single day in your work. Missing even one can affect a client's health outcome.\\n- Think about how scheduling and documentation connect — when you track appointments well, follow-ups become natural.\\n\\n**Presenter Tips**\\n- Ask: \\"Which of these four tasks do you find most challenging? Why?\\"\\n- Use responses to gauge the group's experience level",
       "imageUrl": null,
       "imagePrompt": "A CHW organizing files at a desk",
       "layout": "split-right"
@@ -380,7 +398,7 @@ Return a JSON object with a "slides" array. Each slide has: id, order, type, tit
       "type": "content",
       "title": "Program Impact",
       "body": ":::metric-row\\n2,450 | Households Visited\\n95% | Follow-up Rate\\n12 | Active CHWs\\n:::\\n\\n:::info-box Key Insight\\nOrganized CHWs achieve 40% higher follow-up rates than their peers.\\n:::",
-      "speakerNotes": "These metrics demonstrate the power of organization...",
+      "speakerNotes": "**Talking Points**\\n- These numbers tell a powerful story. The 95% follow-up rate didn't happen by accident — it's the result of consistent organizational practices.\\n- When we compare organized CHWs to those without systems, the difference is dramatic: 40% higher follow-up rates.\\n\\n**Transition**\\n\\"Now let's look at the specific strategies that drive these results.\\"",
       "imageUrl": null,
       "imagePrompt": null,
       "layout": "full"

@@ -206,15 +206,7 @@ export default function PresentPage() {
 
       {/* Speaker notes panel (toggle with N) */}
       {showNotes && currentSlide?.speakerNotes && (
-        <div className="absolute bottom-8 left-4 right-4 z-10 max-h-[25vh] overflow-auto rounded-lg border border-white/10 bg-black/90 p-4 backdrop-blur">
-          <div className="mb-1 text-[10px] font-medium uppercase tracking-wider text-white/40">
-            Speaker Notes
-          </div>
-          <MarkdownRenderer
-            content={currentSlide.speakerNotes}
-            className="text-sm leading-relaxed text-white/70"
-          />
-        </div>
+        <PresenterNotesPanel notes={currentSlide.speakerNotes} />
       )}
 
       {/* Navigation hint (fades after 3s) */}
@@ -231,6 +223,108 @@ export default function PresentPage() {
       >
         ESC to exit
       </button>
+    </div>
+  );
+}
+
+/** Parse structured speaker notes into sections */
+function parseSpeakerNotes(notes: string): {
+  talkingPoints: string[];
+  presenterTips: string[];
+  transition: string | null;
+  isStructured: boolean;
+} {
+  const hasTalkingPoints = notes.includes("**Talking Points**");
+  if (!hasTalkingPoints) {
+    return { talkingPoints: [], presenterTips: [], transition: null, isStructured: false };
+  }
+
+  const sections = notes.split(/\*\*(Talking Points|Presenter Tips|Transition)\*\*/);
+  const talkingPoints: string[] = [];
+  const presenterTips: string[] = [];
+  let transition: string | null = null;
+
+  for (let i = 0; i < sections.length; i++) {
+    const header = sections[i]?.trim();
+    const content = sections[i + 1]?.trim();
+    if (!content) continue;
+
+    const lines = content
+      .split("\n")
+      .map((l) => l.replace(/^[-•]\s*/, "").trim())
+      .filter(Boolean);
+
+    if (header === "Talking Points") {
+      talkingPoints.push(...lines);
+    } else if (header === "Presenter Tips") {
+      presenterTips.push(...lines);
+    } else if (header === "Transition") {
+      transition = lines.join(" ").replace(/^[""]|[""]$/g, "").trim() || null;
+    }
+  }
+
+  return { talkingPoints, presenterTips, transition, isStructured: true };
+}
+
+function PresenterNotesPanel({ notes }: { notes: string }) {
+  const parsed = parseSpeakerNotes(notes);
+
+  // Fallback for unstructured notes
+  if (!parsed.isStructured) {
+    return (
+      <div className="absolute bottom-8 left-4 right-4 z-10 max-h-[25vh] overflow-auto rounded-lg border border-white/10 bg-black/90 p-4 backdrop-blur">
+        <div className="mb-1 text-[10px] font-medium uppercase tracking-wider text-white/40">
+          Speaker Notes
+        </div>
+        <MarkdownRenderer
+          content={notes}
+          className="text-sm leading-relaxed text-white/70"
+        />
+      </div>
+    );
+  }
+
+  return (
+    <div className="absolute bottom-8 left-4 right-4 z-10 max-h-[30vh] overflow-auto rounded-lg border border-white/10 bg-black/90 p-4 backdrop-blur">
+      <div className="flex gap-6">
+        {/* Talking Points — primary */}
+        <div className="flex-1">
+          <div className="mb-1.5 text-[10px] font-medium uppercase tracking-wider text-white/40">
+            Talking Points
+          </div>
+          <ul className="space-y-1">
+            {parsed.talkingPoints.map((point, i) => (
+              <li key={i} className="flex gap-2 text-sm leading-relaxed text-white/70">
+                <span className="mt-1.5 h-1.5 w-1.5 shrink-0 rounded-full bg-white/30" />
+                {point}
+              </li>
+            ))}
+          </ul>
+        </div>
+
+        {/* Presenter Tips — secondary */}
+        {parsed.presenterTips.length > 0 && (
+          <div className="w-64 shrink-0 rounded-md border border-[#2D5A5A]/30 bg-[#2D5A5A]/10 p-3">
+            <div className="mb-1.5 text-[10px] font-medium uppercase tracking-wider text-[#5B8A8A]/80">
+              Tips
+            </div>
+            <ul className="space-y-1">
+              {parsed.presenterTips.map((tip, i) => (
+                <li key={i} className="text-xs leading-relaxed text-[#5B8A8A]/70">
+                  {tip}
+                </li>
+              ))}
+            </ul>
+          </div>
+        )}
+      </div>
+
+      {/* Transition */}
+      {parsed.transition && (
+        <div className="mt-2 border-t border-white/5 pt-2 text-xs italic text-white/40">
+          → &ldquo;{parsed.transition}&rdquo;
+        </div>
+      )}
     </div>
   );
 }
