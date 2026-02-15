@@ -1,19 +1,24 @@
 import { z } from "zod";
 
+// Transform empty strings to undefined so .optional() works with Vercel's empty env vars
+const emptyToUndefined = z.string().transform((v) => (v === "" ? undefined : v));
+const optionalUrl = emptyToUndefined.pipe(z.string().url().optional());
+const optionalString = emptyToUndefined.pipe(z.string().min(1).optional());
+
 const server = z.object({
-  DATABASE_URL: z.string().url().optional(),
-  POSTGRES_URL: z.string().url().optional(),
-  SUPABASE_SERVICE_ROLE_KEY: z.string().min(1).optional(),
-  RESEND_API_KEY: z.string().min(1).optional(),
-  OPENAI_API_KEY: z.string().min(1).optional(),
-  ANTHROPIC_API_KEY: z.string().min(1).optional(),
+  DATABASE_URL: optionalUrl,
+  POSTGRES_URL: optionalUrl,
+  SUPABASE_SERVICE_ROLE_KEY: optionalString,
+  RESEND_API_KEY: optionalString,
+  OPENAI_API_KEY: optionalString,
+  ANTHROPIC_API_KEY: optionalString,
   NODE_ENV: z.enum(["development", "test", "production"]).default("development"),
 });
 
 const client = z.object({
   NEXT_PUBLIC_SUPABASE_URL: z.string().url(),
   NEXT_PUBLIC_SUPABASE_ANON_KEY: z.string().min(1),
-  NEXT_PUBLIC_BASE_URL: z.string().url().optional(),
+  NEXT_PUBLIC_BASE_URL: emptyToUndefined.pipe(z.string().url().optional()),
 });
 
 const processEnv = {
