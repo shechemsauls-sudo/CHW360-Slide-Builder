@@ -1,7 +1,8 @@
 import { z } from "zod";
 
 const server = z.object({
-  DATABASE_URL: z.string().url(),
+  DATABASE_URL: z.string().url().optional(),
+  POSTGRES_URL: z.string().url().optional(),
   SUPABASE_SERVICE_ROLE_KEY: z.string().min(1).optional(),
   RESEND_API_KEY: z.string().min(1).optional(),
   OPENAI_API_KEY: z.string().min(1).optional(),
@@ -12,11 +13,12 @@ const server = z.object({
 const client = z.object({
   NEXT_PUBLIC_SUPABASE_URL: z.string().url(),
   NEXT_PUBLIC_SUPABASE_ANON_KEY: z.string().min(1),
-  NEXT_PUBLIC_BASE_URL: z.string().url().default("http://localhost:3000"),
+  NEXT_PUBLIC_BASE_URL: z.string().url().optional(),
 });
 
 const processEnv = {
   DATABASE_URL: process.env.DATABASE_URL,
+  POSTGRES_URL: process.env.POSTGRES_URL,
   SUPABASE_SERVICE_ROLE_KEY: process.env.SUPABASE_SERVICE_ROLE_KEY,
   RESEND_API_KEY: process.env.RESEND_API_KEY,
   OPENAI_API_KEY: process.env.OPENAI_API_KEY,
