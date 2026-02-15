@@ -100,55 +100,66 @@
 
 ---
 
-## Phase 2c: Image Generation + LLM Chat Editing
+## Phase 2c: Image Generation + LLM Chat Editing (Complete)
 
 ### AI Image Generation
-- [ ] **DALL-E 3 integration**: Generate images from the `imagePrompt` field on slides via OpenAI API
-- [ ] **gpt-image-1 support**: Alternative OpenAI image model option
-- [ ] **Supabase Storage bucket**: `slide-images` bucket for generated images (public read, auth write)
-- [ ] **Storage path convention**: `{profileId}/{deckId}/{slideId}.png`
-- [ ] **"Generate Images" button**: After deck creation, batch-generate images for all slides that have `imagePrompt`
-- [ ] **Per-slide image controls**: Regenerate image, edit the prompt, or remove image
-- [ ] **Image generation status**: Per-slide loading indicators during batch generation
-- [ ] **Cost awareness**: Show estimated cost before generating (DALL-E 3 ~$0.04/image)
+- [x] **DALL-E 3 integration**: Generate images from `imagePrompt` field via OpenAI API
+- [x] **gpt-image-1 support**: Alternative OpenAI image model option
+- [x] **Supabase Storage bucket**: `slide-images` bucket for generated images
+- [x] **"Generate Images" button**: Batch-generate images for slides with `imagePrompt`
+- [x] **Per-slide image controls**: Regenerate image, edit prompt, or remove image
+- [x] **Image generation status**: Per-slide loading indicators during batch generation
 
 ### LLM Chat Editing (Feedback Loop)
-- [ ] **Feedback panel**: Click any slide to open a chat-style feedback panel
-- [ ] **Natural language editing**: Type feedback like "make the bullets more concise" or "add a CHW activity here" and the LLM regenerates just that slide
-- [ ] **Context-aware regeneration**: Send the current slide + previous/next slides + user feedback to the LLM for coherent output
-- [ ] **Preserve or override**: User can choose to accept or reject the regenerated version
-- [ ] **Edit history**: Track changes per slide so the user can undo
-
-### YouTube Recommendations (Placeholder)
-- [ ] **"Coming Soon" panel**: Video recommendations panel in the deck viewer
-- [ ] **`videoRecs` JSONB column**: Already exists in schema, ready for future YouTube API integration
-- [ ] **Future**: When YouTube API is configured, auto-suggest relevant training videos per slide topic
+- [x] **Feedback panel**: Chat-style slide edit panel with natural language editing
+- [x] **Context-aware regeneration**: Current slide + neighbors + user feedback
+- [x] **Slide-level regeneration**: `regenerateSlide` mutation with context
 
 ---
 
-## Phase 2d: Export + Sharing + Polish
+## Phase 2d: CRUD, Themes, Images, UX (Current)
+
+### Sprint 1: Slide CRUD + Editing UX (Complete)
+- [x] **deleteSlide mutation**: Remove slide by ID, re-number remaining orders
+- [x] **duplicateSlide mutation**: Copy slide after original, bump subsequent orders
+- [x] **reorderSlides mutation**: Accept ordered ID array, update all order values
+- [x] **Drag-to-reorder**: @dnd-kit integration for slide list
+- [x] **Slide action buttons**: Duplicate (copy icon), Delete (trash + confirm) per card
+- [x] **Add Slide button**: At bottom of slide list
+- [x] **Edit panel polish**: Teal header, suggestion chips, wider on large screens
+- [x] **Presentation discovery UX**: Hint text on Present button, keyboard overlay
+
+### Sprint 2: Theme Overhaul + Typography (Complete)
+- [x] **Gradient theme support**: Add `gradient` field to SlideTheme type
+- [x] **Theme redesigns**: CHW Teal (glassmorphism), Modern Dark (glow), Clean Light (refined), Vibrant Health (organic)
+- [x] **New themes**: Sunset Warmth, Ocean Professional
+- [x] **Typography upgrade**: Larger titles, better spacing, decorative dividers
+- [x] **Renderer visual upgrades**: Gradient backgrounds, wider accent bars, surface cards, shimmer placeholders
+
+### Sprint 3: Smart Images + Prompt Engineering (Complete)
+- [x] **Image/layout alignment**: imagePrompt only on image-eligible layouts, post-gen cleanup
+- [x] **New layouts**: image-full (bleed bg + overlay), image-top (top 40% image)
+- [x] **Image prompt engineering**: Style/negative guidance in system prompt
+- [x] **Auto image generation flow**: Post-generation dialog for batch image gen
+
+### Sprint 4: Settings UX + Power User Controls
+- [ ] **Unified settings panel**: Single gear-icon drawer (theme, generation, images, advanced)
+- [ ] **Custom instructions textarea**: Appended to system prompt
+- [ ] **Tone selector**: Professional / Conversational / Academic / Training-focused
+- [ ] **Inline regeneration settings**: Show all settings when regenerating
+
+---
+
+## Phase 2e: Export + Sharing (Future)
 
 ### Export
 - [ ] **PPTX export** (pptxgenjs): Full deck with slides, speaker notes, theme colors, and images
 - [ ] **PDF export** (jspdf): One slide per page, themed rendering
 - [ ] **Export dialog**: Modal with format selection (PDF, PPTX, Web Link)
-- [ ] **Theme-accurate export**: Exported files should match the on-screen themed rendering
 
 ### Sharing
 - [ ] **Public share links**: Toggle a deck to public, generate a unique slug
 - [ ] **Public view route**: `/slides/[slug]` — no auth required, read-only deck viewer
-- [ ] **Copy-to-clipboard**: One-click copy of the share URL
-- [ ] **Schema additions**: `is_public` boolean + `share_slug` text on decks table
-
-### Settings Integration
-- [ ] **AI Providers section** on `/admin/settings`: Configure default LLM and image provider
-- [ ] **Fidelity default**: Set default fidelity level in settings
-- [ ] **New deck inherits preferences**: New deck form pre-fills from saved settings
-
-### Generation Cost Tracking
-- [ ] **Cost summary component**: Show tokens used, estimated cost from `generationLog`
-- [ ] **Per-deck cost**: Display on deck viewer page
-- [ ] **Cumulative usage**: Optional usage tracking across all decks
 
 ---
 
@@ -182,14 +193,14 @@
 ```
 Done     ✓ Phase 2a.1: Source Fidelity & Prompt Intelligence
 Done     ✓ Phase 2b: Themes + Visual Components + Presentation
-Current  → Phase 2c: Images + Chat Editing
-           (DALL-E, feedback loop, per-slide editing)
-Next     → Phase 2d: Export + Sharing
-           (PPTX, PDF, public links, settings)
+Done     ✓ Phase 2c: Images + Chat Editing
+Done     ✓ Phase 2d Sprints 1-3: CRUD, Themes, Smart Images
+Current  → Phase 2d Sprint 4: Settings UX + Power User Controls
+Next     → Phase 2e: Export + Sharing
 Future   → Phase 3: Templates, Collaboration, Version History
 ```
 
-Each phase is independently deployable. Phase 2c is the next priority — adding AI image generation and per-slide chat editing to the existing themed slide system.
+Sprint 4 scope documented in `docs/sprint-4-scope.md`.
 
 ---
-*Last updated: 2026-02-13*
+*Last updated: 2026-02-15*
