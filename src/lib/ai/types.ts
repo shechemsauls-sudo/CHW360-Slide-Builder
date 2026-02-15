@@ -16,8 +16,16 @@ export interface SlideData {
   speakerNotes: string;
   imageUrl: string | null;
   imagePrompt: string | null;
-  layout: "full" | "split-left" | "split-right" | "centered" | "two-column";
+  layout: "full" | "split-left" | "split-right" | "centered" | "two-column" | "image-full" | "image-top";
 }
+
+/** Layouts that support imagePrompt — only these should have images */
+export const IMAGE_ELIGIBLE_LAYOUTS = [
+  "split-left",
+  "split-right",
+  "image-full",
+  "image-top",
+] as const;
 
 export type FidelityLevel = "verbatim" | "balanced" | "creative";
 
@@ -43,6 +51,8 @@ export const VISUAL_BLOCK_TYPES = [
 
 export type VisualBlockType = (typeof VISUAL_BLOCK_TYPES)[number];
 
+export type ToneOption = "professional" | "conversational" | "academic" | "training";
+
 export interface GenerateInput {
   content: string;
   title: string;
@@ -50,6 +60,8 @@ export interface GenerateInput {
   slideCount?: number;
   fidelity?: FidelityLevel;
   selectedBlocks?: VisualBlockType[];
+  customInstructions?: string;
+  tone?: ToneOption;
 }
 
 export interface RegenerateInput {
@@ -60,6 +72,8 @@ export interface RegenerateInput {
     nextSlide?: SlideData;
     deckTitle: string;
   };
+  customInstructions?: string;
+  tone?: ToneOption;
 }
 
 export interface GenerationResult {

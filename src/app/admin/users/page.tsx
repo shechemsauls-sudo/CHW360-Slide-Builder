@@ -118,7 +118,7 @@ export default function UsersPage() {
           No users found. Invite your first user above.
         </div>
       ) : (
-        <div className="overflow-hidden rounded-lg border border-white/10">
+        <div className="overflow-x-auto rounded-lg border border-white/10">
           <table className="w-full text-left text-sm">
             <thead>
               <tr className="bg-white/5">

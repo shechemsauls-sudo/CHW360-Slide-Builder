@@ -47,6 +47,9 @@ export const providerPreferences = createTable("provider_preferences", {
   llmProvider: text("llm_provider").default("openai"),
   imageProvider: text("image_provider").default("dalle3"),
   fidelity: text("fidelity").default("balanced"),
+  customInstructions: text("custom_instructions").default(""),
+  tone: text("tone").default("professional"),
+  createdAt: timestamp("created_at", { withTimezone: true }).defaultNow().notNull(),
   updatedAt: timestamp("updated_at", { withTimezone: true }).defaultNow().notNull(),
 });
 

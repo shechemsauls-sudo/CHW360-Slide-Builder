@@ -189,7 +189,13 @@ export default function PresentPage() {
       </div>
 
       {/* Progress bar */}
-      <div className="absolute bottom-0 left-0 right-0 h-1 bg-white/10">
+      <div
+        className="absolute bottom-0 left-0 right-0 h-1 bg-white/10"
+        role="progressbar"
+        aria-valuenow={currentIndex + 1}
+        aria-valuemin={1}
+        aria-valuemax={slides.length}
+      >
         <div
           className="h-full transition-all duration-300"
           style={{
@@ -200,7 +206,7 @@ export default function PresentPage() {
       </div>
 
       {/* Slide counter (bottom right, subtle) */}
-      <div className="absolute bottom-3 right-4 text-xs text-white/30">
+      <div className="absolute bottom-3 right-4 text-xs text-white/60">
         {currentIndex + 1} / {slides.length}
       </div>
 
@@ -331,11 +337,64 @@ function PresenterNotesPanel({ notes }: { notes: string }) {
 
 function NavigationHint() {
   const [visible, setVisible] = useState(true);
+  const [showOverlay, setShowOverlay] = useState(false);
 
   useEffect(() => {
-    const timer = setTimeout(() => setVisible(false), 3000);
+    // Show full overlay on first launch, then just the hint bar
+    const hasSeenOverlay = localStorage.getItem("chw360-present-intro");
+    if (!hasSeenOverlay) {
+      setShowOverlay(true);
+      localStorage.setItem("chw360-present-intro", "1");
+    }
+
+    const timer = setTimeout(() => {
+      setVisible(false);
+      setShowOverlay(false);
+    }, showOverlay ? 5000 : 3000);
     return () => clearTimeout(timer);
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
+
+  if (showOverlay) {
+    return (
+      <div
+        className="absolute inset-0 z-20 flex items-center justify-center bg-black/80 backdrop-blur-sm transition-opacity"
+        role="dialog"
+        aria-label="Keyboard shortcuts"
+        onClick={() => setShowOverlay(false)}
+        onKeyDown={(e) => {
+          if (e.key === "Escape") setShowOverlay(false);
+        }}
+      >
+        <div className="max-w-sm rounded-xl border border-white/10 bg-[#1a1a2e] p-6 text-center shadow-2xl">
+          <p className="mb-4 text-sm font-medium text-white">Keyboard Controls</p>
+          <div className="space-y-2 text-xs text-gray-400">
+            <div className="flex items-center justify-between gap-6">
+              <span>Next slide</span>
+              <span className="font-mono text-gray-500">→ / Space / Click</span>
+            </div>
+            <div className="flex items-center justify-between gap-6">
+              <span>Previous slide</span>
+              <span className="font-mono text-gray-500">←</span>
+            </div>
+            <div className="flex items-center justify-between gap-6">
+              <span>Speaker notes</span>
+              <span className="font-mono text-gray-500">N</span>
+            </div>
+            <div className="flex items-center justify-between gap-6">
+              <span>Audience view</span>
+              <span className="font-mono text-gray-500">P</span>
+            </div>
+            <div className="flex items-center justify-between gap-6">
+              <span>Exit</span>
+              <span className="font-mono text-gray-500">ESC</span>
+            </div>
+          </div>
+          <p className="mt-4 text-[10px] text-gray-600">Click anywhere to dismiss</p>
+        </div>
+      </div>
+    );
+  }
 
   if (!visible) return null;
 

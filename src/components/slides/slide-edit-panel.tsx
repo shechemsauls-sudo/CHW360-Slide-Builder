@@ -21,6 +21,13 @@ interface ChatMessage {
   content: string;
 }
 
+const SUGGESTION_CHIPS = [
+  "Make more concise",
+  "Add an activity",
+  "Simplify language",
+  "Add statistics",
+];
+
 interface SlideEditPanelProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
@@ -67,27 +74,33 @@ export function SlideEditPanel({
     },
   });
 
+  const sendFeedback = useCallback(
+    (feedback: string) => {
+      if (!slide || !feedback.trim() || regenerateSlide.isPending) return;
+
+      const trimmed = feedback.trim();
+      setInput("");
+
+      const history = chatHistory.get(slide.id) ?? [];
+      const updated = [...history, { role: "user" as const, content: trimmed }];
+      setChatHistory(new Map(chatHistory).set(slide.id, updated));
+
+      regenerateSlide.mutate({
+        deckId,
+        slideId: slide.id,
+        feedback: trimmed,
+      });
+
+      setTimeout(() => {
+        messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
+      }, 50);
+    },
+    [slide, deckId, chatHistory, regenerateSlide],
+  );
+
   const handleSend = useCallback(() => {
-    if (!slide || !input.trim() || regenerateSlide.isPending) return;
-
-    const feedback = input.trim();
-    setInput("");
-
-    const history = chatHistory.get(slide.id) ?? [];
-    const updated = [...history, { role: "user" as const, content: feedback }];
-    setChatHistory(new Map(chatHistory).set(slide.id, updated));
-
-    regenerateSlide.mutate({
-      deckId,
-      slideId: slide.id,
-      feedback,
-    });
-
-    // Scroll to bottom after state update
-    setTimeout(() => {
-      messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
-    }, 50);
-  }, [slide, input, deckId, chatHistory, regenerateSlide]);
+    sendFeedback(input);
+  }, [input, sendFeedback]);
 
   const handleKeyDown = (e: React.KeyboardEvent) => {
     if (e.key === "Enter" && !e.shiftKey) {
@@ -102,13 +115,14 @@ export function SlideEditPanel({
     <Sheet open={open} onOpenChange={onOpenChange}>
       <SheetContent
         side="right"
-        className="w-full border-white/10 bg-[#1a1a2e] sm:max-w-md"
+        className="w-full border-white/10 bg-[#1a1a2e] sm:max-w-md lg:max-w-xl"
       >
-        <SheetHeader className="border-b border-white/10 pb-3">
+        {/* Branded teal header */}
+        <SheetHeader className="border-b border-[#2D5A5A]/30 bg-[#2D5A5A]/15 pb-3">
           <SheetTitle className="text-white">
             Edit Slide {slide?.order}
           </SheetTitle>
-          <SheetDescription className="text-gray-400">
+          <SheetDescription className="text-[#5B8A8A]">
             {slide?.title ?? ""}
           </SheetDescription>
         </SheetHeader>
@@ -125,6 +139,21 @@ export function SlideEditPanel({
                 e.g. &quot;Make the bullets more concise&quot; or &quot;Add an
                 activity prompt&quot;
               </p>
+
+              {/* Suggestion chips */}
+              <div className="mt-4 flex flex-wrap justify-center gap-2">
+                {SUGGESTION_CHIPS.map((chip) => (
+                  <button
+                    key={chip}
+                    type="button"
+                    onClick={() => sendFeedback(chip)}
+                    disabled={regenerateSlide.isPending}
+                    className="rounded-full border border-[#2D5A5A]/30 bg-[#2D5A5A]/10 px-3 py-1.5 text-xs text-[#5B8A8A] transition-colors hover:border-[#5B8A8A]/50 hover:bg-[#2D5A5A]/20 disabled:opacity-50"
+                  >
+                    {chip}
+                  </button>
+                ))}
+              </div>
             </div>
           )}
 
@@ -143,7 +172,7 @@ export function SlideEditPanel({
                   className={`max-w-[80%] rounded-lg px-3 py-2 text-sm ${
                     msg.role === "user"
                       ? "bg-[#2D5A5A]/30 text-white"
-                      : "bg-white/5 text-gray-300"
+                      : "bg-[#F5EDE6]/10 text-gray-300"
                   }`}
                 >
                   <MarkdownRenderer content={msg.content} className="text-sm" />
@@ -161,7 +190,7 @@ export function SlideEditPanel({
                 <div className="mt-0.5 flex h-6 w-6 shrink-0 items-center justify-center rounded-full bg-[#2D5A5A]/30">
                   <Sparkles className="h-3 w-3 text-[#5B8A8A]" />
                 </div>
-                <div className="flex items-center gap-2 rounded-lg bg-white/5 px-3 py-2 text-sm text-gray-400">
+                <div className="flex items-center gap-2 rounded-lg bg-[#F5EDE6]/10 px-3 py-2 text-sm text-gray-400">
                   <Loader2 className="h-3.5 w-3.5 animate-spin" />
                   Updating slide...
                 </div>
@@ -174,12 +203,29 @@ export function SlideEditPanel({
 
         {/* Input */}
         <div className="border-t border-white/10 p-4">
+          {/* Inline suggestion chips when there's chat history */}
+          {messages.length > 0 && (
+            <div className="mb-2 flex flex-wrap gap-1.5">
+              {SUGGESTION_CHIPS.map((chip) => (
+                <button
+                  key={chip}
+                  type="button"
+                  onClick={() => sendFeedback(chip)}
+                  disabled={regenerateSlide.isPending}
+                  className="rounded-full border border-[#2D5A5A]/20 px-2 py-1 text-[10px] text-[#5B8A8A] transition-colors hover:border-[#5B8A8A]/40 hover:bg-[#2D5A5A]/10 disabled:opacity-50"
+                >
+                  {chip}
+                </button>
+              ))}
+            </div>
+          )}
           <div className="flex gap-2">
             <Textarea
               value={input}
               onChange={(e) => setInput(e.target.value)}
               onKeyDown={handleKeyDown}
               placeholder="Describe your changes..."
+              aria-label="Slide edit feedback"
               className="min-h-[60px] resize-none border-white/10 bg-white/5 text-white placeholder:text-gray-500"
               rows={2}
             />
@@ -187,8 +233,8 @@ export function SlideEditPanel({
               size="icon"
               onClick={handleSend}
               disabled={!input.trim() || regenerateSlide.isPending}
-              className="h-[60px] w-10 shrink-0"
-              style={{ backgroundColor: "#C9725B" }}
+              aria-label="Send feedback"
+              className="h-[60px] w-10 shrink-0 bg-[#C9725B] hover:bg-[#b5634e]"
             >
               <Send className="h-4 w-4" />
             </Button>

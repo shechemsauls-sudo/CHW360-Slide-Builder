@@ -59,8 +59,16 @@ docs/                       # PRD and proposals
 | `/admin/slides/new` | Create deck wizard (content + provider selection) |
 | `/admin/slides/[deckId]` | Deck viewer (slide list + detail) |
 | `/admin/slides/[deckId]/audience` | Audience view (presenter mode sync via localStorage) |
+| `/admin/slides/[deckId]/present` | Presenter mode (fullscreen, speaker notes, keyboard nav) |
 | `/admin/assets` | Brand assets reference |
 | `/admin/settings` | Account settings |
+| `/set-password` | Claim account (from invite email link) |
+
+## Slide Layouts
+
+Image-eligible layouts: `split-left`, `split-right`, `image-full`, `image-top`.
+Non-image layouts: `full`, `centered`, `two-column`.
+Server strips `imagePrompt` from non-eligible layouts post-generation (`cleanImagePrompts` in deck.ts).
 
 ## Database Tables (prefix: `chw360_`)
 

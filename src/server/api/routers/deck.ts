@@ -7,13 +7,25 @@ import { getLLMProvider, getAvailableLLMProviders } from "~/lib/ai/llm";
 import { getImageProvider, getAvailableImageProviders } from "~/lib/ai/image";
 import { detectFidelity } from "~/lib/ai/fidelity";
 import { parseContent, detectFormat } from "~/lib/parsers";
-import { VISUAL_BLOCK_TYPES } from "~/lib/ai/types";
+import { VISUAL_BLOCK_TYPES, IMAGE_ELIGIBLE_LAYOUTS } from "~/lib/ai/types";
 import type { SlideData, VisualBlockType } from "~/lib/ai/types";
 import type { db as dbInstance } from "~/server/db";
 import {
   uploadSlideImage,
   deleteDeckImages,
 } from "~/lib/storage/upload-image";
+
+const IMAGE_ELIGIBLE_SET = new Set<string>(IMAGE_ELIGIBLE_LAYOUTS);
+
+/** Strip imagePrompt from slides that use non-image layouts */
+function cleanImagePrompts(slides: SlideData[]): SlideData[] {
+  return slides.map((s) => {
+    if (s.imagePrompt && !IMAGE_ELIGIBLE_SET.has(s.layout)) {
+      return { ...s, imagePrompt: null };
+    }
+    return s;
+  });
+}
 
 async function getProfileId(db: typeof dbInstance, authUserId: string) {
   const profile = await db.query.profiles.findFirst({
@@ -38,7 +50,7 @@ const slideDataSchema = z.object({
   speakerNotes: z.string(),
   imageUrl: z.string().nullable(),
   imagePrompt: z.string().nullable(),
-  layout: z.enum(["full", "split-left", "split-right", "centered", "two-column"]),
+  layout: z.enum(["full", "split-left", "split-right", "centered", "two-column", "image-full", "image-top"]),
 });
 
 export const deckRouter = createTRPCRouter({
@@ -109,6 +121,8 @@ export const deckRouter = createTRPCRouter({
         slideCount: z.number().min(5).max(120).optional(),
         fidelity: z.enum(["verbatim", "balanced", "creative"]).optional(),
         selectedBlocks: z.array(z.enum(VISUAL_BLOCK_TYPES)).optional(),
+        customInstructions: z.string().max(500).optional(),
+        tone: z.enum(["professional", "conversational", "academic", "training"]).optional(),
       }),
     )
     .mutation(async ({ ctx, input }) => {
@@ -149,14 +163,19 @@ export const deckRouter = createTRPCRouter({
           slideCount: input.slideCount,
           fidelity: input.fidelity,
           selectedBlocks: input.selectedBlocks as VisualBlockType[] | undefined,
+          customInstructions: input.customInstructions,
+          tone: input.tone,
         });
+
+        // Clean imagePrompt from non-image layouts
+        const cleanedSlides = cleanImagePrompts(result.slides);
 
         // Update deck with generated slides
         const [updated] = await ctx.db
           .update(decks)
           .set({
-            slides: result.slides,
-            slideCount: result.slides.length,
+            slides: cleanedSlides,
+            slideCount: cleanedSlides.length,
             status: "ready",
             generationLog: {
               model: result.model,
@@ -240,6 +259,127 @@ export const deckRouter = createTRPCRouter({
       const [updated] = await ctx.db
         .update(decks)
         .set({ slides: currentSlides, updatedAt: new Date() })
+        .where(eq(decks.id, input.deckId))
+        .returning();
+
+      return updated;
+    }),
+
+  deleteSlide: protectedProcedure
+    .input(
+      z.object({
+        deckId: z.string().uuid(),
+        slideId: z.string(),
+      }),
+    )
+    .mutation(async ({ ctx, input }) => {
+      const profileId = await getProfileId(ctx.db, ctx.user.id);
+      const deck = await ctx.db.query.decks.findFirst({
+        where: and(eq(decks.id, input.deckId), eq(decks.profileId, profileId)),
+      });
+      if (!deck) {
+        throw new TRPCError({ code: "NOT_FOUND", message: "Deck not found" });
+      }
+
+      const currentSlides = (deck.slides ?? []) as SlideData[];
+      const filtered = currentSlides.filter((s) => s.id !== input.slideId);
+      if (filtered.length === currentSlides.length) {
+        throw new TRPCError({ code: "NOT_FOUND", message: "Slide not found" });
+      }
+
+      // Re-number order fields
+      const reordered = filtered.map((s, i) => ({ ...s, order: i + 1 }));
+
+      const [updated] = await ctx.db
+        .update(decks)
+        .set({ slides: reordered, slideCount: reordered.length, updatedAt: new Date() })
+        .where(eq(decks.id, input.deckId))
+        .returning();
+
+      return updated;
+    }),
+
+  duplicateSlide: protectedProcedure
+    .input(
+      z.object({
+        deckId: z.string().uuid(),
+        slideId: z.string(),
+      }),
+    )
+    .mutation(async ({ ctx, input }) => {
+      const profileId = await getProfileId(ctx.db, ctx.user.id);
+      const deck = await ctx.db.query.decks.findFirst({
+        where: and(eq(decks.id, input.deckId), eq(decks.profileId, profileId)),
+      });
+      if (!deck) {
+        throw new TRPCError({ code: "NOT_FOUND", message: "Deck not found" });
+      }
+
+      const currentSlides = (deck.slides ?? []) as SlideData[];
+      const slideIndex = currentSlides.findIndex((s) => s.id === input.slideId);
+      if (slideIndex === -1) {
+        throw new TRPCError({ code: "NOT_FOUND", message: "Slide not found" });
+      }
+
+      const original = currentSlides[slideIndex]!;
+      const duplicate: SlideData = {
+        ...original,
+        id: crypto.randomUUID(),
+        imageUrl: null, // Don't copy generated images
+      };
+
+      // Insert after original
+      const newSlides = [
+        ...currentSlides.slice(0, slideIndex + 1),
+        duplicate,
+        ...currentSlides.slice(slideIndex + 1),
+      ].map((s, i) => ({ ...s, order: i + 1 }));
+
+      const [updated] = await ctx.db
+        .update(decks)
+        .set({ slides: newSlides, slideCount: newSlides.length, updatedAt: new Date() })
+        .where(eq(decks.id, input.deckId))
+        .returning();
+
+      return updated;
+    }),
+
+  reorderSlides: protectedProcedure
+    .input(
+      z.object({
+        deckId: z.string().uuid(),
+        slideIds: z.array(z.string()),
+      }),
+    )
+    .mutation(async ({ ctx, input }) => {
+      const profileId = await getProfileId(ctx.db, ctx.user.id);
+      const deck = await ctx.db.query.decks.findFirst({
+        where: and(eq(decks.id, input.deckId), eq(decks.profileId, profileId)),
+      });
+      if (!deck) {
+        throw new TRPCError({ code: "NOT_FOUND", message: "Deck not found" });
+      }
+
+      const currentSlides = (deck.slides ?? []) as SlideData[];
+      const slideMap = new Map(currentSlides.map((s) => [s.id, s]));
+
+      // Build reordered array from provided ID order
+      const reordered: SlideData[] = [];
+      for (const id of input.slideIds) {
+        const slide = slideMap.get(id);
+        if (!slide) {
+          throw new TRPCError({ code: "BAD_REQUEST", message: `Slide ${id} not found` });
+        }
+        reordered.push({ ...slide, order: reordered.length + 1 });
+      }
+
+      if (reordered.length !== currentSlides.length) {
+        throw new TRPCError({ code: "BAD_REQUEST", message: "Slide ID count mismatch" });
+      }
+
+      const [updated] = await ctx.db
+        .update(decks)
+        .set({ slides: reordered, updatedAt: new Date() })
         .where(eq(decks.id, input.deckId))
         .returning();
 
@@ -384,6 +524,8 @@ export const deckRouter = createTRPCRouter({
         llmProvider: z.enum(["openai", "anthropic"]).optional(),
         slideCount: z.number().min(5).max(120).optional(),
         selectedBlocks: z.array(z.enum(VISUAL_BLOCK_TYPES)).optional(),
+        customInstructions: z.string().max(500).optional(),
+        tone: z.enum(["professional", "conversational", "academic", "training"]).optional(),
       }),
     )
     .mutation(async ({ ctx, input }) => {
@@ -419,13 +561,17 @@ export const deckRouter = createTRPCRouter({
           slideCount: input.slideCount ?? deck.slideCount ?? 20,
           fidelity: input.fidelity,
           selectedBlocks: input.selectedBlocks as VisualBlockType[] | undefined,
+          customInstructions: input.customInstructions,
+          tone: input.tone,
         });
+
+        const cleanedSlides = cleanImagePrompts(result.slides);
 
         const [updated] = await ctx.db
           .update(decks)
           .set({
-            slides: result.slides,
-            slideCount: result.slides.length,
+            slides: cleanedSlides,
+            slideCount: cleanedSlides.length,
             llmProvider: llmId,
             status: "ready",
             generationLog: {
@@ -517,7 +663,7 @@ export const deckRouter = createTRPCRouter({
     const prefs = await ctx.db.query.providerPreferences.findFirst({
       where: eq(providerPreferences.profileId, profileId),
     });
-    return prefs ?? { llmProvider: "openai", imageProvider: "dalle3", fidelity: "balanced" };
+    return prefs ?? { llmProvider: "openai", imageProvider: "dalle3", fidelity: "balanced", customInstructions: "", tone: "professional" };
   }),
 
   setPreferences: protectedProcedure
@@ -526,6 +672,8 @@ export const deckRouter = createTRPCRouter({
         llmProvider: z.string(),
         imageProvider: z.string(),
         fidelity: z.enum(["verbatim", "balanced", "creative"]).optional(),
+        customInstructions: z.string().max(500).optional(),
+        tone: z.enum(["professional", "conversational", "academic", "training"]).optional(),
       }),
     )
     .mutation(async ({ ctx, input }) => {

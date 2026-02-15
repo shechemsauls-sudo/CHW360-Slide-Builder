@@ -72,7 +72,7 @@ export function SlideImageControls({
               <Button
                 variant="ghost"
                 size="sm"
-                className="h-6 gap-1 px-2 text-[10px] text-gray-400 hover:text-[#5B8A8A]"
+                className="h-8 gap-1 px-2 text-xs text-gray-400 hover:text-[#5B8A8A]"
                 onClick={() => handleGenerate()}
                 disabled={isGenerating}
               >
@@ -86,7 +86,7 @@ export function SlideImageControls({
               <Button
                 variant="ghost"
                 size="sm"
-                className="h-6 gap-1 px-2 text-[10px] text-gray-400 hover:text-red-400"
+                className="h-8 gap-1 px-2 text-xs text-gray-400 hover:text-red-400"
                 onClick={handleRemoveImage}
               >
                 <Trash2 className="h-3 w-3" />
@@ -97,7 +97,7 @@ export function SlideImageControls({
             <Button
               variant="ghost"
               size="sm"
-              className="h-6 gap-1 px-2 text-[10px] text-gray-400 hover:text-[#5B8A8A]"
+              className="h-8 gap-1 px-2 text-xs text-gray-400 hover:text-[#5B8A8A]"
               onClick={() => handleGenerate()}
               disabled={isGenerating}
             >
@@ -112,7 +112,7 @@ export function SlideImageControls({
           <Button
             variant="ghost"
             size="sm"
-            className="h-6 gap-1 px-2 text-[10px] text-gray-400 hover:text-white"
+            className="h-8 gap-1 px-2 text-xs text-gray-400 hover:text-white"
             onClick={() => {
               setCustomPrompt(slide.imagePrompt ?? "");
               setEditingPrompt(!editingPrompt);

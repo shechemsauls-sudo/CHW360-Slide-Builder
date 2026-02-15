@@ -11,6 +11,12 @@ export interface SlideTheme {
     textMuted: string;
     accent: string;
   };
+  gradient?: {
+    /** CSS gradient for the slide background */
+    background: string;
+    /** CSS gradient for accent bars/elements */
+    accent: string;
+  };
   typography: {
     headingFont: string;
     bodyFont: string;

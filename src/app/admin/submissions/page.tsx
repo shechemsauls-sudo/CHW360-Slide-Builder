@@ -6,6 +6,7 @@ import { Card, CardContent } from "~/components/ui/card";
 import { Badge } from "~/components/ui/badge";
 import { Button } from "~/components/ui/button";
 import { api } from "~/trpc/react";
+import { toast } from "sonner";
 
 type Filter = "all" | "read" | "unread";
 
@@ -16,15 +17,17 @@ export default function SubmissionsPage() {
 
   const { data: sourcesData } = api.contact.sources.useQuery();
 
-  const { data, refetch } = api.contact.list.useQuery({
+  const { data } = api.contact.list.useQuery({
     filter,
     source,
     limit: 50,
     offset: 0,
   });
 
+  const utils = api.useUtils();
   const markRead = api.contact.markRead.useMutation({
-    onSuccess: () => refetch(),
+    onSuccess: () => void utils.contact.list.invalidate(),
+    onError: (err) => toast.error(err.message),
   });
 
   const filters: { label: string; value: Filter }[] = [

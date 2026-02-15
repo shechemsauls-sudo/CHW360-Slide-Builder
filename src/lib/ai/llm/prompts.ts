@@ -1,4 +1,4 @@
-import type { FidelityLevel, GenerateInput, RegenerateInput, VisualBlockType } from "../types";
+import type { FidelityLevel, GenerateInput, RegenerateInput, ToneOption, VisualBlockType } from "../types";
 
 const FIDELITY_INSTRUCTIONS: Record<FidelityLevel, string> = {
   verbatim: `## Source Fidelity: VERBATIM
@@ -33,6 +33,17 @@ Use the source content as inspiration. Restructure, summarize, and enhance freel
 - Add transitions, summaries, and engagement hooks
 - Optimize for audience understanding over source faithfulness
 - Speaker notes should provide teaching guidance and discussion prompts`,
+};
+
+const TONE_INSTRUCTIONS: Record<ToneOption, string> = {
+  professional: `## Tone: Professional
+Formal, clear, and evidence-based. Use precise language appropriate for clinical or policy audiences. Avoid colloquialisms.`,
+  conversational: `## Tone: Conversational
+Warm, direct, and approachable. Use "you" and "we" freely. Best for community health settings where trust and relatability matter.`,
+  academic: `## Tone: Academic
+Formal with citations-style references where applicable. Preserve technical terminology and use structured argumentation.`,
+  training: `## Tone: Training / Instructor-Focused
+Pedagogical scaffolding with step-by-step instruction. Include comprehension checks, knowledge reinforcement, and "try it now" prompts.`,
 };
 
 const BLOCK_DOCS: Record<VisualBlockType, { doc: string; hint: string }> = {
@@ -285,11 +296,17 @@ export function buildGeneratePrompt(input: GenerateInput): string {
   const fidelity = input.fidelity ?? "balanced";
   const includeBlocks = fidelity !== "verbatim";
 
+  const tone = input.tone ?? "professional";
+  const customInstructions = input.customInstructions?.trim();
+
   return `You are an expert presentation designer specializing in community health worker (CHW) training materials.
 
 Create a professional slide deck from the provided content. The deck should be educational, engaging, and actionable for community health workers.
 
 ${FIDELITY_INSTRUCTIONS[fidelity]}
+
+${TONE_INSTRUCTIONS[tone]}
+${customInstructions ? `\n## Custom Instructions\n${customInstructions}` : ""}
 ${includeBlocks ? "\n" + buildBlockDocs(input.selectedBlocks) : ""}
 
 ## Slide Count
@@ -303,7 +320,20 @@ If the source content does NOT contain slide markers (it's just prose, notes, or
 - First slide must be type "title" with the deck title
 - Last slide must be type "closing" with key takeaways
 - Use a mix of slide types: section, content, bullets, comparison, activity, quote
-- Include "imagePrompt" on 3-5 slides where a visual would enhance learning (descriptive prompt for health/community imagery)
+- Include "imagePrompt" on 4-8 slides using ONLY image-eligible layouts (split-left, split-right, image-full, image-top)
+- Use image-full for at least 1-2 dramatic visual slides (title, section dividers, or closing)
+- Use image-top for content slides that benefit from a visual anchor
+- Set imagePrompt to null on full, centered, and two-column layouts
+
+## Image Prompt Guidelines
+When writing imagePrompt values, follow these rules:
+- **Specify subject clearly**: "A community health worker visiting a rural household" not just "healthcare"
+- **Include style**: "photorealistic", "warm documentary style", "soft illustration", or "flat vector style"
+- **Include mood/lighting**: "warm golden hour light", "bright and optimistic", "calm clinical setting"
+- **Include color palette hints**: "earth tones", "teal and warm accents", "bright primary colors"
+- **NEVER include text in images**: Do not ask for text, labels, or words rendered in the image
+- **NEVER request clipart or stock watermarks**: Avoid "clipart", "stock photo", "watermark"
+- **Keep prompts to 1-2 sentences**: Concise but descriptive
 - Write structured speaker notes for every slide using this markdown format:
 
 **Talking Points**
@@ -339,11 +369,15 @@ Guidelines for speaker notes:
 - **closing**: Summary and key takeaways
 
 ## Layouts
-- **full**: Content fills the slide
-- **centered**: Content centered (good for quotes, section dividers)
-- **split-left**: Image left, content right
-- **split-right**: Content left, image right
-- **two-column**: Side-by-side columns (for comparisons)
+- **full**: Content fills the slide (NO imagePrompt)
+- **centered**: Content centered, good for quotes and section dividers (NO imagePrompt)
+- **split-left**: Image left, content right (supports imagePrompt)
+- **split-right**: Content left, image right (supports imagePrompt)
+- **two-column**: Side-by-side columns for comparisons (NO imagePrompt)
+- **image-full**: Full-bleed background image with dark gradient overlay + white text overlay at bottom. Great for title, section, and closing slides. (supports imagePrompt — REQUIRED)
+- **image-top**: Image spans full width at top (40% height), content below. Good for content slides that need a visual anchor. (supports imagePrompt — REQUIRED)
+
+**CRITICAL IMAGE RULE**: Only these 4 layouts support images: split-left, split-right, image-full, image-top. Set imagePrompt to null on all other layouts (full, centered, two-column). image-full and image-top MUST have an imagePrompt.
 
 ## Deck Info
 Title: ${input.title}
@@ -410,7 +444,13 @@ Follow this exact pattern. Use :::block-type on the FIRST line, content on subse
 }
 
 export function buildRegeneratePrompt(input: RegenerateInput): string {
+  const tone = input.tone ?? "professional";
+  const customInstructions = input.customInstructions?.trim();
+
   return `You are an expert presentation designer. Regenerate this single slide based on user feedback.
+
+${TONE_INSTRUCTIONS[tone]}
+${customInstructions ? `\n## Custom Instructions\n${customInstructions}` : ""}
 
 ## Current Slide
 ${JSON.stringify(input.slide, null, 2)}

@@ -54,15 +54,15 @@ export function SlideRenderer({ slide, theme, className }: SlideRendererProps) {
           height: SLIDE_H,
           transform: `scale(${scale})`,
           transformOrigin: "top left",
-          backgroundColor: theme.colors.background,
+          background: theme.gradient?.background ?? theme.colors.background,
           fontFamily: theme.typography.bodyFont,
           color: theme.colors.text,
         }}
       >
-        {/* Decorative accent bar */}
+        {/* Gradient accent bar — wider, gradient-filled */}
         <div
-          className="absolute left-0 top-0 h-1 w-full"
-          style={{ backgroundColor: theme.colors.accent }}
+          className="absolute left-0 top-0 h-1.5 w-full"
+          style={{ background: theme.gradient?.accent ?? theme.colors.accent }}
         />
 
         {/* Layout container */}
@@ -88,6 +88,10 @@ function renderLayout(
       return <SplitLayout slide={slide} theme={theme} hasBlocks={hasBlocks} imagePosition="right" />;
     case "two-column":
       return <TwoColumnLayout slide={slide} theme={theme} />;
+    case "image-full":
+      return <ImageFullLayout slide={slide} theme={theme} hasBlocks={hasBlocks} />;
+    case "image-top":
+      return <ImageTopLayout slide={slide} theme={theme} hasBlocks={hasBlocks} />;
     default:
       return <FullLayout slide={slide} theme={theme} hasBlocks={hasBlocks} />;
   }
@@ -101,9 +105,9 @@ function SlideTitle({ slide, theme }: { slide: SlideData; theme: SlideTheme }) {
   const isClosing = slide.type === "closing";
 
   const titleSize = isTitle
-    ? "text-4xl"
+    ? "text-5xl tracking-tight"
     : isSection
-      ? "text-3xl"
+      ? "text-4xl tracking-tight"
       : "text-2xl";
 
   return (
@@ -118,9 +122,21 @@ function SlideTitle({ slide, theme }: { slide: SlideData; theme: SlideTheme }) {
       {slide.title}
       {(isTitle || isClosing) && (
         <div
-          className="mt-2 h-1 w-16 rounded"
-          style={{ backgroundColor: theme.colors.accent }}
+          className="mt-3 h-1 w-24 rounded-full"
+          style={{ background: theme.gradient?.accent ?? theme.colors.accent }}
         />
+      )}
+      {isSection && (
+        <div className="mt-3 flex items-center gap-3">
+          <div
+            className="h-0.5 w-12 rounded-full"
+            style={{ background: theme.gradient?.accent ?? theme.colors.accent }}
+          />
+          <div
+            className="h-0.5 w-6 rounded-full opacity-40"
+            style={{ backgroundColor: theme.colors.accent }}
+          />
+        </div>
       )}
     </h2>
   );
@@ -142,7 +158,7 @@ function SlideBody({
   return (
     <MarkdownRenderer
       content={slide.body}
-      className="leading-relaxed"
+      className="space-y-2 leading-relaxed"
       style={{ color: theme.colors.textMuted }}
     />
   );
@@ -177,10 +193,58 @@ function extractFooter(body: string): { bodyContent: string; footerText: string 
 function SlideFooter({ text, theme }: { text: string; theme: SlideTheme }) {
   return (
     <div
-      className="mt-auto pt-2 text-[10px] leading-tight opacity-50"
-      style={{ color: theme.colors.textMuted }}
+      className="mt-auto border-t pt-2 text-[10px] leading-tight opacity-40"
+      style={{ color: theme.colors.textMuted, borderColor: `${theme.colors.text}10` }}
     >
       {text}
+    </div>
+  );
+}
+
+// ── Image Placeholder with shimmer ───────────────────────────
+
+function ImagePlaceholder({ theme }: { theme: SlideTheme }) {
+  return (
+    <div
+      className="relative flex h-full items-center justify-center overflow-hidden"
+      style={{ backgroundColor: theme.colors.surface }}
+    >
+      {/* Shimmer animation */}
+      <div
+        className="absolute inset-0"
+        style={{
+          background: `linear-gradient(90deg, transparent 0%, ${theme.colors.text}08 50%, transparent 100%)`,
+          animation: "shimmer 2s infinite",
+        }}
+      />
+      <div className="relative text-center">
+        <div className="mx-auto mb-1 h-8 w-8 rounded-lg opacity-15" style={{ backgroundColor: theme.colors.text }}>
+          <svg className="h-8 w-8 p-1.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={1.5}>
+            <rect x="3" y="3" width="18" height="18" rx="2" />
+            <circle cx="9" cy="9" r="2" />
+            <path d="M21 15l-5-5L5 21" />
+          </svg>
+        </div>
+        <p className="text-[10px] opacity-20">Image</p>
+      </div>
+      <style>{`@keyframes shimmer { 0% { transform: translateX(-100%); } 100% { transform: translateX(100%); } }`}</style>
+    </div>
+  );
+}
+
+// ── Surface Card wrapper ─────────────────────────────────────
+
+function SurfaceCard({ theme, children, className }: { theme: SlideTheme; children: React.ReactNode; className?: string }) {
+  return (
+    <div
+      className={`rounded-lg border p-4 ${className ?? ""}`}
+      style={{
+        backgroundColor: theme.colors.surface,
+        borderColor: `${theme.colors.text}08`,
+        boxShadow: `0 1px 3px ${theme.colors.text}06`,
+      }}
+    >
+      {children}
     </div>
   );
 }
@@ -201,7 +265,7 @@ function FullLayout({
   const bodySlide = { ...slide, body: bodyContent };
 
   return (
-    <div className="flex h-full w-full flex-col p-10">
+    <div className="flex h-full w-full flex-col p-12">
       <div className="flex flex-1 flex-col justify-center">
         {isActivity && (
           <div
@@ -235,7 +299,7 @@ function CenteredLayout({
   const bodySlide = { ...slide, body: bodyContent };
 
   return (
-    <div className="flex h-full w-full flex-col items-center text-center p-10">
+    <div className="flex h-full w-full flex-col items-center text-center p-12">
       <div className="flex flex-1 flex-col items-center justify-center">
         {isQuote && (
           <span className="mb-2 text-5xl" style={{ color: theme.colors.accent }}>
@@ -263,25 +327,17 @@ function SplitLayout({
   hasBlocks: boolean;
   imagePosition: "left" | "right";
 }) {
-  const imagePlaceholder = (
-    <div
-      className="flex h-full items-center justify-center"
-      style={{ backgroundColor: theme.colors.surface }}
-    >
-      {slide.imageUrl ? (
-        /* eslint-disable-next-line @next/next/no-img-element */
-        <img
-          src={slide.imageUrl}
-          alt=""
-          className="h-full w-full object-cover"
-        />
-      ) : (
-        <div className="text-center">
-          <div className="text-3xl opacity-20">🖼</div>
-          <p className="mt-1 text-xs opacity-30">Image</p>
-        </div>
-      )}
+  const imagePanel = slide.imageUrl ? (
+    <div className="h-full">
+      {/* eslint-disable-next-line @next/next/no-img-element */}
+      <img
+        src={slide.imageUrl}
+        alt={slide.imagePrompt ?? "Slide image"}
+        className="h-full w-full object-cover"
+      />
     </div>
+  ) : (
+    <ImagePlaceholder theme={theme} />
   );
 
   const { bodyContent, footerText } = extractFooter(slide.body);
@@ -301,8 +357,8 @@ function SplitLayout({
 
   return (
     <>
-      <div className="w-1/2">{imagePosition === "left" ? imagePlaceholder : contentSide}</div>
-      <div className="w-1/2">{imagePosition === "left" ? contentSide : imagePlaceholder}</div>
+      <div className="w-1/2">{imagePosition === "left" ? imagePanel : contentSide}</div>
+      <div className="w-1/2">{imagePosition === "left" ? contentSide : imagePanel}</div>
     </>
   );
 }
@@ -322,19 +378,121 @@ function TwoColumnLayout({
   const right = parts[1] ?? "";
 
   return (
-    <div className="flex h-full w-full flex-col p-10">
+    <div className="flex h-full w-full flex-col p-12">
       <div className="flex flex-1 flex-col justify-center">
         <SlideTitle slide={slide} theme={theme} />
         <div className="mt-5 flex flex-1 gap-4 text-base leading-relaxed">
-          <div className="flex-1 rounded-lg p-4" style={{ backgroundColor: theme.colors.surface }}>
+          <SurfaceCard theme={theme} className="flex-1">
             <MarkdownRenderer content={left} style={{ color: theme.colors.text }} />
-          </div>
-          <div className="flex-1 rounded-lg p-4" style={{ backgroundColor: theme.colors.surface }}>
+          </SurfaceCard>
+          <SurfaceCard theme={theme} className="flex-1">
             <MarkdownRenderer content={right} style={{ color: theme.colors.text }} />
-          </div>
+          </SurfaceCard>
         </div>
       </div>
       {footerText && <SlideFooter text={footerText} theme={theme} />}
+    </div>
+  );
+}
+
+function ImageFullLayout({
+  slide,
+  theme,
+  hasBlocks,
+}: {
+  slide: SlideData;
+  theme: SlideTheme;
+  hasBlocks: boolean;
+}) {
+  const { bodyContent, footerText } = extractFooter(slide.body);
+  const bodySlide = { ...slide, body: bodyContent };
+
+  return (
+    <div className="relative h-full w-full">
+      {/* Background image or placeholder */}
+      {slide.imageUrl ? (
+        /* eslint-disable-next-line @next/next/no-img-element */
+        <img
+          src={slide.imageUrl}
+          alt={slide.imagePrompt ?? "Slide image"}
+          className="absolute inset-0 h-full w-full object-cover"
+        />
+      ) : (
+        <div className="absolute inset-0">
+          <ImagePlaceholder theme={theme} />
+        </div>
+      )}
+
+      {/* Dark gradient overlay for text readability */}
+      <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-black/40 to-black/20" />
+
+      {/* Content positioned at bottom */}
+      <div className="relative flex h-full flex-col justify-end p-12">
+        <h2
+          className="text-5xl font-bold leading-tight tracking-tight text-white"
+          style={{
+            fontFamily: theme.typography.headingFont,
+            fontWeight: theme.typography.headingWeight,
+            textShadow: "0 2px 8px rgba(0,0,0,0.3)",
+          }}
+        >
+          {slide.title}
+          <div
+            className="mt-3 h-1 w-24 rounded-full"
+            style={{ background: theme.gradient?.accent ?? theme.colors.accent }}
+          />
+        </h2>
+        {bodyContent.trim() && (
+          <div className="mt-4 max-w-[70%] text-base leading-relaxed text-white/80">
+            <SlideBody slide={bodySlide} theme={theme} hasBlocks={hasBlocks} />
+          </div>
+        )}
+        {footerText && (
+          <div className="mt-auto pt-2 text-[10px] leading-tight text-white/30">
+            {footerText}
+          </div>
+        )}
+      </div>
+    </div>
+  );
+}
+
+function ImageTopLayout({
+  slide,
+  theme,
+  hasBlocks,
+}: {
+  slide: SlideData;
+  theme: SlideTheme;
+  hasBlocks: boolean;
+}) {
+  const { bodyContent, footerText } = extractFooter(slide.body);
+  const bodySlide = { ...slide, body: bodyContent };
+
+  return (
+    <div className="flex h-full w-full flex-col">
+      {/* Image area — top 40% */}
+      <div className="relative h-[40%] w-full shrink-0">
+        {slide.imageUrl ? (
+          /* eslint-disable-next-line @next/next/no-img-element */
+          <img
+            src={slide.imageUrl}
+            alt={slide.imagePrompt ?? "Slide image"}
+            className="h-full w-full object-cover"
+          />
+        ) : (
+          <ImagePlaceholder theme={theme} />
+        )}
+      </div>
+
+      {/* Content area — bottom 60% */}
+      <div className="flex flex-1 flex-col p-8">
+        <SlideTitle slide={slide} theme={theme} />
+        <div className="mt-3 flex-1 text-base leading-relaxed">
+          <SlideBody slide={bodySlide} theme={theme} hasBlocks={hasBlocks} />
+        </div>
+        {footerText && <SlideFooter text={footerText} theme={theme} />}
+      </div>
     </div>
   );
 }

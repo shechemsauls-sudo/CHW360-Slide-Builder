@@ -17,7 +17,7 @@ export function ThemeSelector({ selected, onSelect }: ThemeSelectorProps) {
         <Palette className="h-4 w-4 text-gray-400" />
         <label className="text-sm font-medium text-gray-300">Theme</label>
       </div>
-      <div className="grid grid-cols-2 gap-2 sm:grid-cols-4">
+      <div className="grid grid-cols-2 gap-2 sm:grid-cols-3 lg:grid-cols-6">
         {themes.map((theme) => (
           <ThemeCard
             key={theme.id}
@@ -55,7 +55,7 @@ function ThemeCard({
         className="mb-2 overflow-hidden rounded"
         style={{
           aspectRatio: "16 / 9",
-          backgroundColor: theme.colors.background,
+          background: theme.gradient?.background ?? theme.colors.background,
         }}
       >
         <div className="flex h-full flex-col justify-center px-3 py-2">

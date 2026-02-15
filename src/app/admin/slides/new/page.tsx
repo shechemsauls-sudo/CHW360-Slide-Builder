@@ -2,7 +2,7 @@
 
 import { useEffect, useState, useCallback } from "react";
 import { useRouter } from "next/navigation";
-import { ArrowLeft, Sparkles, SlidersHorizontal } from "lucide-react";
+import { ArrowLeft, Sparkles, SlidersHorizontal, MessageSquareText } from "lucide-react";
 import Link from "next/link";
 import { Button } from "~/components/ui/button";
 import { Input } from "~/components/ui/input";
@@ -14,7 +14,7 @@ import { GenerationStatus } from "~/components/slides/generation-status";
 import { ThemeSelector } from "~/components/slides/theme-selector";
 import { api } from "~/trpc/react";
 import { toast } from "sonner";
-import type { FidelityLevel, VisualBlockType } from "~/lib/ai/types";
+import type { FidelityLevel, ToneOption, VisualBlockType } from "~/lib/ai/types";
 
 const FIDELITY_OPTIONS: {
   value: FidelityLevel;
@@ -56,6 +56,8 @@ export default function NewDeckPage() {
   const [userOverrodeFidelity, setUserOverrodeFidelity] = useState(false);
   const [uploadedFile, setUploadedFile] = useState<{ name: string; format: string } | null>(null);
   const [selectedBlocks, setSelectedBlocks] = useState<VisualBlockType[]>([]);
+  const [tone, setTone] = useState<ToneOption>("professional");
+  const [customInstructions, setCustomInstructions] = useState("");
   const [genStatus, setGenStatus] = useState<"idle" | "generating" | "error">("idle");
   const [genError, setGenError] = useState("");
 
@@ -75,6 +77,8 @@ export default function NewDeckPage() {
     if (prefs?.llmProvider) setLlmProvider(prefs.llmProvider);
     if (prefs?.imageProvider) setImageProvider(prefs.imageProvider);
     if (prefs?.fidelity) setFidelity(prefs.fidelity as FidelityLevel);
+    if (prefs?.tone) setTone(prefs.tone as ToneOption);
+    if (prefs?.customInstructions) setCustomInstructions(prefs.customInstructions);
   }, [prefs]);
 
   // Auto-detect fidelity when content changes (debounced)
@@ -105,7 +109,7 @@ export default function NewDeckPage() {
       if (deck) {
         setGenStatus("idle");
         toast.success("Deck generated!");
-        router.push(`/admin/slides/${deck.id}`);
+        router.push(`/admin/slides/${deck.id}?new=1`);
       }
     },
     onError: (err) => {
@@ -154,6 +158,8 @@ export default function NewDeckPage() {
       themeId,
       fidelity,
       selectedBlocks: selectedBlocks.length > 0 ? selectedBlocks : undefined,
+      tone,
+      customInstructions: customInstructions.trim() || undefined,
     });
   };
 
@@ -163,7 +169,7 @@ export default function NewDeckPage() {
     <div className="space-y-6">
       <div className="flex items-center gap-3">
         <Link href="/admin/slides">
-          <Button variant="ghost" size="icon" className="h-8 w-8 text-gray-400 hover:text-white">
+          <Button variant="ghost" size="icon" className="h-8 w-8 text-gray-400 hover:text-white" aria-label="Back to decks">
             <ArrowLeft className="h-4 w-4" />
           </Button>
         </Link>
@@ -234,7 +240,7 @@ export default function NewDeckPage() {
                   )}
                 </div>
 
-                <div className="grid grid-cols-3 gap-2">
+                <div className="grid grid-cols-1 gap-2 sm:grid-cols-3">
                   {FIDELITY_OPTIONS.map((opt) => (
                     <button
                       key={opt.value}
@@ -258,11 +264,12 @@ export default function NewDeckPage() {
               </div>
 
               <div className="space-y-3">
-                <label className="text-sm font-medium text-gray-300">
+                <label htmlFor="new-slide-count" className="text-sm font-medium text-gray-300">
                   Slide Count
                 </label>
                 <div className="flex items-center gap-4">
                   <input
+                    id="new-slide-count"
                     type="range"
                     min={5}
                     max={120}
@@ -274,9 +281,62 @@ export default function NewDeckPage() {
                     {slideCount}
                   </span>
                 </div>
-                <p className="text-xs text-gray-500">
+                <p className="text-xs text-gray-400">
                   Maximum slides to generate (fewer if content is shorter)
                 </p>
+              </div>
+
+              {/* Tone */}
+              <div className="space-y-3">
+                <div className="flex items-center gap-2">
+                  <MessageSquareText className="h-4 w-4 text-gray-400" />
+                  <label className="text-sm font-medium text-gray-300">
+                    Writing Tone
+                  </label>
+                </div>
+                <div className="grid grid-cols-2 gap-2 sm:grid-cols-4">
+                  {([
+                    { value: "professional" as const, label: "Professional", desc: "Formal, evidence-based" },
+                    { value: "conversational" as const, label: "Conversational", desc: "Warm, direct" },
+                    { value: "academic" as const, label: "Academic", desc: "Formal, citations-style" },
+                    { value: "training" as const, label: "Training", desc: "Step-by-step, pedagogical" },
+                  ]).map((opt) => (
+                    <button
+                      key={opt.value}
+                      type="button"
+                      onClick={() => setTone(opt.value)}
+                      className={`rounded-lg border p-3 text-left transition-all ${
+                        tone === opt.value
+                          ? "border-[#5B8A8A] bg-[#2D5A5A]/15"
+                          : "border-white/10 bg-white/5 hover:border-white/20"
+                      }`}
+                    >
+                      <div className="text-xs font-medium text-white">{opt.label}</div>
+                      <p className="mt-0.5 text-[10px] text-gray-500">{opt.desc}</p>
+                    </button>
+                  ))}
+                </div>
+              </div>
+
+              {/* Custom Instructions */}
+              <div className="space-y-3">
+                <label htmlFor="new-custom-instructions" className="text-sm font-medium text-gray-300">
+                  Custom Instructions <span className="text-gray-400">(optional)</span>
+                </label>
+                <textarea
+                  id="new-custom-instructions"
+                  value={customInstructions}
+                  onChange={(e) => {
+                    if (e.target.value.length <= 500) setCustomInstructions(e.target.value);
+                  }}
+                  placeholder="e.g., Use simple language for low-literacy audiences. Include malaria prevention messaging."
+                  rows={2}
+                  className="w-full resize-none rounded-lg border border-white/10 bg-white/5 px-3 py-2 text-sm text-white placeholder:text-gray-500 focus-visible:border-[#2D5A5A]/50 focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-[#2D5A5A]/50"
+                />
+                <div className="flex justify-between text-xs text-gray-400">
+                  <span>Extra guidance for the AI when generating slides</span>
+                  <span>{customInstructions.length}/500</span>
+                </div>
               </div>
             </CardContent>
           </Card>

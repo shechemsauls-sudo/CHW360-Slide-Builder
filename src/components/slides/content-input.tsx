@@ -86,6 +86,7 @@ export function ContentInput({
             size="icon"
             className="h-7 w-7 text-gray-400 hover:text-white"
             onClick={onClearFile}
+            aria-label="Clear uploaded file"
           >
             <X className="h-4 w-4" />
           </Button>
