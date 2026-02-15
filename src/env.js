@@ -1,24 +1,22 @@
 import { z } from "zod";
 
-// Transform empty strings to undefined so .optional() works with Vercel's empty env vars
-const emptyToUndefined = z.string().transform((v) => (v === "" ? undefined : v));
-const optionalUrl = emptyToUndefined.pipe(z.string().url().optional());
-const optionalString = emptyToUndefined.pipe(z.string().min(1).optional());
+// Coerce empty strings → undefined before validation (Vercel sets unused integration vars to "")
+const coerce = (val) => (val === "" ? undefined : val);
 
 const server = z.object({
-  DATABASE_URL: optionalUrl,
-  POSTGRES_URL: optionalUrl,
-  SUPABASE_SERVICE_ROLE_KEY: optionalString,
-  RESEND_API_KEY: optionalString,
-  OPENAI_API_KEY: optionalString,
-  ANTHROPIC_API_KEY: optionalString,
+  DATABASE_URL: z.preprocess(coerce, z.string().url().optional()),
+  POSTGRES_URL: z.preprocess(coerce, z.string().url().optional()),
+  SUPABASE_SERVICE_ROLE_KEY: z.preprocess(coerce, z.string().min(1).optional()),
+  RESEND_API_KEY: z.preprocess(coerce, z.string().min(1).optional()),
+  OPENAI_API_KEY: z.preprocess(coerce, z.string().min(1).optional()),
+  ANTHROPIC_API_KEY: z.preprocess(coerce, z.string().min(1).optional()),
   NODE_ENV: z.enum(["development", "test", "production"]).default("development"),
 });
 
 const client = z.object({
   NEXT_PUBLIC_SUPABASE_URL: z.string().url(),
   NEXT_PUBLIC_SUPABASE_ANON_KEY: z.string().min(1),
-  NEXT_PUBLIC_BASE_URL: emptyToUndefined.pipe(z.string().url().optional()),
+  NEXT_PUBLIC_BASE_URL: z.preprocess(coerce, z.string().url().optional()),
 });
 
 const processEnv = {
