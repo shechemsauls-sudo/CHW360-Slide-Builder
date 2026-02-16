@@ -142,11 +142,11 @@
 - [x] **Image prompt engineering**: Style/negative guidance in system prompt
 - [x] **Auto image generation flow**: Post-generation dialog for batch image gen
 
-### Sprint 4: Settings UX + Power User Controls
-- [ ] **Unified settings panel**: Single gear-icon drawer (theme, generation, images, advanced)
-- [ ] **Custom instructions textarea**: Appended to system prompt
-- [ ] **Tone selector**: Professional / Conversational / Academic / Training-focused
-- [ ] **Inline regeneration settings**: Show all settings when regenerating
+### Sprint 4: Settings UX + Power User Controls (Complete)
+- [x] **Unified settings panel**: Single gear-icon drawer (theme, generation, images, advanced)
+- [x] **Custom instructions textarea**: Appended to system prompt
+- [x] **Tone selector**: Professional / Conversational / Academic / Training-focused
+- [x] **Inline regeneration settings**: Show all settings when regenerating
 
 ---
 
@@ -194,13 +194,12 @@
 Done     ✓ Phase 2a.1: Source Fidelity & Prompt Intelligence
 Done     ✓ Phase 2b: Themes + Visual Components + Presentation
 Done     ✓ Phase 2c: Images + Chat Editing
-Done     ✓ Phase 2d Sprints 1-3: CRUD, Themes, Smart Images
-Current  → Phase 2d Sprint 4: Settings UX + Power User Controls
+Done     ✓ Phase 2d Sprints 1-4: CRUD, Themes, Smart Images, Settings UX
+Done     ✓ Phase 2d.5: Theme variants, tech debt, responsive polish
+Done     ✓ Renderer Quality Sweep: 9 fixes + iterative polish
 Next     → Phase 2e: Export + Sharing
 Future   → Phase 3: Templates, Collaboration, Version History
 ```
 
-Sprint 4 scope documented in `docs/sprint-4-scope.md`.
-
 ---
-*Last updated: 2026-02-15*
+*Last updated: 2026-02-16*
