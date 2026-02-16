@@ -2,16 +2,7 @@
 
 import { useState, useEffect, useRef } from "react";
 import Image from "next/image";
-import {
-  Menu,
-  X,
-  Facebook,
-  Linkedin,
-  Twitter,
-  Mail,
-  Phone,
-  Loader2,
-} from "lucide-react";
+import { Menu, X, Mail, Phone, Loader2, Globe } from "lucide-react";
 import { toast } from "sonner";
 import { Button } from "~/components/ui/button";
 import { Input } from "~/components/ui/input";
@@ -28,20 +19,85 @@ const heroImages = [
   { src: "/chw/hero-5.png", alt: "CHW professional development workshop" },
 ];
 
-const coreSupports = [
-  { icon: "training", title: "Training & Education", description: "Courses aligned with Texas CHW core competencies." },
-  { icon: "workforce", title: "Workforce Development", description: "Career growth path and professional development guidance." },
-  { icon: "digital", title: "Digital Tools Training", description: "Training on essential digital tools for CHWs." },
-  { icon: "community", title: "Expanded Community & Professional Connections", description: "Network opportunities to connect with fellow CHWs and health professionals." },
-  { icon: "application", title: "Application Submission Support", description: "Assistance with the submission of CHW certification applications." },
-  { icon: "application2", title: "Continuing Education", description: "Ongoing learning resources aligned with Texas state requirements." },
-];
+const coreSupportIcons = ["training", "workforce", "digital", "community", "application", "application2"];
+const audienceIcons = ["chw", "health", "training"];
 
-const audiences = [
-  { icon: "chw", title: "Community\nHealth Workers", description: "Ongoing education and professional support to advance your Community Health Worker career in Texas workplaces." },
-  { icon: "health", title: "Public Health Departments", description: "Strengthen outreach, service coordination, and community connection through skilled Community Health Workers." },
-  { icon: "training", title: "Training\nPrograms", description: "Deliver Texas state-aligned Community Health Worker training that meets certification standards and local workforce needs." },
-];
+const translations = {
+  en: {
+    requestDemo: "Request a Demo",
+    joinUpdates: "Join Updates",
+    heroDescription: "CHW360 provides training, resources, and support to help Community Health Workers learn, grow, and make a difference in their communities.",
+    partnership: "In partnership with TAPCHW",
+    bilingualBadge: "Courses available in English & Spanish",
+    coreSupportTitle: "Core Supports for CHWs",
+    coreSupportSubtitle: "Equipping CHWs with skills and tools they need to serve Texas communities.",
+    coreSupports: [
+      { title: "Training & Education", description: "Courses aligned with Texas CHW core competencies, available in English and Spanish." },
+      { title: "Workforce Development", description: "Career growth path and professional development guidance." },
+      { title: "Digital Tools Training", description: "Training on essential digital tools for CHWs." },
+      { title: "Expanded Community & Professional Connections", description: "Network opportunities to connect with fellow CHWs and health professionals." },
+      { title: "Application Submission Support", description: "Assistance with the submission of CHW certification applications." },
+      { title: "Continuing Education", description: "Ongoing learning resources aligned with Texas state requirements." },
+    ],
+    audienceTitle: "Who CHW360 Supports",
+    audienceDescription: "CHW360 delivers practical, standards-aligned training and support that respects the Community Health Worker scope of practice and meets Texas certification and workforce requirements.",
+    audiences: [
+      { title: "Community\nHealth Workers", description: "Ongoing education and professional support to advance your Community Health Worker career in Texas workplaces." },
+      { title: "Public Health Departments", description: "Strengthen outreach, service coordination, and community connection through skilled Community Health Workers." },
+      { title: "Training\nPrograms", description: "Deliver Texas state-aligned Community Health Worker training that meets certification standards and local workforce needs." },
+    ],
+    contactTitle: "Get in Touch",
+    contactDescription: "Ready to learn more? Reach out to see how CHW360 can support Community Health Workers and CHW programs in your organization.",
+    namePlaceholder: "Name *",
+    emailPlaceholder: "Email *",
+    orgPlaceholder: "Organization",
+    messagePlaceholder: "Message *",
+    sending: "Sending...",
+    send: "Send Message",
+    copyright: "Educational Use Only. | Not Medical Advice.",
+    toastSuccess: "Message sent! We'll be in touch soon.",
+    toastError: "Something went wrong. Please try again.",
+    toastValidation: "Please fill in all required fields.",
+    skipLink: "Skip to main content",
+  },
+  es: {
+    requestDemo: "Solicitar una Demo",
+    joinUpdates: "Recibir Actualizaciones",
+    heroDescription: "CHW360 ofrece capacitación, recursos y apoyo para ayudar a los Promotores de Salud a aprender, crecer y marcar la diferencia en sus comunidades.",
+    partnership: "En asociación con TAPCHW",
+    bilingualBadge: "Cursos disponibles en inglés y español",
+    coreSupportTitle: "Apoyos Principales para Promotores de Salud",
+    coreSupportSubtitle: "Equipando a los Promotores de Salud con las habilidades y herramientas que necesitan para servir a las comunidades de Texas.",
+    coreSupports: [
+      { title: "Capacitación y Educación", description: "Cursos alineados con las competencias principales de Promotores de Salud de Texas, disponibles en inglés y español." },
+      { title: "Desarrollo Profesional", description: "Orientación para el crecimiento profesional y desarrollo de carrera." },
+      { title: "Capacitación en Herramientas Digitales", description: "Capacitación en herramientas digitales esenciales para Promotores de Salud." },
+      { title: "Conexiones Comunitarias y Profesionales", description: "Oportunidades de networking para conectar con otros Promotores de Salud y profesionales de la salud." },
+      { title: "Apoyo en Solicitudes de Certificación", description: "Asistencia con la presentación de solicitudes de certificación de Promotores de Salud." },
+      { title: "Educación Continua", description: "Recursos de aprendizaje continuo alineados con los requisitos del estado de Texas." },
+    ],
+    audienceTitle: "A Quién Apoya CHW360",
+    audienceDescription: "CHW360 ofrece capacitación práctica y apoyo alineado con los estándares que respeta el alcance de práctica de los Promotores de Salud y cumple con los requisitos de certificación y fuerza laboral de Texas.",
+    audiences: [
+      { title: "Promotores\nde Salud", description: "Educación continua y apoyo profesional para avanzar en su carrera como Promotor de Salud en Texas." },
+      { title: "Departamentos de\nSalud Pública", description: "Fortalezca el alcance, la coordinación de servicios y la conexión comunitaria a través de Promotores de Salud capacitados." },
+      { title: "Programas de\nCapacitación", description: "Ofrezca capacitación para Promotores de Salud alineada con los estándares de Texas que cumple con los requisitos de certificación." },
+    ],
+    contactTitle: "Contáctenos",
+    contactDescription: "¿Listo para saber más? Comuníquese con nosotros para ver cómo CHW360 puede apoyar a los Promotores de Salud y programas en su organización.",
+    namePlaceholder: "Nombre *",
+    emailPlaceholder: "Correo electrónico *",
+    orgPlaceholder: "Organización",
+    messagePlaceholder: "Mensaje *",
+    sending: "Enviando...",
+    send: "Enviar Mensaje",
+    copyright: "Solo Uso Educativo. | No Es Consejo Médico.",
+    toastSuccess: "¡Mensaje enviado! Nos pondremos en contacto pronto.",
+    toastError: "Algo salió mal. Por favor, inténtelo de nuevo.",
+    toastValidation: "Por favor complete todos los campos requeridos.",
+    skipLink: "Ir al contenido principal",
+  },
+};
 
 function CoreSupportIcon({ type }: { type: string }) {
   const iconStyles = "w-16 h-16 rounded-full flex items-center justify-center";
@@ -135,16 +191,30 @@ function AudienceIcon({ type }: { type: string }) {
 
 export default function LandingPage() {
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
+  const [lang, setLang] = useState<"en" | "es">("en");
   const [formData, setFormData] = useState({ name: "", email: "", organization: "", message: "" });
   const formTracked = useRef(false);
 
+  const t = translations[lang];
+
+  // Restore saved language preference
+  useEffect(() => {
+    const saved = localStorage.getItem("chw360-lang") as "en" | "es" | null;
+    if (saved) setLang(saved);
+  }, []);
+
+  const setLanguage = (newLang: "en" | "es") => {
+    setLang(newLang);
+    localStorage.setItem("chw360-lang", newLang);
+  };
+
   const submitMutation = api.contact.submit.useMutation({
     onSuccess: () => {
-      toast.success("Message sent! We'll be in touch soon.");
+      toast.success(t.toastSuccess);
       setFormData({ name: "", email: "", organization: "", message: "" });
     },
     onError: () => {
-      toast.error("Something went wrong. Please try again.");
+      toast.error(t.toastError);
     },
   });
 
@@ -191,7 +261,7 @@ export default function LandingPage() {
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     if (!formData.name || !formData.email || !formData.message) {
-      toast.error("Please fill in all required fields.");
+      toast.error(t.toastValidation);
       return;
     }
     trackEvent.mutate({ page: "landing", event: "form_submit" });
@@ -201,7 +271,7 @@ export default function LandingPage() {
   return (
     <div className="min-h-screen overflow-hidden bg-white">
       <a href="#main-content" className="sr-only focus:not-sr-only focus:fixed focus:left-4 focus:top-4 focus:z-50 focus:rounded-md focus:bg-white focus:px-4 focus:py-2 focus:text-[#2D5A5A] focus:shadow-lg">
-        Skip to main content
+        {t.skipLink}
       </a>
       <style jsx global>{`
         @keyframes continuousScroll {
@@ -224,25 +294,31 @@ export default function LandingPage() {
             </span>
           </div>
 
-          <div className="hidden items-center gap-8 md:flex">
-            {["Platform", "Core Supports", "Compliance", "Contact"].map((item) => (
-              <a
-                key={item}
-                href={`#${item.toLowerCase().replace(/\s+/g, "-")}`}
-                className="text-[15px] font-medium text-white/90 transition-colors hover:text-white"
-              >
-                {item}
-              </a>
-            ))}
-          </div>
-
           <div className="flex items-center gap-3">
+            {/* Language Toggle */}
+            <div className="flex items-center gap-1 rounded-full bg-white/10 p-0.5 text-sm">
+              <button
+                onClick={() => setLanguage("en")}
+                className={`rounded-full px-2.5 py-1 font-medium transition-colors ${lang === "en" ? "bg-white/20 text-white" : "text-white/60 hover:text-white/80"}`}
+                aria-label="English"
+              >
+                EN
+              </button>
+              <button
+                onClick={() => setLanguage("es")}
+                className={`rounded-full px-2.5 py-1 font-medium transition-colors ${lang === "es" ? "bg-white/20 text-white" : "text-white/60 hover:text-white/80"}`}
+                aria-label="Español"
+              >
+                ES
+              </button>
+            </div>
+
             <Button
-              className="hidden rounded-full px-5 py-2 text-sm font-medium transition-all hover:opacity-90 sm:flex"
+              className="rounded-full px-5 py-2 text-sm font-medium transition-all hover:opacity-90"
               style={{ backgroundColor: "#C9725B", color: "white" }}
               onClick={() => document.getElementById("contact")?.scrollIntoView({ behavior: "smooth" })}
             >
-              Request a Demo
+              {t.requestDemo}
             </Button>
             <button
               className="rounded-lg p-2 text-white md:hidden"
@@ -257,25 +333,15 @@ export default function LandingPage() {
 
         {mobileMenuOpen && (
           <div className="absolute left-0 right-0 top-full px-4 py-4 shadow-lg md:hidden" style={{ backgroundColor: "#2D5A5A" }}>
-            {["Platform", "Core Supports", "Compliance", "Contact"].map((item) => (
-              <a
-                key={item}
-                href={`#${item.toLowerCase().replace(/\s+/g, "-")}`}
-                className="block min-h-[44px] py-3 text-sm font-medium leading-[44px] text-white/90"
-                onClick={() => setMobileMenuOpen(false)}
-              >
-                {item}
-              </a>
-            ))}
             <Button
-              className="mt-4 w-full rounded-full"
+              className="w-full rounded-full"
               style={{ backgroundColor: "#C9725B", color: "white" }}
               onClick={() => {
                 setMobileMenuOpen(false);
                 document.getElementById("contact")?.scrollIntoView({ behavior: "smooth" });
               }}
             >
-              Request a Demo
+              {t.requestDemo}
             </Button>
           </div>
         )}
@@ -316,25 +382,35 @@ export default function LandingPage() {
           <div className="py-12 lg:min-h-[380px] lg:py-16">
             <div className="max-w-xl">
               <h1
-                className="mb-4 text-3xl font-normal leading-[1.15] tracking-tight sm:text-[2.5rem]"
+                className={`mb-4 text-3xl font-normal leading-[1.15] tracking-tight ${lang === "es" ? "sm:text-[2.15rem]" : "sm:text-[2.5rem]"}`}
                 style={{ fontFamily: serif, color: "#2D5A5A" }}
               >
-                Empowering<br className="sm:hidden" /> Community
-                <br />
-                Health Workers<br className="sm:hidden" /> Across Texas
+                {lang === "en" ? (
+                  <>Empowering<br className="sm:hidden" /> Community<br />Health Workers<br className="sm:hidden" /> Across Texas</>
+                ) : (
+                  <>Empoderando a los<br className="sm:hidden" /> Promotores<br />de Salud<br className="sm:hidden" /> en Todo Texas</>
+                )}
               </h1>
-              <p className="mb-6 text-[15px] leading-relaxed" style={{ color: "#5A6A6A" }}>
-                CHW360 provides training, resources, and support to help
-                <br className="hidden lg:inline" /> Community Health Workers learn, grow, and make a difference
-                <br className="hidden lg:inline" /> in their communities.
+              <p className="mb-4 text-[15px] leading-relaxed" style={{ color: "#5A6A6A" }}>
+                {t.heroDescription}
               </p>
+              <div className="mb-6 flex flex-wrap items-center gap-3 text-sm">
+                <span className="flex items-center gap-1.5 font-medium" style={{ color: "#C9725B" }}>
+                  {t.partnership}
+                </span>
+                <span className="text-[#5A6A6A]/40">|</span>
+                <span className="flex items-center gap-1.5" style={{ color: "#5A6A6A" }}>
+                  <Globe className="h-3.5 w-3.5" />
+                  {t.bilingualBadge}
+                </span>
+              </div>
               <div className="flex flex-wrap gap-3">
                 <Button
                   className="rounded-full px-5 py-2 text-sm font-medium transition-all hover:opacity-90"
                   style={{ backgroundColor: "#C9725B", color: "white" }}
                   onClick={() => document.getElementById("contact")?.scrollIntoView({ behavior: "smooth" })}
                 >
-                  Request a Demo
+                  {t.requestDemo}
                 </Button>
                 <Button
                   variant="outline"
@@ -342,7 +418,7 @@ export default function LandingPage() {
                   style={{ borderColor: "#5A6A6A", color: "#5A6A6A" }}
                   onClick={() => document.getElementById("contact")?.scrollIntoView({ behavior: "smooth" })}
                 >
-                  Join Updates
+                  {t.joinUpdates}
                 </Button>
               </div>
             </div>
@@ -377,20 +453,20 @@ export default function LandingPage() {
         <div className="mx-auto max-w-6xl">
           <div className="mb-10">
             <h2 className="mb-3 text-3xl font-normal" style={{ fontFamily: serif, color: "#2D5A5A" }}>
-              Core Supports for CHWs
+              {t.coreSupportTitle}
             </h2>
             <p className="text-base" style={{ color: "#4A5568" }}>
-              Equipping CHWs with skills and tools they need to serve Texas communities.
+              {t.coreSupportSubtitle}
             </p>
           </div>
           <div className="grid gap-5 sm:grid-cols-2 lg:grid-cols-3">
-            {coreSupports.map((support, index) => (
+            {coreSupportIcons.map((icon, index) => (
               <div key={index} className="rounded-xl bg-white p-5 shadow-sm transition-shadow hover:shadow-md" style={{ border: "1px solid #E8E4E0" }}>
                 <div className="mb-3 flex items-center gap-3">
-                  <CoreSupportIcon type={support.icon} />
-                  <h3 className="text-lg font-semibold leading-tight" style={{ color: "#2D5A5A" }}>{support.title}</h3>
+                  <CoreSupportIcon type={icon} />
+                  <h3 className="text-lg font-semibold leading-tight" style={{ color: "#2D5A5A" }}>{t.coreSupports[index]!.title}</h3>
                 </div>
-                <p className="text-sm leading-relaxed" style={{ color: "#6B7280" }}>{support.description}</p>
+                <p className="text-sm leading-relaxed" style={{ color: "#6B7280" }}>{t.coreSupports[index]!.description}</p>
               </div>
             ))}
           </div>
@@ -403,22 +479,22 @@ export default function LandingPage() {
           <div className="grid gap-12 lg:grid-cols-2 lg:gap-16">
             <div>
               <h2 className="mb-4 text-3xl font-normal" style={{ fontFamily: serif, color: "#2D5A5A" }}>
-                Who CHW360 Supports
+                {t.audienceTitle}
               </h2>
               <p className="mb-8 text-base leading-relaxed" style={{ color: "#4A5568" }}>
-                CHW360 delivers practical, standards-aligned training and support that respects the Community Health Worker scope of practice and meets Texas certification and workforce requirements.
+                {t.audienceDescription}
               </p>
               <div className="grid grid-cols-1 gap-4 rounded-xl p-5 sm:grid-cols-3" style={{ backgroundColor: "#FAFAFA" }}>
-                {audiences.map((audience, index) => (
+                {audienceIcons.map((icon, index) => (
                   <div key={index} className="flex flex-col text-center">
                     <div className="flex h-20 items-center justify-center">
-                      <AudienceIcon type={audience.icon} />
+                      <AudienceIcon type={icon} />
                     </div>
                     <h3 className="mb-2 min-h-[40px] whitespace-pre-line text-sm font-semibold" style={{ color: "#2D5A5A" }}>
-                      {audience.title}
+                      {t.audiences[index]!.title}
                     </h3>
                     <p className="min-h-[48px] text-xs leading-relaxed" style={{ color: "#6B7280" }}>
-                      {audience.description}
+                      {t.audiences[index]!.description}
                     </p>
                   </div>
                 ))}
@@ -428,17 +504,17 @@ export default function LandingPage() {
             {/* Contact Form */}
             <div className="rounded-xl p-6" style={{ backgroundColor: "#EDE4DA" }}>
               <h2 className="mb-4 text-3xl font-normal" style={{ fontFamily: serif, color: "#2D5A5A" }}>
-                Get in Touch
+                {t.contactTitle}
               </h2>
               <p className="mb-6 text-base" style={{ color: "#4A5568" }}>
-                Ready to learn more? Reach out to see how CHW360 can support Community Health Workers and CHW programs in your organization.
+                {t.contactDescription}
               </p>
               <form className="space-y-4" onSubmit={handleSubmit}>
                 <div>
-                  <label htmlFor="contact-name" className="sr-only">Name</label>
+                  <label htmlFor="contact-name" className="sr-only">{t.namePlaceholder}</label>
                   <Input
                     id="contact-name"
-                    placeholder="Name *"
+                    placeholder={t.namePlaceholder}
                     value={formData.name}
                     onChange={(e) => setFormData((p) => ({ ...p, name: e.target.value }))}
                     onFocus={handleFormFocus}
@@ -448,11 +524,11 @@ export default function LandingPage() {
                   />
                 </div>
                 <div>
-                  <label htmlFor="contact-email" className="sr-only">Email</label>
+                  <label htmlFor="contact-email" className="sr-only">{t.emailPlaceholder}</label>
                   <Input
                     id="contact-email"
                     type="email"
-                    placeholder="Email *"
+                    placeholder={t.emailPlaceholder}
                     value={formData.email}
                     onChange={(e) => setFormData((p) => ({ ...p, email: e.target.value }))}
                     onFocus={handleFormFocus}
@@ -462,10 +538,10 @@ export default function LandingPage() {
                   />
                 </div>
                 <div>
-                  <label htmlFor="contact-org" className="sr-only">Organization</label>
+                  <label htmlFor="contact-org" className="sr-only">{t.orgPlaceholder}</label>
                   <Input
                     id="contact-org"
-                    placeholder="Organization"
+                    placeholder={t.orgPlaceholder}
                     value={formData.organization}
                     onChange={(e) => setFormData((p) => ({ ...p, organization: e.target.value }))}
                     onFocus={handleFormFocus}
@@ -474,10 +550,10 @@ export default function LandingPage() {
                   />
                 </div>
                 <div>
-                  <label htmlFor="contact-message" className="sr-only">Message</label>
+                  <label htmlFor="contact-message" className="sr-only">{t.messagePlaceholder}</label>
                   <Textarea
                     id="contact-message"
-                    placeholder="Message *"
+                    placeholder={t.messagePlaceholder}
                     value={formData.message}
                     onChange={(e) => setFormData((p) => ({ ...p, message: e.target.value }))}
                     onFocus={handleFormFocus}
@@ -495,10 +571,10 @@ export default function LandingPage() {
                   {submitMutation.isPending ? (
                     <>
                       <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                      Sending...
+                      {t.sending}
                     </>
                   ) : (
-                    "Send Message"
+                    t.send
                   )}
                 </Button>
               </form>
@@ -511,8 +587,8 @@ export default function LandingPage() {
 
       {/* Footer */}
       <footer style={{ backgroundColor: "#2D5A5A" }}>
-        <div className="mx-auto max-w-6xl px-4 py-10">
-          <div className="flex flex-col items-center justify-between gap-6 border-b border-white/20 pb-8 md:flex-row">
+        <div className="mx-auto max-w-6xl px-4 py-8">
+          <div className="flex flex-col items-center gap-4">
             <div className="flex items-center gap-2">
               <Image src="/chw/logo.png" alt="CHW360" width={32} height={32} className="h-8 w-8 brightness-0 invert" />
               <span className="text-xl tracking-tight text-white">
@@ -520,37 +596,19 @@ export default function LandingPage() {
                 <span className="font-light text-white/80">360</span>
               </span>
             </div>
-            <div className="flex flex-wrap justify-center gap-6">
-              {["Platform", "Core Supports", "Compliance", "Contact"].map((link) => (
-                <a key={link} href={`#${link.toLowerCase().replace(/\s+/g, "-")}`} className="text-sm text-white/80 transition-colors hover:text-white">
-                  {link}
-                </a>
-              ))}
+            <div className="flex flex-wrap justify-center gap-x-6 gap-y-2 text-sm text-white/70">
+              <a href="mailto:info@chw360.com" className="flex items-center gap-2 transition-colors hover:text-white">
+                <Mail className="h-4 w-4" />
+                info@chw360.com
+              </a>
+              <a href="tel:+17372426375" className="flex items-center gap-2 transition-colors hover:text-white">
+                <Phone className="h-4 w-4" />
+                (737) 242-6375
+              </a>
             </div>
-            <div className="flex gap-3">
-              {[
-                { Icon: Facebook, label: "Facebook" },
-                { Icon: Linkedin, label: "LinkedIn" },
-                { Icon: Twitter, label: "Twitter" },
-              ].map(({ Icon, label }) => (
-                <a key={label} href={`#${label.toLowerCase()}`} aria-label={label} className="flex h-10 w-10 items-center justify-center rounded-full bg-white/10 transition-colors hover:bg-white/20">
-                  <Icon className="h-4 w-4 text-white" />
-                </a>
-              ))}
+            <div className="text-center text-xs text-white/50">
+              &copy; {new Date().getFullYear()} CHW360 | {t.copyright}
             </div>
-          </div>
-          <div className="flex flex-wrap justify-center gap-6 py-6 text-sm text-white/70">
-            <a href="mailto:info@chw360.com" className="flex items-center gap-2 transition-colors hover:text-white">
-              <Mail className="h-4 w-4" />
-              info@chw360.com
-            </a>
-            <a href="tel:+12212345678" className="flex items-center gap-2 transition-colors hover:text-white">
-              <Phone className="h-4 w-4" />
-              (22) 123-4567
-            </a>
-          </div>
-          <div className="text-center text-xs text-white/50">
-            &copy; {new Date().getFullYear()} CHW360 | Educational Use Only. | Not Medical Advice.
           </div>
         </div>
       </footer>

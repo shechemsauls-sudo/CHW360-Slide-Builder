@@ -4,13 +4,14 @@ import { useState } from "react";
 import { api } from "~/trpc/react";
 import { Button } from "~/components/ui/button";
 import { Input } from "~/components/ui/input";
-import { Loader2, UserPlus, Mail, Shield, User } from "lucide-react";
+import { Loader2, UserPlus, Mail, Shield, User, Trash2 } from "lucide-react";
 import { toast } from "sonner";
 
 export default function UsersPage() {
   const [showInvite, setShowInvite] = useState(false);
   const [inviteEmail, setInviteEmail] = useState("");
   const [inviteRole, setInviteRole] = useState<"user" | "admin">("user");
+  const [deleteConfirm, setDeleteConfirm] = useState<string | null>(null);
 
   const utils = api.useUtils();
   const { data: users, isLoading } = api.users.list.useQuery();
@@ -34,6 +35,15 @@ export default function UsersPage() {
   const updateRoleMutation = api.users.updateRole.useMutation({
     onSuccess: () => {
       toast.success("Role updated");
+      utils.users.list.invalidate();
+    },
+    onError: (err) => toast.error(err.message),
+  });
+
+  const deleteMutation = api.users.delete.useMutation({
+    onSuccess: () => {
+      toast.success("User deleted");
+      setDeleteConfirm(null);
       utils.users.list.invalidate();
     },
     onError: (err) => toast.error(err.message),
@@ -174,6 +184,31 @@ export default function UsersPage() {
                       >
                         <Shield className="h-4 w-4" />
                       </button>
+                      {deleteConfirm === user.id ? (
+                        <div className="flex items-center gap-1">
+                          <button
+                            onClick={() => deleteMutation.mutate({ profileId: user.id })}
+                            disabled={deleteMutation.isPending}
+                            className="rounded px-1.5 py-0.5 text-xs font-medium text-red-400 hover:bg-red-400/10"
+                          >
+                            {deleteMutation.isPending ? "..." : "Confirm"}
+                          </button>
+                          <button
+                            onClick={() => setDeleteConfirm(null)}
+                            className="rounded px-1.5 py-0.5 text-xs text-gray-400 hover:bg-white/10"
+                          >
+                            Cancel
+                          </button>
+                        </div>
+                      ) : (
+                        <button
+                          onClick={() => setDeleteConfirm(user.id)}
+                          className="rounded p-1 text-xs text-red-400/60 hover:bg-white/10 hover:text-red-400"
+                          title="Delete user"
+                        >
+                          <Trash2 className="h-4 w-4" />
+                        </button>
+                      )}
                     </div>
                   </td>
                 </tr>

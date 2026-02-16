@@ -1,6 +1,7 @@
 import { redirect } from "next/navigation";
 import { createClient } from "~/lib/supabase/server";
 import { Card, CardContent, CardHeader, CardTitle } from "~/components/ui/card";
+import { PasswordResetCard } from "./password-reset-card";
 
 export default async function AdminSettingsPage() {
   const supabase = await createClient();
@@ -39,6 +40,8 @@ export default async function AdminSettingsPage() {
           </div>
         </CardContent>
       </Card>
+
+      <PasswordResetCard email={user.email ?? ""} />
 
       <Card className="border-0 bg-white/5">
         <CardHeader>

@@ -134,4 +134,44 @@ export const usersRouter = createTRPCRouter({
 
       return { success: true, profile: updated };
     }),
+
+  delete: adminProcedure
+    .input(z.object({ profileId: z.string().uuid() }))
+    .mutation(async ({ ctx, input }) => {
+      // Look up the profile
+      const [profile] = await ctx.db
+        .select()
+        .from(profiles)
+        .where(eq(profiles.id, input.profileId))
+        .limit(1);
+
+      if (!profile) {
+        throw new TRPCError({ code: "NOT_FOUND", message: "Profile not found" });
+      }
+
+      // Prevent self-deletion
+      if (profile.authId === ctx.user.id) {
+        throw new TRPCError({
+          code: "FORBIDDEN",
+          message: "You cannot delete your own account",
+        });
+      }
+
+      // Delete from Supabase Auth
+      const { error: authError } = await supabaseAdmin.auth.admin.deleteUser(
+        profile.authId,
+      );
+
+      if (authError) {
+        throw new TRPCError({
+          code: "INTERNAL_SERVER_ERROR",
+          message: authError.message,
+        });
+      }
+
+      // Delete profile (cascades to decks, provider_preferences)
+      await ctx.db.delete(profiles).where(eq(profiles.id, input.profileId));
+
+      return { success: true };
+    }),
 });

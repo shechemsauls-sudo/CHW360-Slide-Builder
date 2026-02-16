@@ -2,6 +2,7 @@
 
 import { useState } from "react";
 import { Eye, MousePointerClick, Send } from "lucide-react";
+
 import { Card, CardContent, CardHeader, CardTitle } from "~/components/ui/card";
 import { Button } from "~/components/ui/button";
 import { api } from "~/trpc/react";
@@ -16,6 +17,7 @@ function pageLabel(page: string) {
 
 export default function AnalyticsPage() {
   const [page, setPage] = useState<string | undefined>(undefined);
+  const [hoveredBar, setHoveredBar] = useState<number | null>(null);
 
   const { data: pagesData } = api.analytics.pages.useQuery();
   const { data: overview } = api.analytics.overview.useQuery(
@@ -104,28 +106,56 @@ export default function AnalyticsPage() {
         <CardContent>
           {!overview?.viewsPerDay || overview.viewsPerDay.length === 0 ? (
             <p className="py-12 text-center text-gray-500">No view data yet. Views will appear once the landing page receives traffic.</p>
-          ) : (
-            <div className="space-y-2">
-              <div className="flex h-48 items-end gap-1">
-                {overview.viewsPerDay.map((day) => {
-                  const max = Math.max(...overview.viewsPerDay.map((d) => d.count));
-                  const height = max > 0 ? (day.count / max) * 100 : 0;
-                  return (
-                    <div key={day.date} className="group relative flex-1" title={`${day.date}: ${day.count}`}>
+          ) : (() => {
+            const viewsData = overview.viewsPerDay;
+            const maxCount = Math.max(...viewsData.map((d) => d.count), 1);
+            return (
+              <div>
+                <div className="flex h-48 items-end gap-1">
+                  {viewsData.map((day, index) => {
+                    const heightPx = Math.max((day.count / maxCount) * 192, 6);
+                    const isHovered = hoveredBar === index;
+                    return (
                       <div
-                        className="w-full rounded-t transition-all hover:opacity-80"
-                        style={{ height: `${Math.max(height, 2)}%`, backgroundColor: "#2D5A5A" }}
-                      />
-                    </div>
-                  );
-                })}
+                        key={day.date}
+                        className="group relative flex-1"
+                        onMouseEnter={() => setHoveredBar(index)}
+                        onMouseLeave={() => setHoveredBar(null)}
+                      >
+                        {isHovered && (
+                          <div className="absolute -top-10 left-1/2 z-10 -translate-x-1/2 whitespace-nowrap rounded bg-gray-900 px-2 py-1 text-xs text-white shadow-lg">
+                            {new Date(day.date + "T00:00:00").toLocaleDateString("en-US", { month: "short", day: "numeric" })}
+                            : {day.count} {day.count === 1 ? "view" : "views"}
+                          </div>
+                        )}
+                        <div
+                          className="w-full rounded-t transition-all"
+                          style={{
+                            height: `${heightPx}px`,
+                            backgroundColor: isHovered ? "#3D7A7A" : "#2D5A5A",
+                          }}
+                        />
+                      </div>
+                    );
+                  })}
+                </div>
+                <div className="mt-2 flex gap-1">
+                  {viewsData.map((day, index) => {
+                    const showLabel = index === 0 || index === viewsData.length - 1 || index % 7 === 0;
+                    return (
+                      <div key={day.date} className="flex-1 text-center">
+                        {showLabel && (
+                          <span className="text-[10px] text-gray-500">
+                            {new Date(day.date + "T00:00:00").toLocaleDateString("en-US", { month: "short", day: "numeric" })}
+                          </span>
+                        )}
+                      </div>
+                    );
+                  })}
+                </div>
               </div>
-              <div className="flex justify-between text-xs text-gray-500">
-                <span>{overview.viewsPerDay[0]?.date}</span>
-                <span>{overview.viewsPerDay[overview.viewsPerDay.length - 1]?.date}</span>
-              </div>
-            </div>
-          )}
+            );
+          })()}
         </CardContent>
       </Card>
 
