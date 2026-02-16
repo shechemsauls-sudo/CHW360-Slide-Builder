@@ -158,6 +158,43 @@ Referral
 \`\`\``,
     hint: "Categories, roles, or features → `:::icon-grid`",
   },
+  "card-grid": {
+    doc: `**:::card-grid**
+Multi-color card row for overviews and summaries. Each card gets a distinct color. Format: Title | Description per line. 3-4 items ideal.
+\`\`\`
+:::card-grid
+Foundation Module | Building core organizational skills
+Applied Skills | Real-world scenarios and workflows
+Advanced Techniques | Complex coordination strategies
+:::
+\`\`\``,
+    hint: "Overview categories, key pillars, or summary groups → `:::card-grid`",
+  },
+  "chevron-flow": {
+    doc: `**:::chevron-flow**
+Colored arrow/chevron flow for sequences and processes. Each step is a distinct colored arrow banner. Format: Title | Description per line.
+\`\`\`
+:::chevron-flow
+Identify | Know what needs doing
+Schedule | Decide when to do it
+Execute | Follow through on plan
+Review | Assess and adjust
+:::
+\`\`\``,
+    hint: "Sequential processes, phases, or pipelines → `:::chevron-flow`",
+  },
+  "accent-list": {
+    doc: `**:::accent-list**
+Stacked list with a different colored left border per item. Great for features, components, or categorized items. Format: Title | Description per line.
+\`\`\`
+:::accent-list
+Tracking Appointments | Knowing where to be and when
+Managing Referrals | Following up on every connection
+Being Prepared | Having what you need for meetings
+:::
+\`\`\``,
+    hint: "Features, components, or categorized items with descriptions → `:::accent-list`",
+  },
   "bar-chart": {
     doc: `**:::bar-chart Title | Series1, Series2**
 Bar chart comparing values across categories. Use \`|\` to separate title from optional series names. Each line: \`Label: value\` or \`Label: value1, value2\` for multi-series.
@@ -282,6 +319,9 @@ ${hints}
 - Blocks work best on "content", "bullets", and "activity" slide types
 - You can mix regular markdown with blocks in the same slide body
 - Do NOT use blocks on "title" or "closing" slides
+- Use \`:::card-grid\` for slide overviews, pillar summaries, and category breakdowns (3-4 items)
+- Use \`:::chevron-flow\` instead of \`:::flow-diagram\` when you have 3-5 process steps with descriptions
+- Use \`:::accent-list\` for categorized items where each has a title and description
 
 ### Chart & Data Block Guidelines
 - **Chart blocks are best when source content contains numerical data** — do NOT fabricate numbers

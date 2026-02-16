@@ -17,6 +17,7 @@ export interface SlideTheme {
     /** CSS gradient for accent bars/elements */
     accent: string;
   };
+  palette?: string[];
   typography: {
     headingFont: string;
     bodyFont: string;

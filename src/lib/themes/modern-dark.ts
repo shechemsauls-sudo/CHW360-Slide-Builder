@@ -13,6 +13,7 @@ export const modernDark: SlideTheme = {
     textMuted: "rgba(248,250,252,0.65)",
     accent: "#3b82f6",
   },
+  palette: ["#3b82f6", "#8b5cf6", "#06b6d4", "#10b981"],
   gradient: {
     background: "linear-gradient(160deg, #0f172a 0%, #0a1628 50%, #111d3a 100%)",
     accent: "linear-gradient(90deg, #3b82f6 0%, #60a5fa 100%)",

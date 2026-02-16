@@ -1,21 +1,21 @@
 import type { SlideTheme } from "./types";
 
-export const chwTeal: SlideTheme = {
-  id: "chw-teal",
-  name: "CHW Teal",
-  description: "Brand theme — deep teal gradient, coral accents, glassmorphism",
+export const chwCream: SlideTheme = {
+  id: "chw-cream",
+  name: "CHW Cream",
+  description: "Warm light — brand cream palette, teal headings, coral accents",
   colors: {
     primary: "#2D5A5A",
     secondary: "#5B8A8A",
-    background: "#1E4545",
-    surface: "rgba(255,255,255,0.08)",
-    text: "#FFFFFF",
-    textMuted: "rgba(255,255,255,0.75)",
+    background: "#FAF7F4",
+    surface: "#FFFFFF",
+    text: "#2D5A5A",
+    textMuted: "#4A5568",
     accent: "#C9725B",
   },
   palette: ["#2D5A5A", "#C9725B", "#C9A84C", "#7D8D6D"],
   gradient: {
-    background: "linear-gradient(135deg, #2D5A5A 0%, #1A3D3D 100%)",
+    background: "linear-gradient(135deg, #FAF7F4 0%, #F5EDE6 100%)",
     accent: "linear-gradient(90deg, #C9725B 0%, #D4896E 100%)",
   },
   typography: {

@@ -1,3 +1,4 @@
+import { relations } from "drizzle-orm";
 import { boolean, integer, jsonb, pgTableCreator, text, timestamp, uuid } from "drizzle-orm/pg-core";
 
 /**
@@ -88,3 +89,26 @@ export const pageViews = createTable("page_views", {
   userAgent: text("user_agent"),
   createdAt: timestamp("created_at", { withTimezone: true }).defaultNow().notNull(),
 });
+
+// --- Relations ---
+
+export const profilesRelations = relations(profiles, ({ many, one }) => ({
+  decks: many(decks),
+  providerPreferences: one(providerPreferences),
+}));
+
+export const decksRelations = relations(decks, ({ one }) => ({
+  profile: one(profiles, { fields: [decks.profileId], references: [profiles.id] }),
+}));
+
+export const providerPreferencesRelations = relations(providerPreferences, ({ one }) => ({
+  profile: one(profiles, { fields: [providerPreferences.profileId], references: [profiles.id] }),
+}));
+
+export const crmContactsRelations = relations(crmContacts, ({ many }) => ({
+  submissions: many(contactSubmissions),
+}));
+
+export const contactSubmissionsRelations = relations(contactSubmissions, ({ one }) => ({
+  crmContact: one(crmContacts, { fields: [contactSubmissions.crmContactId], references: [crmContacts.id] }),
+}));

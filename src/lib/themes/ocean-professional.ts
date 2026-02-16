@@ -13,6 +13,7 @@ export const oceanProfessional: SlideTheme = {
     textMuted: "rgba(240,249,255,0.6)",
     accent: "#06b6d4",
   },
+  palette: ["#06b6d4", "#3b82f6", "#8b5cf6", "#10b981"],
   gradient: {
     background: "linear-gradient(155deg, #0f2847 0%, #0c1929 60%, #0e1f3d 100%)",
     accent: "linear-gradient(90deg, #06b6d4 0%, #22d3ee 100%)",

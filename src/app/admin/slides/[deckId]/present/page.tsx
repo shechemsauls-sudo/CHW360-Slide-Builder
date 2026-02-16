@@ -4,6 +4,7 @@ import { useCallback, useEffect, useRef, useState } from "react";
 import { useParams, useRouter } from "next/navigation";
 import { api } from "~/trpc/react";
 import { getTheme } from "~/lib/themes";
+import { parseSpeakerNotes } from "~/lib/slides/parse-speaker-notes";
 import { SlideRenderer } from "~/components/slides/slide-renderer";
 import { MarkdownRenderer } from "~/components/slides/markdown-renderer";
 import type { SlideData } from "~/lib/ai/types";
@@ -231,45 +232,6 @@ export default function PresentPage() {
       </button>
     </div>
   );
-}
-
-/** Parse structured speaker notes into sections */
-function parseSpeakerNotes(notes: string): {
-  talkingPoints: string[];
-  presenterTips: string[];
-  transition: string | null;
-  isStructured: boolean;
-} {
-  const hasTalkingPoints = notes.includes("**Talking Points**");
-  if (!hasTalkingPoints) {
-    return { talkingPoints: [], presenterTips: [], transition: null, isStructured: false };
-  }
-
-  const sections = notes.split(/\*\*(Talking Points|Presenter Tips|Transition)\*\*/);
-  const talkingPoints: string[] = [];
-  const presenterTips: string[] = [];
-  let transition: string | null = null;
-
-  for (let i = 0; i < sections.length; i++) {
-    const header = sections[i]?.trim();
-    const content = sections[i + 1]?.trim();
-    if (!content) continue;
-
-    const lines = content
-      .split("\n")
-      .map((l) => l.replace(/^[-•]\s*/, "").trim())
-      .filter(Boolean);
-
-    if (header === "Talking Points") {
-      talkingPoints.push(...lines);
-    } else if (header === "Presenter Tips") {
-      presenterTips.push(...lines);
-    } else if (header === "Transition") {
-      transition = lines.join(" ").replace(/^[""]|[""]$/g, "").trim() || null;
-    }
-  }
-
-  return { talkingPoints, presenterTips, transition, isStructured: true };
 }
 
 function PresenterNotesPanel({ notes }: { notes: string }) {

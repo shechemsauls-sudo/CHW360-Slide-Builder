@@ -13,6 +13,7 @@ export const sunsetWarmth: SlideTheme = {
     textMuted: "rgba(255,248,240,0.65)",
     accent: "#f59e0b",
   },
+  palette: ["#f59e0b", "#ef4444", "#d97706", "#84cc16"],
   gradient: {
     background: "linear-gradient(150deg, #292018 0%, #1c1412 50%, #2a1a10 100%)",
     accent: "linear-gradient(90deg, #f59e0b 0%, #d97706 100%)",

@@ -13,6 +13,7 @@ export const vibrantHealth: SlideTheme = {
     textMuted: "rgba(255,255,255,0.7)",
     accent: "#10b981",
   },
+  palette: ["#10b981", "#f59e0b", "#3b82f6", "#ef4444"],
   gradient: {
     background: "linear-gradient(145deg, #064e3b 0%, #052e21 60%, #0a3d2e 100%)",
     accent: "linear-gradient(90deg, #10b981 0%, #34d399 100%)",

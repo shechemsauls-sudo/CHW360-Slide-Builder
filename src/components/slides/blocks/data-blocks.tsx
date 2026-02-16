@@ -1,4 +1,5 @@
 import type { SlideTheme } from "~/lib/themes";
+import { getPaletteColor } from "~/lib/themes";
 
 interface DataBlockProps {
   arg?: string;
@@ -37,31 +38,34 @@ export function ProgressBars({ arg, content, theme }: DataBlockProps) {
         </p>
       )}
       <div className="space-y-3">
-        {items.map((item, i) => (
+        {items.map((item, i) => {
+          const color = getPaletteColor(theme, i);
+          return (
           <div key={i}>
             <div className="mb-1 flex items-baseline justify-between">
               <span className="text-xs font-medium" style={{ color: theme.colors.text }}>
                 {item.label}
               </span>
-              <span className="text-xs font-bold tabular-nums" style={{ color: theme.colors.accent }}>
+              <span className="text-xs font-bold tabular-nums" style={{ color }}>
                 {item.value}%
               </span>
             </div>
             <div
               className="h-2.5 w-full overflow-hidden rounded-full"
-              style={{ backgroundColor: `${theme.colors.accent}15` }}
+              style={{ backgroundColor: `${color}15` }}
             >
               <div
                 className="h-full rounded-full transition-all"
                 style={{
                   width: `${item.value}%`,
-                  background: `linear-gradient(90deg, ${theme.colors.accent}, ${theme.colors.accent}cc)`,
-                  boxShadow: `0 0 6px ${theme.colors.accent}30`,
+                  background: `linear-gradient(90deg, ${color}, ${color}cc)`,
+                  boxShadow: `0 0 6px ${color}30`,
                 }}
               />
             </div>
           </div>
-        ))}
+          );
+        })}
       </div>
     </div>
   );
@@ -97,20 +101,22 @@ export function MetricRow({ arg, content, theme }: DataBlockProps) {
         </p>
       )}
       <div className="flex items-stretch justify-center gap-3">
-        {items.map((item, i) => (
+        {items.map((item, i) => {
+          const color = getPaletteColor(theme, i);
+          return (
           <div
             key={i}
             className="flex flex-1 flex-col items-center justify-center rounded-xl px-4 py-4"
             style={{
-              backgroundColor: `${theme.colors.accent}10`,
-              border: `1px solid ${theme.colors.accent}20`,
+              backgroundColor: `${color}10`,
+              border: `1px solid ${color}20`,
             }}
           >
             <span
               className="text-2xl font-extrabold leading-none tracking-tight"
               style={{
-                color: theme.colors.accent,
-                textShadow: `0 1px 8px ${theme.colors.accent}20`,
+                color,
+                textShadow: `0 1px 8px ${color}20`,
               }}
             >
               {item.value}
@@ -119,7 +125,7 @@ export function MetricRow({ arg, content, theme }: DataBlockProps) {
               <>
                 <div
                   className="mx-auto mt-2 mb-1.5 h-px w-8 rounded-full"
-                  style={{ background: `${theme.colors.accent}30` }}
+                  style={{ background: `${color}30` }}
                 />
                 <span
                   className="text-[11px] font-medium leading-tight text-center"
@@ -130,7 +136,8 @@ export function MetricRow({ arg, content, theme }: DataBlockProps) {
               </>
             )}
           </div>
-        ))}
+          );
+        })}
       </div>
     </div>
   );

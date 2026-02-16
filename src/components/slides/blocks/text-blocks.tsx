@@ -1,4 +1,5 @@
 import type { SlideTheme } from "~/lib/themes";
+import { getPaletteColor } from "~/lib/themes";
 
 export function InfoBox({ title, content, theme }: { title?: string; content: string; theme: SlideTheme }) {
   return (
@@ -89,14 +90,16 @@ export function NumberedSteps({ content, theme }: { content: string; theme: Slid
           }}
         />
       )}
-      {steps.map((step, i) => (
+      {steps.map((step, i) => {
+        const color = getPaletteColor(theme, i);
+        return (
         <div key={i} className="relative flex items-start gap-4 py-1.5">
           <div
             className="relative z-10 flex h-8 w-8 shrink-0 items-center justify-center rounded-full text-xs font-bold shadow-sm"
             style={{
-              background: `linear-gradient(135deg, ${theme.colors.accent}, ${theme.colors.accent}cc)`,
+              background: `linear-gradient(135deg, ${color}, ${color}cc)`,
               color: theme.colors.background,
-              boxShadow: `0 2px 8px ${theme.colors.accent}30`,
+              boxShadow: `0 2px 8px ${color}30`,
             }}
           >
             {i + 1}
@@ -104,8 +107,8 @@ export function NumberedSteps({ content, theme }: { content: string; theme: Slid
           <div
             className="flex-1 rounded-xl px-4 py-2.5"
             style={{
-              backgroundColor: `${theme.colors.accent}08`,
-              border: `1px solid ${theme.colors.accent}12`,
+              backgroundColor: `${color}08`,
+              border: `1px solid ${color}12`,
             }}
           >
             <p className="text-sm leading-relaxed" style={{ color: theme.colors.text }}>
@@ -113,7 +116,8 @@ export function NumberedSteps({ content, theme }: { content: string; theme: Slid
             </p>
           </div>
         </div>
-      ))}
+        );
+      })}
     </div>
   );
 }
@@ -125,36 +129,36 @@ export function FlowDiagram({ content, theme }: { content: string; theme: SlideT
 
   return (
     <div className="flex flex-wrap items-center justify-center gap-1.5 py-2">
-      {items.map((item, i) => (
+      {items.map((item, i) => {
+        const color = getPaletteColor(theme, i);
+        return (
         <div key={i} className="flex items-center gap-1.5">
           <div
             className="relative rounded-xl px-5 py-3 text-center text-sm font-semibold shadow-sm"
             style={{
-              background: i === 0
-                ? `linear-gradient(135deg, ${theme.colors.accent}, ${theme.colors.accent}dd)`
-                : `${theme.colors.accent}12`,
-              color: i === 0 ? theme.colors.background : theme.colors.text,
-              border: i === 0 ? "none" : `1px solid ${theme.colors.accent}20`,
-              boxShadow: i === 0 ? `0 4px 12px ${theme.colors.accent}25` : "none",
+              background: `linear-gradient(135deg, ${color}, ${color}dd)`,
+              color: theme.colors.background,
+              boxShadow: `0 4px 12px ${color}25`,
             }}
           >
             {item}
           </div>
           {i < items.length - 1 && (
             <div className="flex items-center">
-              <div className="h-0.5 w-4 rounded-full" style={{ backgroundColor: `${theme.colors.accent}50` }} />
+              <div className="h-0.5 w-4 rounded-full" style={{ backgroundColor: `${color}50` }} />
               <div
                 className="h-0 w-0"
                 style={{
                   borderTop: "5px solid transparent",
                   borderBottom: "5px solid transparent",
-                  borderLeft: `6px solid ${theme.colors.accent}70`,
+                  borderLeft: `6px solid ${color}70`,
                 }}
               />
             </div>
           )}
         </div>
-      ))}
+        );
+      })}
     </div>
   );
 }
@@ -228,21 +232,23 @@ export function IconGrid({ content, theme }: { content: string; theme: SlideThem
     <div className={`grid gap-3 ${
       cols === 2 ? "grid-cols-2" : cols === 3 ? "grid-cols-3" : "grid-cols-4"
     }`}>
-      {items.map((item, i) => (
+      {items.map((item, i) => {
+        const color = getPaletteColor(theme, i);
+        return (
         <div
           key={i}
           className="rounded-xl p-4 text-center transition-all"
           style={{
-            backgroundColor: `${theme.colors.accent}08`,
-            border: `1px solid ${theme.colors.accent}15`,
+            backgroundColor: `${color}08`,
+            border: `1px solid ${color}15`,
           }}
         >
           <div
             className="mx-auto mb-2.5 flex h-10 w-10 items-center justify-center rounded-xl text-base font-bold"
             style={{
-              background: `linear-gradient(135deg, ${theme.colors.accent}30, ${theme.colors.accent}15)`,
-              color: theme.colors.accent,
-              boxShadow: `0 2px 8px ${theme.colors.accent}15`,
+              background: `linear-gradient(135deg, ${color}30, ${color}15)`,
+              color: color,
+              boxShadow: `0 2px 8px ${color}15`,
             }}
           >
             {item.charAt(0).toUpperCase()}
@@ -251,7 +257,8 @@ export function IconGrid({ content, theme }: { content: string; theme: SlideThem
             {item}
           </p>
         </div>
-      ))}
+        );
+      })}
     </div>
   );
 }
@@ -355,19 +362,16 @@ export function Timeline({ content, theme }: { content: string; theme: SlideThem
       <div className="relative flex items-start justify-between gap-2">
         {items.map((item, i) => {
           const [label, ...desc] = item.split(":");
-          const isFirst = i === 0;
+          const color = getPaletteColor(theme, i);
           return (
             <div key={i} className="flex flex-1 flex-col items-center text-center">
               {/* Node circle */}
               <div
                 className="relative z-10 flex h-8 w-8 items-center justify-center rounded-full text-[10px] font-bold shadow-sm"
                 style={{
-                  background: isFirst
-                    ? `linear-gradient(135deg, ${theme.colors.accent}, ${theme.colors.accent}cc)`
-                    : `${theme.colors.accent}20`,
-                  color: isFirst ? theme.colors.background : theme.colors.accent,
-                  boxShadow: isFirst ? `0 2px 10px ${theme.colors.accent}30` : "none",
-                  border: isFirst ? "none" : `2px solid ${theme.colors.accent}30`,
+                  background: `linear-gradient(135deg, ${color}, ${color}cc)`,
+                  color: theme.colors.background,
+                  boxShadow: `0 2px 10px ${color}30`,
                 }}
               >
                 {i + 1}
@@ -376,8 +380,8 @@ export function Timeline({ content, theme }: { content: string; theme: SlideThem
               <div
                 className="mt-2 w-full rounded-lg px-2 py-1.5"
                 style={{
-                  backgroundColor: `${theme.colors.accent}08`,
-                  border: `1px solid ${theme.colors.accent}12`,
+                  backgroundColor: `${color}08`,
+                  border: `1px solid ${color}12`,
                 }}
               >
                 <p className="text-xs font-bold" style={{ color: theme.colors.text }}>
@@ -425,6 +429,132 @@ export function HighlightBox({ content, theme }: { content: string; theme: Slide
       >
         {content}
       </p>
+    </div>
+  );
+}
+
+export function CardGrid({ content, theme }: { content: string; theme: SlideTheme }) {
+  const items = content
+    .split("\n")
+    .map((l) => l.trim())
+    .filter(Boolean)
+    .map((line) => {
+      const pipeIdx = line.indexOf("|");
+      if (pipeIdx === -1) return { title: line, description: "" };
+      return {
+        title: line.slice(0, pipeIdx).trim(),
+        description: line.slice(pipeIdx + 1).trim(),
+      };
+    });
+
+  return (
+    <div className={`grid gap-3 ${items.length <= 2 ? "grid-cols-2" : items.length === 3 ? "grid-cols-3" : "grid-cols-4"}`}>
+      {items.map((item, i) => {
+        const color = getPaletteColor(theme, i);
+        return (
+          <div
+            key={i}
+            className="rounded-xl p-5 shadow-sm"
+            style={{ backgroundColor: color }}
+          >
+            <p className="text-sm font-bold leading-tight text-white">
+              {item.title}
+            </p>
+            {item.description && (
+              <p className="mt-2 text-xs leading-relaxed text-white/85">
+                {item.description}
+              </p>
+            )}
+          </div>
+        );
+      })}
+    </div>
+  );
+}
+
+export function ChevronFlow({ content, theme }: { content: string; theme: SlideTheme }) {
+  const items = content
+    .split("\n")
+    .map((l) => l.trim())
+    .filter(Boolean)
+    .map((line) => {
+      const pipeIdx = line.indexOf("|");
+      if (pipeIdx === -1) return { title: line, description: "" };
+      return {
+        title: line.slice(0, pipeIdx).trim(),
+        description: line.slice(pipeIdx + 1).trim(),
+      };
+    });
+
+  return (
+    <div className="flex items-stretch gap-1 py-2">
+      {items.map((item, i) => {
+        const color = getPaletteColor(theme, i);
+        const isLast = i === items.length - 1;
+        return (
+          <div
+            key={i}
+            className="relative flex flex-1 flex-col items-center justify-center px-6 py-4 text-center"
+            style={{
+              backgroundColor: color,
+              clipPath: isLast
+                ? "polygon(0 0, 100% 0, 100% 100%, 0 100%, 8% 50%)"
+                : "polygon(0 0, 92% 0, 100% 50%, 92% 100%, 0 100%, 8% 50%)",
+              marginLeft: i === 0 ? 0 : -4,
+              paddingLeft: i === 0 ? "1.5rem" : "2rem",
+            }}
+          >
+            <p className="text-sm font-bold text-white">{item.title}</p>
+            {item.description && (
+              <p className="mt-1 text-[10px] leading-tight text-white/80">
+                {item.description}
+              </p>
+            )}
+          </div>
+        );
+      })}
+    </div>
+  );
+}
+
+export function AccentList({ content, theme }: { content: string; theme: SlideTheme }) {
+  const items = content
+    .split("\n")
+    .map((l) => l.trim())
+    .filter(Boolean)
+    .map((line) => {
+      const pipeIdx = line.indexOf("|");
+      if (pipeIdx === -1) return { title: line, description: "" };
+      return {
+        title: line.slice(0, pipeIdx).trim(),
+        description: line.slice(pipeIdx + 1).trim(),
+      };
+    });
+
+  return (
+    <div className="space-y-2.5">
+      {items.map((item, i) => {
+        const color = getPaletteColor(theme, i);
+        return (
+          <div
+            key={i}
+            className="rounded-lg px-5 py-3.5"
+            style={{
+              backgroundColor: `${color}08`,
+              borderLeft: `4px solid ${color}`,
+            }}
+          >
+            <p className="text-sm font-bold" style={{ color: theme.colors.text }}>
+              {item.title}
+            </p>
+            {item.description && (
+              <p className="mt-1 text-xs leading-relaxed" style={{ color: theme.colors.textMuted }}>
+                {item.description}
+              </p>
+            )}
+          </div>
+        );
+      })}
     </div>
   );
 }

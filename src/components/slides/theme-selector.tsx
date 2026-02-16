@@ -17,7 +17,7 @@ export function ThemeSelector({ selected, onSelect }: ThemeSelectorProps) {
         <Palette className="h-4 w-4 text-gray-400" />
         <label className="text-sm font-medium text-gray-300">Theme</label>
       </div>
-      <div className="grid grid-cols-2 gap-2 sm:grid-cols-3 lg:grid-cols-6">
+      <div className="grid grid-cols-2 gap-2 sm:grid-cols-3 lg:grid-cols-5">
         {themes.map((theme) => (
           <ThemeCard
             key={theme.id}

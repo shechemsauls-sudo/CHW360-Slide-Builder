@@ -22,6 +22,7 @@ import {
   ArrowRightCircle,
   Settings,
   MessageSquareText,
+  List,
 } from "lucide-react";
 import { Button } from "~/components/ui/button";
 import { Card, CardContent } from "~/components/ui/card";
@@ -32,6 +33,7 @@ import { SlideEditPanel } from "~/components/slides/slide-edit-panel";
 import { SlideImageControls } from "~/components/slides/slide-image-controls";
 import { DeckSettingsPanel } from "~/components/slides/deck-settings-panel";
 import { getTheme } from "~/lib/themes";
+import { parseSpeakerNotes } from "~/lib/slides/parse-speaker-notes";
 import { api } from "~/trpc/react";
 import { toast } from "sonner";
 import type { SlideData, FidelityLevel, ToneOption } from "~/lib/ai/types";
@@ -41,45 +43,6 @@ const FIDELITY_OPTIONS: { value: FidelityLevel; label: string }[] = [
   { value: "balanced", label: "Balanced" },
   { value: "creative", label: "Creative" },
 ];
-
-/** Parse structured speaker notes into sections */
-function parseSpeakerNotes(notes: string): {
-  talkingPoints: string[];
-  presenterTips: string[];
-  transition: string | null;
-  isStructured: boolean;
-} {
-  const hasTalkingPoints = notes.includes("**Talking Points**");
-  if (!hasTalkingPoints) {
-    return { talkingPoints: [], presenterTips: [], transition: null, isStructured: false };
-  }
-
-  const sections = notes.split(/\*\*(Talking Points|Presenter Tips|Transition)\*\*/);
-  const talkingPoints: string[] = [];
-  const presenterTips: string[] = [];
-  let transition: string | null = null;
-
-  for (let i = 0; i < sections.length; i++) {
-    const header = sections[i]?.trim();
-    const content = sections[i + 1]?.trim();
-    if (!content) continue;
-
-    const lines = content
-      .split("\n")
-      .map((l) => l.replace(/^[-•]\s*/, "").trim())
-      .filter(Boolean);
-
-    if (header === "Talking Points") {
-      talkingPoints.push(...lines);
-    } else if (header === "Presenter Tips") {
-      presenterTips.push(...lines);
-    } else if (header === "Transition") {
-      transition = lines.join(" ").replace(/^[""]|[""]$/g, "").trim() || null;
-    }
-  }
-
-  return { talkingPoints, presenterTips, transition, isStructured: true };
-}
 
 export default function DeckViewPage() {
   const params = useParams();
@@ -102,6 +65,7 @@ export default function DeckViewPage() {
   const [isGeneratingImages, setIsGeneratingImages] = useState(false);
   const [imageGenProgress, setImageGenProgress] = useState({ done: 0, total: 0 });
   const [showImageGenDialog, setShowImageGenDialog] = useState(false);
+  const [showSlideList, setShowSlideList] = useState(false);
 
   const { data: prefs } = api.deck.getPreferences.useQuery();
   const { data: providers } = api.deck.providers.useQuery();
@@ -242,12 +206,18 @@ export default function DeckViewPage() {
     setIsGeneratingImages(true);
     setImageGenProgress({ done: 0, total: needsImages.length });
 
+    // Use saved image provider preference (default to dalle3)
+    const savedProvider = prefs?.imageProvider;
+    const provider: "dalle3" | "gpt-image-1" =
+      savedProvider === "gpt-image-1" ? "gpt-image-1" : "dalle3";
+
     for (let i = 0; i < needsImages.length; i++) {
       const slide = needsImages[i]!;
       try {
         await generateSlideImage.mutateAsync({
           deckId,
           slideId: slide.id,
+          imageProvider: provider,
         });
         setImageGenProgress({ done: i + 1, total: needsImages.length });
         // Refresh deck data to show newly generated image
@@ -259,7 +229,7 @@ export default function DeckViewPage() {
 
     setIsGeneratingImages(false);
     toast.success(`Generated ${needsImages.length} images`);
-  }, [deck, deckId, generateSlideImage, utils.deck.getById]);
+  }, [deck, deckId, generateSlideImage, utils.deck.getById, prefs?.imageProvider]);
 
   const handleSlideUpdated = useCallback(() => {
     void utils.deck.getById.invalidate({ id: deckId });
@@ -380,13 +350,14 @@ export default function DeckViewPage() {
               className="gap-1.5 text-gray-400 hover:text-[#5B8A8A]"
               onClick={() => setShowRegenOptions(!showRegenOptions)}
               disabled={isRegenerating}
+              title="Regenerate deck"
             >
               {isRegenerating ? (
                 <Loader2 className="h-4 w-4 animate-spin" />
               ) : (
                 <RefreshCw className="h-4 w-4" />
               )}
-              {isRegenerating ? "Regenerating..." : "Regenerate"}
+              <span className="hidden sm:inline">{isRegenerating ? "Regenerating..." : "Regenerate"}</span>
             </Button>
           )}
 
@@ -395,9 +366,10 @@ export default function DeckViewPage() {
             size="sm"
             className="gap-1.5 text-gray-400 hover:text-[#5B8A8A]"
             onClick={() => setShowSettingsPanel(true)}
+            title="Deck settings"
           >
             <Settings className="h-4 w-4" />
-            Settings
+            <span className="hidden sm:inline">Settings</span>
           </Button>
 
           <Button
@@ -405,9 +377,10 @@ export default function DeckViewPage() {
             size="sm"
             className="gap-1.5 text-gray-400 hover:text-red-400"
             onClick={handleDelete}
+            title="Delete deck"
           >
             <Trash2 className="h-4 w-4" />
-            Delete
+            <span className="hidden sm:inline">Delete</span>
           </Button>
         </div>
       </div>
@@ -674,17 +647,31 @@ export default function DeckViewPage() {
 
       {slides.length > 0 && !isRegenerating && (
         <div className="grid gap-6 lg:grid-cols-[300px_1fr]">
-          {/* Slide list sidebar */}
-          <div className="max-h-[calc(100vh-200px)] overflow-y-auto rounded-lg">
-            <SlideList
-              slides={slides}
-              activeSlideId={activeSlide?.id ?? null}
-              onSelectSlide={setActiveSlideId}
-              onReorder={handleReorderSlides}
-              onDuplicate={handleDuplicateSlide}
-              onDelete={handleDeleteSlide}
-              onAddSlide={handleAddSlide}
-            />
+          {/* Slide list — toggle on mobile, always visible on lg+ */}
+          <div>
+            <button
+              type="button"
+              onClick={() => setShowSlideList(!showSlideList)}
+              className="mb-2 flex w-full items-center gap-2 rounded-lg border border-white/10 bg-white/5 px-3 py-2 text-sm text-gray-300 hover:bg-white/10 lg:hidden"
+            >
+              <List className="h-4 w-4" />
+              Slide {activeSlide ? activeSlide.order : 1} of {slides.length}
+              <ChevronDown className={`ml-auto h-4 w-4 transition-transform ${showSlideList ? "rotate-180" : ""}`} />
+            </button>
+            <div className={`max-h-[calc(100vh-200px)] overflow-y-auto rounded-lg ${showSlideList ? "block" : "hidden"} lg:block`}>
+              <SlideList
+                slides={slides}
+                activeSlideId={activeSlide?.id ?? null}
+                onSelectSlide={(id) => {
+                  setActiveSlideId(id);
+                  setShowSlideList(false);
+                }}
+                onReorder={handleReorderSlides}
+                onDuplicate={handleDuplicateSlide}
+                onDelete={handleDeleteSlide}
+                onAddSlide={handleAddSlide}
+              />
+            </div>
           </div>
 
           {/* Active slide detail */}

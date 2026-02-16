@@ -12,6 +12,9 @@ import {
   Checklist,
   Timeline,
   HighlightBox,
+  CardGrid,
+  ChevronFlow,
+  AccentList,
 } from "./text-blocks";
 import {
   BarChartBlock,
@@ -158,6 +161,12 @@ function renderBlock(
       return <Timeline content={content} theme={theme} />;
     case "highlight-box":
       return <HighlightBox content={content} theme={theme} />;
+    case "card-grid":
+      return <CardGrid content={content} theme={theme} />;
+    case "chevron-flow":
+      return <ChevronFlow content={content} theme={theme} />;
+    case "accent-list":
+      return <AccentList content={content} theme={theme} />;
 
     // ── Chart blocks (Recharts) ──
     case "bar-chart":

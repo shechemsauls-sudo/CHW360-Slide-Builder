@@ -13,6 +13,7 @@ export const cleanLight: SlideTheme = {
     textMuted: "rgba(26,26,46,0.55)",
     accent: "#2D5A5A",
   },
+  palette: ["#4f46e5", "#dc2626", "#d97706", "#059669"],
   gradient: {
     background: "linear-gradient(180deg, #FFFFFF 0%, #F5F3F0 100%)",
     accent: "linear-gradient(90deg, #2D5A5A 0%, #3D7A7A 100%)",
