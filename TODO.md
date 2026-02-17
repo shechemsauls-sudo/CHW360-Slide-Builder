@@ -11,6 +11,7 @@ _(none)_
 - [ ] Add Turnstile spam protection to contact form (package installed, not wired)
 - [ ] Enable leaked password protection in Supabase Auth dashboard
 - [ ] Clean up broken Vercel Supabase integration vars (POSTGRES_URL etc. are empty strings)
+- [ ] `IMAGE_ELIGIBLE_LAYOUTS` export in types.ts may be unused now — verify and remove if so
 
 ## Brand Polish (slide builder UI drift)
 - [ ] Replace hardcoded hex colors with shared brand tokens where possible
