@@ -45,8 +45,8 @@ export const providerPreferences = createTable("provider_preferences", {
     .notNull()
     .unique()
     .references(() => profiles.id, { onDelete: "cascade" }),
-  llmProvider: text("llm_provider").default("openai"),
-  imageProvider: text("image_provider").default("dalle3"),
+  llmProvider: text("llm_provider").default("anthropic"),
+  imageProvider: text("image_provider").default("gpt-image-1"),
   fidelity: text("fidelity").default("balanced"),
   customInstructions: text("custom_instructions").default(""),
   tone: text("tone").default("professional"),

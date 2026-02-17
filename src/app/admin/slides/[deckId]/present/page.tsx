@@ -19,6 +19,7 @@ export default function PresentPage() {
   const [showNotes, setShowNotes] = useState(false);
   const [presenterMode, setPresenterMode] = useState(false);
   const isExiting = useRef(false);
+  const wasFullscreen = useRef(false);
   const audienceWindow = useRef<Window | null>(null);
 
   const slides = (deck?.slides ?? []) as SlideData[];
@@ -85,8 +86,10 @@ export default function PresentPage() {
   useEffect(() => {
     const el = document.documentElement;
     if (el.requestFullscreen && !document.fullscreenElement) {
-      void el.requestFullscreen().catch(() => {
-        // Fullscreen may be blocked by browser — that's OK
+      void el.requestFullscreen().then(() => {
+        wasFullscreen.current = true;
+      }).catch(() => {
+        // Fullscreen may be blocked by browser — that's OK, we still present
       });
     }
 
@@ -97,10 +100,10 @@ export default function PresentPage() {
     };
   }, []);
 
-  // Exit when fullscreen ends (handles browser ESC natively)
+  // Exit when fullscreen ends (only if we actually achieved fullscreen)
   useEffect(() => {
     const handleFullscreenChange = () => {
-      if (!document.fullscreenElement) {
+      if (!document.fullscreenElement && wasFullscreen.current) {
         exitPresent();
       }
     };
@@ -130,13 +133,16 @@ export default function PresentPage() {
         case "P":
           togglePresenterMode();
           break;
-        // ESC handled by browser fullscreen exit → fullscreenchange listener
+        case "Escape":
+          e.preventDefault();
+          exitPresent();
+          break;
       }
     };
 
     window.addEventListener("keydown", handleKey);
     return () => window.removeEventListener("keydown", handleKey);
-  }, [goNext, goPrev, togglePresenterMode]);
+  }, [goNext, goPrev, togglePresenterMode, exitPresent]);
 
   // Check if audience window was closed externally
   useEffect(() => {
@@ -220,17 +226,33 @@ export default function PresentPage() {
       {/* Navigation hint (fades after 3s) */}
       <NavigationHint />
 
-      {/* Exit button (top-right, appears on hover) */}
-      <button
-        type="button"
-        onClick={(e) => {
-          e.stopPropagation();
-          exitPresent();
-        }}
-        className="absolute right-4 top-4 rounded-lg bg-white/10 px-3 py-1.5 text-xs text-white/50 opacity-0 transition-opacity hover:opacity-100 focus:opacity-100"
-      >
-        ESC to exit
-      </button>
+      {/* Top-right controls: ? help + exit */}
+      <div className="absolute right-4 top-4 flex items-center gap-2">
+        <button
+          type="button"
+          onClick={(e) => {
+            e.stopPropagation();
+            // Re-show the shortcuts overlay
+            localStorage.removeItem("chw360-present-intro");
+            // Force re-mount NavigationHint by toggling a key — use a simpler approach:
+            // dispatch a custom event that NavigationHint listens for
+            window.dispatchEvent(new CustomEvent("show-presenter-help"));
+          }}
+          className="rounded-lg bg-white/10 px-2 py-1.5 text-xs text-white/50 opacity-40 transition-opacity hover:opacity-100 focus:opacity-100"
+        >
+          ?
+        </button>
+        <button
+          type="button"
+          onClick={(e) => {
+            e.stopPropagation();
+            exitPresent();
+          }}
+          className="rounded-lg bg-white/10 px-3 py-1.5 text-xs text-white/50 opacity-40 transition-opacity hover:opacity-100 focus:opacity-100"
+        >
+          ESC to exit
+        </button>
+      </div>
     </div>
   );
 }
@@ -318,6 +340,16 @@ function NavigationHint() {
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
+  // Listen for "?" button to re-show overlay
+  useEffect(() => {
+    const handler = () => {
+      setShowOverlay(true);
+      setVisible(true);
+    };
+    window.addEventListener("show-presenter-help", handler);
+    return () => window.removeEventListener("show-presenter-help", handler);
+  }, []);
+
   if (showOverlay) {
     return (
       <div
@@ -345,7 +377,7 @@ function NavigationHint() {
               <span className="font-mono text-gray-500">N</span>
             </div>
             <div className="flex items-center justify-between gap-6">
-              <span>Audience view</span>
+              <span>Audience view (drag to external display)</span>
               <span className="font-mono text-gray-500">P</span>
             </div>
             <div className="flex items-center justify-between gap-6">

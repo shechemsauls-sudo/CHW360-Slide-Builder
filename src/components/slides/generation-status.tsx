@@ -4,13 +4,27 @@ import { useState, useEffect } from "react";
 import { Loader2, Sparkles, AlertCircle, ArrowLeft, Clock } from "lucide-react";
 import Link from "next/link";
 
+/** Estimate generation time range in minutes based on slide count and provider */
+function estimateTime(slideCount: number, provider?: string): string {
+  // Base: ~2s per slide for OpenAI, ~3s per slide for Anthropic (streaming)
+  const perSlide = provider === "anthropic" ? 3 : 2;
+  const baseSeconds = slideCount * perSlide;
+  // Add overhead for prompt construction, retries, network
+  const minSeconds = baseSeconds + 15;
+  const maxSeconds = baseSeconds * 1.5 + 30;
+  const minMin = Math.max(1, Math.round(minSeconds / 60));
+  const maxMin = Math.max(minMin + 1, Math.round(maxSeconds / 60));
+  return `${minMin} \u2013 ${maxMin} minutes`;
+}
+
 interface GenerationStatusProps {
   status: "idle" | "generating" | "error";
   error?: string;
   provider?: string;
+  slideCount?: number;
 }
 
-export function GenerationStatus({ status, error, provider }: GenerationStatusProps) {
+export function GenerationStatus({ status, error, provider, slideCount }: GenerationStatusProps) {
   const [elapsed, setElapsed] = useState(0);
 
   useEffect(() => {
@@ -63,7 +77,7 @@ export function GenerationStatus({ status, error, provider }: GenerationStatusPr
       <div className="flex flex-col items-center gap-3 rounded-xl bg-white/5 px-8 py-5">
         <div className="flex items-center gap-2 text-sm text-gray-300">
           <Clock className="h-4 w-4 text-[#5B8A8A]" />
-          <span>Estimated wait: <strong className="text-white">1 &ndash; 3 minutes</strong></span>
+          <span>Estimated wait: <strong className="text-white">{estimateTime(slideCount ?? 20, provider)}</strong></span>
         </div>
         <div className="text-xs text-gray-500">
           Elapsed: {formatTime(elapsed)}

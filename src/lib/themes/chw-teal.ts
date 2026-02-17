@@ -13,7 +13,7 @@ export const chwTeal: SlideTheme = {
     textMuted: "rgba(255,255,255,0.75)",
     accent: "#C9725B",
   },
-  palette: ["#2D5A5A", "#C9725B", "#C9A84C", "#7D8D6D"],
+  palette: ["#C9725B", "#5B8A8A", "#C9A84C", "#7D8D6D"],
   gradient: {
     background: "linear-gradient(135deg, #2D5A5A 0%, #1A3D3D 100%)",
     accent: "linear-gradient(90deg, #C9725B 0%, #D4896E 100%)",

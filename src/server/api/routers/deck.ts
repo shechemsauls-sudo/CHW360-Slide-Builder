@@ -7,7 +7,7 @@ import { getLLMProvider, getAvailableLLMProviders } from "~/lib/ai/llm";
 import { getImageProvider, getAvailableImageProviders } from "~/lib/ai/image";
 import { detectFidelity } from "~/lib/ai/fidelity";
 import { parseContent, detectFormat } from "~/lib/parsers";
-import { VISUAL_BLOCK_TYPES, IMAGE_ELIGIBLE_LAYOUTS } from "~/lib/ai/types";
+import { VISUAL_BLOCK_TYPES } from "~/lib/ai/types";
 import type { SlideData, VisualBlockType } from "~/lib/ai/types";
 import type { db as dbInstance } from "~/server/db";
 import {
@@ -15,18 +15,6 @@ import {
   deleteDeckImages,
 } from "~/lib/storage/upload-image";
 import { sendDeckReadyEmail } from "~/lib/resend";
-
-const IMAGE_ELIGIBLE_SET = new Set<string>(IMAGE_ELIGIBLE_LAYOUTS);
-
-/** Strip imagePrompt from slides that use non-image layouts */
-function cleanImagePrompts(slides: SlideData[]): SlideData[] {
-  return slides.map((s) => {
-    if (s.imagePrompt && !IMAGE_ELIGIBLE_SET.has(s.layout)) {
-      return { ...s, imagePrompt: null };
-    }
-    return s;
-  });
-}
 
 async function getProfileId(db: typeof dbInstance, authUserId: string) {
   const profile = await db.query.profiles.findFirst({
@@ -116,8 +104,8 @@ export const deckRouter = createTRPCRouter({
         description: z.string().optional(),
         content: z.string().min(1),
         sourceFormat: z.enum(["markdown", "plaintext", "pdf", "docx"]).default("plaintext"),
-        llmProvider: z.enum(["openai", "anthropic"]).default("openai"),
-        imageProvider: z.enum(["dalle3", "gpt-image-1", "disabled"]).default("disabled"),
+        llmProvider: z.enum(["openai", "anthropic"]).default("anthropic"),
+        imageProvider: z.enum(["dalle3", "gpt-image-1", "disabled"]).default("gpt-image-1"),
         themeId: z.string().default("chw-teal"),
         slideCount: z.number().min(5).max(120).optional(),
         fidelity: z.enum(["verbatim", "balanced", "creative"]).optional(),
@@ -168,15 +156,12 @@ export const deckRouter = createTRPCRouter({
           tone: input.tone,
         });
 
-        // Clean imagePrompt from non-image layouts
-        const cleanedSlides = cleanImagePrompts(result.slides);
-
         // Update deck with generated slides
         const [updated] = await ctx.db
           .update(decks)
           .set({
-            slides: cleanedSlides,
-            slideCount: cleanedSlides.length,
+            slides: result.slides,
+            slideCount: result.slides.length,
             status: "ready",
             generationLog: {
               model: result.model,
@@ -405,7 +390,7 @@ export const deckRouter = createTRPCRouter({
         deckId: z.string().uuid(),
         slideId: z.string(),
         imagePrompt: z.string().optional(),
-        imageProvider: z.enum(["dalle3", "gpt-image-1"]).default("dalle3"),
+        imageProvider: z.enum(["dalle3", "gpt-image-1"]).default("gpt-image-1"),
       }),
     )
     .mutation(async ({ ctx, input }) => {
@@ -470,6 +455,55 @@ export const deckRouter = createTRPCRouter({
         .map((s) => s.id);
 
       return { slideIds };
+    }),
+
+  generateImagePrompt: protectedProcedure
+    .input(
+      z.object({
+        deckId: z.string().uuid(),
+        slideId: z.string(),
+        llmProvider: z.enum(["openai", "anthropic"]).optional(),
+      }),
+    )
+    .mutation(async ({ ctx, input }) => {
+      const profileId = await getProfileId(ctx.db, ctx.user.id);
+      const deck = await ctx.db.query.decks.findFirst({
+        where: and(eq(decks.id, input.deckId), eq(decks.profileId, profileId)),
+      });
+      if (!deck) {
+        throw new TRPCError({ code: "NOT_FOUND", message: "Deck not found" });
+      }
+
+      const currentSlides = (deck.slides ?? []) as SlideData[];
+      const slideIndex = currentSlides.findIndex((s) => s.id === input.slideId);
+      if (slideIndex === -1) {
+        throw new TRPCError({ code: "NOT_FOUND", message: "Slide not found" });
+      }
+
+      const slide = currentSlides[slideIndex]!;
+      const llmId = input.llmProvider ?? deck.llmProvider ?? "openai";
+      const provider = getLLMProvider(llmId);
+
+      // Use a lightweight prompt to generate an image description from slide content
+      const prompt = `Generate a concise image prompt (1-2 sentences) for an AI image generator based on this slide content. The image should complement the slide visually.
+
+Title: ${slide.title}
+Content: ${slide.body.slice(0, 500)}
+
+Respond with ONLY the image prompt, no explanation.`;
+
+      const result = await provider.chat(prompt);
+      const imagePrompt = result.trim();
+
+      currentSlides[slideIndex] = { ...slide, imagePrompt };
+
+      const [updated] = await ctx.db
+        .update(decks)
+        .set({ slides: currentSlides, updatedAt: new Date() })
+        .where(eq(decks.id, input.deckId))
+        .returning();
+
+      return updated;
     }),
 
   regenerateSlide: protectedProcedure
@@ -578,13 +612,11 @@ export const deckRouter = createTRPCRouter({
           tone: input.tone,
         });
 
-        const cleanedSlides = cleanImagePrompts(result.slides);
-
         const [updated] = await ctx.db
           .update(decks)
           .set({
-            slides: cleanedSlides,
-            slideCount: cleanedSlides.length,
+            slides: result.slides,
+            slideCount: result.slides.length,
             llmProvider: llmId,
             status: "ready",
             generationLog: {
@@ -688,7 +720,7 @@ export const deckRouter = createTRPCRouter({
     const prefs = await ctx.db.query.providerPreferences.findFirst({
       where: eq(providerPreferences.profileId, profileId),
     });
-    return prefs ?? { llmProvider: "openai", imageProvider: "dalle3", fidelity: "balanced", customInstructions: "", tone: "professional" };
+    return prefs ?? { llmProvider: "anthropic", imageProvider: "gpt-image-1", fidelity: "balanced", customInstructions: "", tone: "professional" };
   }),
 
   setPreferences: protectedProcedure

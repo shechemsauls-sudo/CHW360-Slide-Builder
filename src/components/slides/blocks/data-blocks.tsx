@@ -52,7 +52,7 @@ export function ProgressBars({ arg, content, theme }: DataBlockProps) {
             </div>
             <div
               className="h-2.5 w-full overflow-hidden rounded-full"
-              style={{ backgroundColor: `${color}15` }}
+              style={{ backgroundColor: `${color}25` }}
             >
               <div
                 className="h-full rounded-full transition-all"
@@ -108,8 +108,8 @@ export function MetricRow({ arg, content, theme }: DataBlockProps) {
             key={i}
             className="flex flex-1 flex-col items-center justify-center rounded-xl px-4 py-4"
             style={{
-              backgroundColor: `${color}10`,
-              border: `1px solid ${color}20`,
+              backgroundColor: `${color}18`,
+              border: `1px solid ${color}30`,
             }}
           >
             <span

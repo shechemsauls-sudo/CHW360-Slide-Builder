@@ -31,6 +31,7 @@ interface BlockRendererProps {
   content: string;
   theme: SlideTheme;
   layout: string;
+  dense?: boolean;
 }
 
 interface ParsedBlock {
@@ -49,8 +50,9 @@ interface ParsedBlock {
  *   Content here
  *   :::
  */
-export function BlockRenderer({ content, theme, layout }: BlockRendererProps) {
+export function BlockRenderer({ content, theme, layout, dense }: BlockRendererProps) {
   const blocks = parseBlocks(content);
+  const spacing = dense ? "my-2" : "my-4";
 
   return (
     <>
@@ -67,7 +69,7 @@ export function BlockRenderer({ content, theme, layout }: BlockRendererProps) {
         }
 
         return (
-          <div key={i} className="my-4">
+          <div key={i} className={spacing}>
             {renderBlock(block.blockType!, block.blockArg, block.content, theme, layout)}
           </div>
         );

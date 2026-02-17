@@ -22,6 +22,8 @@ import {
   ArrowRightCircle,
   Settings,
   List,
+  Info,
+  X,
 } from "lucide-react";
 import { Button } from "~/components/ui/button";
 import { Card, CardContent } from "~/components/ui/card";
@@ -54,9 +56,9 @@ export default function DeckViewPage() {
   const [imageGenProgress, setImageGenProgress] = useState({ done: 0, total: 0 });
   const [showImageGenDialog, setShowImageGenDialog] = useState(false);
   const [showSlideList, setShowSlideList] = useState(false);
+  const [showShortcuts, setShowShortcuts] = useState(false);
 
   const { data: prefs } = api.deck.getPreferences.useQuery();
-  const { data: providers } = api.deck.providers.useQuery();
 
   // Auto-show image generation dialog for newly created decks
   useEffect(() => {
@@ -183,10 +185,10 @@ export default function DeckViewPage() {
     setIsGeneratingImages(true);
     setImageGenProgress({ done: 0, total: needsImages.length });
 
-    // Use saved image provider preference (default to dalle3)
+    // Use saved image provider preference (default to gpt-image-1)
     const savedProvider = prefs?.imageProvider;
     const provider: "dalle3" | "gpt-image-1" =
-      savedProvider === "gpt-image-1" ? "gpt-image-1" : "dalle3";
+      savedProvider === "dalle3" ? "dalle3" : "gpt-image-1";
 
     for (let i = 0; i < needsImages.length; i++) {
       const slide = needsImages[i]!;
@@ -337,6 +339,16 @@ export default function DeckViewPage() {
               <span className="hidden sm:inline">{isRegenerating ? "Regenerating..." : "Regenerate"}</span>
             </Button>
           )}
+
+          <Button
+            variant="ghost"
+            size="sm"
+            className="gap-1.5 text-gray-400 hover:text-[#5B8A8A]"
+            onClick={() => setShowShortcuts(true)}
+            title="Keyboard shortcuts"
+          >
+            <Info className="h-4 w-4" />
+          </Button>
 
           <Button
             variant="ghost"
@@ -636,6 +648,11 @@ export default function DeckViewPage() {
         slidesNeedingImages={slidesNeedingImages}
         isGeneratingImages={isGeneratingImages}
       />
+
+      {/* Keyboard shortcuts modal */}
+      {showShortcuts && (
+        <KeyboardShortcutsModal onClose={() => setShowShortcuts(false)} />
+      )}
     </div>
   );
 }
@@ -712,6 +729,78 @@ function SpeakerNotesDisplay({ notes }: { notes: string }) {
             </p>
           </div>
         )}
+      </div>
+    </div>
+  );
+}
+
+const SHORTCUT_GROUPS = [
+  {
+    title: "Presenter Mode",
+    shortcuts: [
+      { keys: "→ / Space / Click", action: "Next slide" },
+      { keys: "←", action: "Previous slide" },
+      { keys: "N", action: "Toggle speaker notes" },
+      { keys: "P", action: "Open audience view" },
+      { keys: "ESC", action: "Exit presentation" },
+    ],
+  },
+  {
+    title: "Audience View",
+    shortcuts: [
+      { keys: "P", action: "Open audience popup (drag to external display)" },
+    ],
+  },
+];
+
+function KeyboardShortcutsModal({ onClose }: { onClose: () => void }) {
+  useEffect(() => {
+    const handleKey = (e: KeyboardEvent) => {
+      if (e.key === "Escape") onClose();
+    };
+    window.addEventListener("keydown", handleKey);
+    return () => window.removeEventListener("keydown", handleKey);
+  }, [onClose]);
+
+  return (
+    <div
+      className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm"
+      onClick={onClose}
+    >
+      <div
+        className="relative w-full max-w-md rounded-xl border border-white/10 bg-[#1a2e2e] p-6 shadow-2xl"
+        onClick={(e) => e.stopPropagation()}
+      >
+        <button
+          type="button"
+          onClick={onClose}
+          className="absolute right-3 top-3 rounded-md p-1 text-gray-400 hover:text-white"
+        >
+          <X className="h-4 w-4" />
+        </button>
+
+        <h2 className="mb-4 flex items-center gap-2 text-base font-semibold text-white">
+          <Info className="h-4 w-4 text-[#5B8A8A]" />
+          Keyboard Shortcuts
+        </h2>
+
+        <div className="space-y-5">
+          {SHORTCUT_GROUPS.map((group) => (
+            <div key={group.title}>
+              <h3 className="mb-2 text-xs font-medium uppercase tracking-wider text-[#5B8A8A]">
+                {group.title}
+              </h3>
+              <div className="space-y-1.5">
+                {group.shortcuts.map((s) => (
+                  <div key={s.keys} className="flex items-center justify-between gap-4">
+                    <span className="text-sm text-gray-300">{s.action}</span>
+                    <span className="shrink-0 font-mono text-xs text-gray-500">{s.keys}</span>
+                  </div>
+                ))}
+              </div>
+            </div>
+          ))}
+        </div>
       </div>
     </div>
   );

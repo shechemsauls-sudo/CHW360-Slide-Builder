@@ -1,12 +1,30 @@
 "use client";
 
-import { useState } from "react";
-import { Image as ImageIcon, Loader2, RefreshCw, Trash2, Pencil } from "lucide-react";
+import { useState, useCallback } from "react";
+import {
+  Image as ImageIcon,
+  Loader2,
+  RefreshCw,
+  Trash2,
+  Pencil,
+  Sparkles,
+  PanelLeft,
+  PanelRight,
+  Square,
+  RectangleHorizontal,
+} from "lucide-react";
 import { Button } from "~/components/ui/button";
 import { Textarea } from "~/components/ui/textarea";
 import { api } from "~/trpc/react";
 import { toast } from "sonner";
 import type { SlideData } from "~/lib/ai/types";
+
+const IMAGE_LAYOUTS = [
+  { id: "split-left", label: "Left", icon: PanelLeft },
+  { id: "split-right", label: "Right", icon: PanelRight },
+  { id: "image-top", label: "Top", icon: RectangleHorizontal },
+  { id: "image-full", label: "Full", icon: Square },
+] as const;
 
 interface SlideImageControlsProps {
   slide: SlideData;
@@ -19,8 +37,22 @@ export function SlideImageControls({
   deckId,
   onUpdated,
 }: SlideImageControlsProps) {
+  const utils = api.useUtils();
   const [editingPrompt, setEditingPrompt] = useState(false);
   const [customPrompt, setCustomPrompt] = useState(slide.imagePrompt ?? "");
+  const [writingPrompt, setWritingPrompt] = useState(false);
+  const [newPrompt, setNewPrompt] = useState("");
+
+  // Always read latest slide from query cache to avoid stale-data overwrites
+  const getLatestSlide = useCallback((): SlideData => {
+    const cached = utils.deck.getById.getData({ id: deckId });
+    if (cached) {
+      const slides = (cached.slides ?? []) as SlideData[];
+      const found = slides.find((s) => s.id === slide.id);
+      if (found) return found;
+    }
+    return slide;
+  }, [utils.deck.getById, deckId, slide]);
 
   const generateImage = api.deck.generateSlideImage.useMutation({
     onSuccess: () => {
@@ -30,9 +62,16 @@ export function SlideImageControls({
     onError: (err) => toast.error(err.message),
   });
 
+  const generateImagePrompt = api.deck.generateImagePrompt.useMutation({
+    onSuccess: () => {
+      toast.success("Image prompt generated");
+      onUpdated();
+    },
+    onError: (err) => toast.error(err.message),
+  });
+
   const updateSlide = api.deck.updateSlide.useMutation({
     onSuccess: () => {
-      toast.success("Image removed");
       onUpdated();
     },
     onError: (err) => toast.error(err.message),
@@ -45,19 +84,43 @@ export function SlideImageControls({
       ...(prompt ? { imagePrompt: prompt } : {}),
     });
     setEditingPrompt(false);
+    setWritingPrompt(false);
+  };
+
+  const handleAutoGeneratePrompt = () => {
+    generateImagePrompt.mutate({ deckId, slideId: slide.id });
+  };
+
+  const handleSavePrompt = () => {
+    if (!newPrompt.trim()) return;
+    updateSlide.mutate({
+      deckId,
+      slide: { ...getLatestSlide(), imagePrompt: newPrompt.trim() },
+    });
+    setWritingPrompt(false);
+    setNewPrompt("");
   };
 
   const handleRemoveImage = () => {
     updateSlide.mutate({
       deckId,
-      slide: { ...slide, imageUrl: null },
+      slide: { ...getLatestSlide(), imageUrl: null, layout: "full" },
+    });
+    toast.success("Image removed");
+  };
+
+  const handleLayoutChange = (layoutId: string) => {
+    updateSlide.mutate({
+      deckId,
+      slide: { ...getLatestSlide(), layout: layoutId as SlideData["layout"] },
     });
   };
 
   const isGenerating = generateImage.isPending;
-
-  // No image prompt at all — nothing to show
-  if (!slide.imagePrompt && !slide.imageUrl) return null;
+  const isGeneratingPrompt = generateImagePrompt.isPending;
+  const hasPrompt = !!slide.imagePrompt;
+  const hasImage = !!slide.imageUrl;
+  const isImageLayout = IMAGE_LAYOUTS.some((l) => l.id === slide.layout);
 
   return (
     <div className="mt-3 rounded-lg border border-white/10 bg-white/[0.03] p-4">
@@ -67,7 +130,7 @@ export function SlideImageControls({
           Image
         </div>
         <div className="flex items-center gap-1">
-          {slide.imageUrl ? (
+          {hasImage ? (
             <>
               <Button
                 variant="ghost"
@@ -93,7 +156,7 @@ export function SlideImageControls({
                 Remove
               </Button>
             </>
-          ) : (
+          ) : hasPrompt ? (
             <Button
               variant="ghost"
               size="sm"
@@ -108,24 +171,101 @@ export function SlideImageControls({
               )}
               Generate
             </Button>
+          ) : null}
+          {hasPrompt && (
+            <Button
+              variant="ghost"
+              size="sm"
+              className="h-8 gap-1 px-2 text-xs text-gray-400 hover:text-white"
+              onClick={() => {
+                setCustomPrompt(slide.imagePrompt ?? "");
+                setEditingPrompt(!editingPrompt);
+              }}
+            >
+              <Pencil className="h-3 w-3" />
+              Edit Prompt
+            </Button>
           )}
-          <Button
-            variant="ghost"
-            size="sm"
-            className="h-8 gap-1 px-2 text-xs text-gray-400 hover:text-white"
-            onClick={() => {
-              setCustomPrompt(slide.imagePrompt ?? "");
-              setEditingPrompt(!editingPrompt);
-            }}
-          >
-            <Pencil className="h-3 w-3" />
-            Edit Prompt
-          </Button>
         </div>
       </div>
 
-      {/* Prompt display / edit */}
-      {editingPrompt ? (
+      {/* State 1: No prompt — offer to write one or auto-generate */}
+      {!hasPrompt && !writingPrompt && (
+        <div className="flex items-center gap-2">
+          <Button
+            variant="outline"
+            size="sm"
+            className="h-7 gap-1 border-[#5B8A8A]/40 bg-[#2D5A5A]/10 text-xs text-[#7AACAC] hover:border-[#5B8A8A] hover:bg-[#2D5A5A]/20 hover:text-white"
+            onClick={() => setWritingPrompt(true)}
+          >
+            <Pencil className="h-3 w-3" />
+            Write a prompt
+          </Button>
+          <Button
+            variant="outline"
+            size="sm"
+            className="h-7 gap-1 border-[#5B8A8A]/40 bg-[#2D5A5A]/10 text-xs text-[#7AACAC] hover:border-[#5B8A8A] hover:bg-[#2D5A5A]/20 hover:text-white"
+            onClick={handleAutoGeneratePrompt}
+            disabled={isGeneratingPrompt}
+          >
+            {isGeneratingPrompt ? (
+              <Loader2 className="h-3 w-3 animate-spin" />
+            ) : (
+              <Sparkles className="h-3 w-3" />
+            )}
+            Auto-generate prompt
+          </Button>
+        </div>
+      )}
+
+      {/* Writing a new prompt */}
+      {!hasPrompt && writingPrompt && (
+        <div className="space-y-2">
+          <Textarea
+            value={newPrompt}
+            onChange={(e) => setNewPrompt(e.target.value)}
+            placeholder="Describe the image you want for this slide..."
+            className="min-h-[60px] resize-none border-white/10 bg-white/5 text-sm text-white placeholder:text-gray-500"
+            rows={2}
+          />
+          <div className="flex gap-2">
+            <Button
+              size="sm"
+              className="h-7 gap-1 text-xs"
+              style={{ backgroundColor: "#C9725B" }}
+              onClick={handleSavePrompt}
+              disabled={!newPrompt.trim()}
+            >
+              Save Prompt
+            </Button>
+            <Button
+              size="sm"
+              className="h-7 gap-1 text-xs"
+              style={{ backgroundColor: "#2D5A5A" }}
+              onClick={() => handleGenerate(newPrompt)}
+              disabled={!newPrompt.trim() || isGenerating}
+            >
+              {isGenerating ? (
+                <Loader2 className="h-3 w-3 animate-spin" />
+              ) : (
+                <ImageIcon className="h-3 w-3" />
+              )}
+              Save & Generate
+            </Button>
+            <Button
+              variant="ghost"
+              size="sm"
+              className="h-7 text-xs text-gray-400"
+              onClick={() => { setWritingPrompt(false); setNewPrompt(""); }}
+            >
+              Cancel
+            </Button>
+          </div>
+        </div>
+      )}
+
+      {/* State 2 & 3: Has prompt — show prompt text or edit form */}
+      {hasPrompt && editingPrompt && (
         <div className="space-y-2">
           <Textarea
             value={customPrompt}
@@ -158,21 +298,63 @@ export function SlideImageControls({
             </Button>
           </div>
         </div>
-      ) : (
+      )}
+
+      {hasPrompt && !editingPrompt && (
         <p className="text-sm italic text-gray-400">
           {slide.imagePrompt}
         </p>
       )}
 
       {/* Image preview */}
-      {slide.imageUrl && (
+      {hasImage && (
         <div className="mt-3">
           {/* eslint-disable-next-line @next/next/no-img-element */}
           <img
-            src={slide.imageUrl}
+            src={slide.imageUrl!}
             alt={slide.imagePrompt ?? "Generated slide image"}
             className="w-full rounded-lg"
           />
+        </div>
+      )}
+
+      {/* Layout picker — show when there's a prompt or image */}
+      {(hasPrompt || hasImage) && (
+        <div className="mt-3 border-t border-white/5 pt-3">
+          <label className="mb-1.5 block text-[10px] font-medium uppercase tracking-wider text-gray-500">
+            Image Layout
+          </label>
+          <div className="flex gap-1.5">
+            {IMAGE_LAYOUTS.map((layout) => {
+              const Icon = layout.icon;
+              const isActive = slide.layout === layout.id;
+              return (
+                <button
+                  key={layout.id}
+                  type="button"
+                  onClick={() => handleLayoutChange(layout.id)}
+                  className={`flex items-center gap-1 rounded-md border px-2.5 py-1.5 text-xs transition-all ${
+                    isActive
+                      ? "border-[#5B8A8A] bg-[#2D5A5A]/15 text-white"
+                      : "border-white/10 bg-white/5 text-gray-400 hover:border-white/20 hover:text-white"
+                  }`}
+                >
+                  <Icon className="h-3 w-3" />
+                  {layout.label}
+                </button>
+              );
+            })}
+            {isImageLayout && (
+              <button
+                type="button"
+                onClick={() => handleLayoutChange("full")}
+                className="flex items-center gap-1 rounded-md border border-white/10 bg-white/5 px-2.5 py-1.5 text-xs text-gray-400 hover:border-red-400/30 hover:text-red-400 transition-all"
+              >
+                <Trash2 className="h-3 w-3" />
+                No Image
+              </button>
+            )}
+          </div>
         </div>
       )}
     </div>

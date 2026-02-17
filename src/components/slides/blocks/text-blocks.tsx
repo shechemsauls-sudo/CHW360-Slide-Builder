@@ -1,13 +1,14 @@
 import type { SlideTheme } from "~/lib/themes";
 import { getPaletteColor } from "~/lib/themes";
+import { MarkdownRenderer } from "../markdown-renderer";
 
 export function InfoBox({ title, content, theme }: { title?: string; content: string; theme: SlideTheme }) {
   return (
     <div
       className="relative overflow-hidden rounded-xl p-5"
       style={{
-        backgroundColor: `${theme.colors.accent}12`,
-        border: `1px solid ${theme.colors.accent}20`,
+        backgroundColor: `${theme.colors.accent}20`,
+        border: `1px solid ${theme.colors.accent}30`,
       }}
     >
       {/* Accent gradient bar */}
@@ -22,7 +23,7 @@ export function InfoBox({ title, content, theme }: { title?: string; content: st
           <div className="mb-2 flex items-center gap-2">
             <div
               className="flex h-5 w-5 items-center justify-center rounded-md text-[10px]"
-              style={{ backgroundColor: `${theme.colors.accent}25`, color: theme.colors.accent }}
+              style={{ backgroundColor: `${theme.colors.accent}35`, color: theme.colors.accent }}
             >
               i
             </div>
@@ -31,9 +32,11 @@ export function InfoBox({ title, content, theme }: { title?: string; content: st
             </p>
           </div>
         )}
-        <p className="text-sm leading-relaxed" style={{ color: theme.colors.text }}>
-          {content}
-        </p>
+        <MarkdownRenderer
+          content={content}
+          className="text-sm leading-relaxed"
+          style={{ color: theme.colors.text }}
+        />
       </div>
     </div>
   );
@@ -87,7 +90,7 @@ export function NumberedSteps({ content, theme }: { content: string; theme: Slid
         <div
           className={`absolute ${compact ? "left-[11px]" : "left-[15px]"} top-5 bottom-5 w-0.5 rounded-full`}
           style={{
-            background: `linear-gradient(180deg, ${theme.colors.accent}60, ${theme.colors.accent}15)`,
+            background: `linear-gradient(180deg, ${theme.colors.accent}70, ${theme.colors.accent}25)`,
           }}
         />
       )}
@@ -108,13 +111,15 @@ export function NumberedSteps({ content, theme }: { content: string; theme: Slid
           <div
             className={`flex-1 rounded-xl ${compact ? "px-3 py-1.5" : "px-4 py-2.5"}`}
             style={{
-              backgroundColor: `${color}08`,
-              border: `1px solid ${color}12`,
+              backgroundColor: `${color}18`,
+              border: `1px solid ${color}28`,
             }}
           >
-            <p className={`${compact ? "text-xs" : "text-sm"} leading-relaxed`} style={{ color: theme.colors.text }}>
-              {step.replace(/^\d+[.)]\s*/, "")}
-            </p>
+            <MarkdownRenderer
+              content={step.replace(/^\d+[.)]\s*/, "")}
+              className={`${compact ? "text-xs" : "text-sm"} leading-relaxed`}
+              style={{ color: theme.colors.text }}
+            />
           </div>
         </div>
         );
@@ -302,7 +307,7 @@ export function ComparisonTable({ content, theme }: { content: string; theme: Sl
   return (
     <div
       className="overflow-hidden rounded-xl shadow-sm"
-      style={{ border: `1px solid ${theme.colors.accent}18` }}
+      style={{ border: `1px solid ${theme.colors.accent}28` }}
     >
       {headers.length > 0 && (
         <div
@@ -330,8 +335,8 @@ export function ComparisonTable({ content, theme }: { content: string; theme: Sl
           key={i}
           className="flex"
           style={{
-            backgroundColor: i % 2 === 0 ? `${theme.colors.accent}06` : "transparent",
-            borderTop: `1px solid ${theme.colors.accent}10`,
+            backgroundColor: i % 2 === 0 ? `${theme.colors.accent}12` : "transparent",
+            borderTop: `1px solid ${theme.colors.accent}20`,
           }}
         >
           {row.map((cell, j) => (
@@ -340,7 +345,7 @@ export function ComparisonTable({ content, theme }: { content: string; theme: Sl
               className="flex-1 px-5 py-3 text-center text-sm"
               style={{
                 color: theme.colors.text,
-                borderLeft: j > 0 ? `1px solid ${theme.colors.accent}10` : "none",
+                borderLeft: j > 0 ? `1px solid ${theme.colors.accent}20` : "none",
               }}
             >
               {cell}
@@ -367,16 +372,16 @@ export function IconGrid({ content, theme }: { content: string; theme: SlideThem
           key={i}
           className="rounded-xl p-4 text-center transition-all"
           style={{
-            backgroundColor: `${color}08`,
-            border: `1px solid ${color}15`,
+            backgroundColor: `${color}18`,
+            border: `1px solid ${color}30`,
           }}
         >
           <div
             className="mx-auto mb-2.5 flex h-10 w-10 items-center justify-center rounded-xl text-base font-bold"
             style={{
-              background: `linear-gradient(135deg, ${color}30, ${color}15)`,
+              background: `linear-gradient(135deg, ${color}40, ${color}25)`,
               color: color,
-              boxShadow: `0 2px 8px ${color}15`,
+              boxShadow: `0 2px 8px ${color}25`,
             }}
           >
             {item.charAt(0).toUpperCase()}
@@ -396,14 +401,14 @@ export function QuoteBlock({ attribution, content, theme }: { attribution?: stri
     <div
       className="relative overflow-hidden rounded-xl px-6 py-5"
       style={{
-        backgroundColor: `${theme.colors.accent}08`,
-        border: `1px solid ${theme.colors.accent}15`,
+        backgroundColor: `${theme.colors.accent}18`,
+        border: `1px solid ${theme.colors.accent}28`,
       }}
     >
       {/* Large decorative quote mark */}
       <div
         className="absolute -left-1 -top-2 text-7xl font-serif leading-none select-none"
-        style={{ color: `${theme.colors.accent}18` }}
+        style={{ color: `${theme.colors.accent}30` }}
       >
         &ldquo;
       </div>
@@ -431,7 +436,13 @@ export function QuoteBlock({ attribution, content, theme }: { attribution?: stri
 }
 
 export function Checklist({ content, theme }: { content: string; theme: SlideTheme }) {
-  const items = content.split("\n").filter((l) => l.trim());
+  const items = content.split("\n").filter((l) => l.trim()).map((line) => {
+    const trimmed = line.replace(/^[-*]\s*/, "");
+    const checked = /^\[x\]\s*/i.test(trimmed);
+    const unchecked = /^\[\s?\]\s*/.test(trimmed);
+    const text = trimmed.replace(/^\[[ x]?\]\s*/i, "");
+    return { text, checked: checked || (!unchecked && !checked) };
+  });
   const compact = items.length > 5;
 
   return (
@@ -441,31 +452,40 @@ export function Checklist({ content, theme }: { content: string; theme: SlideThe
           key={i}
           className={`flex items-start gap-2.5 rounded-xl ${compact ? "px-3 py-1.5" : "px-4 py-2.5"}`}
           style={{
-            backgroundColor: `${theme.colors.accent}06`,
-            border: `1px solid ${theme.colors.accent}10`,
+            backgroundColor: `${theme.colors.accent}15`,
+            border: `1px solid ${theme.colors.accent}22`,
           }}
         >
-          <div
-            className={`mt-0.5 flex ${compact ? "h-4 w-4" : "h-5.5 w-5.5"} shrink-0 items-center justify-center rounded-md shadow-sm`}
-            style={{
-              background: `linear-gradient(135deg, ${theme.colors.accent}, ${theme.colors.accent}cc)`,
-              boxShadow: `0 1px 4px ${theme.colors.accent}30`,
-            }}
-          >
-            <svg
-              viewBox="0 0 12 12"
-              className={compact ? "h-2.5 w-2.5" : "h-3 w-3"}
-              fill="none"
-              stroke={theme.colors.background}
-              strokeWidth="2"
-              strokeLinecap="round"
-              strokeLinejoin="round"
+          {item.checked ? (
+            <div
+              className={`mt-0.5 flex ${compact ? "h-4 w-4" : "h-5.5 w-5.5"} shrink-0 items-center justify-center rounded-md shadow-sm`}
+              style={{
+                background: `linear-gradient(135deg, ${theme.colors.accent}, ${theme.colors.accent}cc)`,
+                boxShadow: `0 1px 4px ${theme.colors.accent}30`,
+              }}
             >
-              <path d="M2.5 6L5 8.5L9.5 3.5" />
-            </svg>
-          </div>
+              <svg
+                viewBox="0 0 12 12"
+                className={compact ? "h-2.5 w-2.5" : "h-3 w-3"}
+                fill="none"
+                stroke={theme.colors.background}
+                strokeWidth="2"
+                strokeLinecap="round"
+                strokeLinejoin="round"
+              >
+                <path d="M2.5 6L5 8.5L9.5 3.5" />
+              </svg>
+            </div>
+          ) : (
+            <div
+              className={`mt-0.5 flex ${compact ? "h-4 w-4" : "h-5.5 w-5.5"} shrink-0 items-center justify-center rounded-md`}
+              style={{
+                border: `2px solid ${theme.colors.accent}60`,
+              }}
+            />
+          )}
           <p className={`${compact ? "text-xs" : "text-sm"} leading-relaxed`} style={{ color: theme.colors.text }}>
-            {item.replace(/^[-*]\s*/, "")}
+            {item.text}
           </p>
         </div>
       ))}
@@ -483,7 +503,7 @@ export function Timeline({ content, theme }: { content: string; theme: SlideThem
         <div
           className="absolute left-0 right-0 top-4 h-0.5 rounded-full"
           style={{
-            background: `linear-gradient(90deg, ${theme.colors.accent}15, ${theme.colors.accent}40, ${theme.colors.accent}15)`,
+            background: `linear-gradient(90deg, ${theme.colors.accent}25, ${theme.colors.accent}55, ${theme.colors.accent}25)`,
           }}
         />
       </div>
@@ -509,8 +529,8 @@ export function Timeline({ content, theme }: { content: string; theme: SlideThem
               <div
                 className="mt-2 w-full rounded-lg px-2 py-1.5"
                 style={{
-                  backgroundColor: `${color}08`,
-                  border: `1px solid ${color}12`,
+                  backgroundColor: `${color}18`,
+                  border: `1px solid ${color}28`,
                 }}
               >
                 <p className="text-xs font-bold" style={{ color: theme.colors.text }}>
@@ -535,8 +555,8 @@ export function HighlightBox({ content, theme }: { content: string; theme: Slide
     <div
       className="relative overflow-hidden rounded-xl px-6 py-4 text-center"
       style={{
-        background: `linear-gradient(135deg, ${theme.colors.accent}18, ${theme.colors.accent}08)`,
-        border: `1px solid ${theme.colors.accent}25`,
+        background: `linear-gradient(135deg, ${theme.colors.accent}25, ${theme.colors.accent}12)`,
+        border: `1px solid ${theme.colors.accent}35`,
       }}
     >
       {/* Decorative corner accents */}
@@ -563,18 +583,35 @@ export function HighlightBox({ content, theme }: { content: string; theme: Slide
 }
 
 export function CardGrid({ content, theme }: { content: string; theme: SlideTheme }) {
-  const items = content
-    .split("\n")
-    .map((l) => l.trim())
-    .filter(Boolean)
-    .map((line) => {
-      const pipeIdx = line.indexOf("|");
-      if (pipeIdx === -1) return { title: line, description: "" };
-      return {
-        title: line.slice(0, pipeIdx).trim(),
-        description: line.slice(pipeIdx + 1).trim(),
-      };
-    });
+  // Support two formats:
+  // 1. Single-line: "Title | Description" per line
+  // 2. Multi-line: groups separated by --- where first line is title, rest is description
+  const hasSeparators = /^-{2,}$/m.test(content);
+
+  const items = hasSeparators
+    ? content
+        .split(/^-{2,}$/m)
+        .map((section) => section.trim())
+        .filter(Boolean)
+        .map((section) => {
+          const lines = section.split("\n").map((l) => l.trim()).filter(Boolean);
+          return {
+            title: lines[0] ?? "",
+            description: lines.slice(1).join("\n"),
+          };
+        })
+    : content
+        .split("\n")
+        .map((l) => l.trim())
+        .filter(Boolean)
+        .map((line) => {
+          const pipeIdx = line.indexOf("|");
+          if (pipeIdx === -1) return { title: line, description: "" };
+          return {
+            title: line.slice(0, pipeIdx).trim(),
+            description: line.slice(pipeIdx + 1).trim(),
+          };
+        });
 
   return (
     <div className={`grid gap-3 ${items.length <= 2 ? "grid-cols-2" : items.length === 3 ? "grid-cols-3" : "grid-cols-4"}`}>
@@ -583,16 +620,18 @@ export function CardGrid({ content, theme }: { content: string; theme: SlideThem
         return (
           <div
             key={i}
-            className="rounded-xl p-5 shadow-sm"
+            className={`rounded-xl shadow-sm ${items.length > 3 ? "p-3" : "p-5"}`}
             style={{ backgroundColor: color }}
           >
-            <p className="text-sm font-bold leading-tight text-white">
-              {item.title}
-            </p>
+            <MarkdownRenderer
+              content={item.title}
+              className={`${items.length > 3 ? "text-xs" : "text-sm"} font-bold leading-tight text-white`}
+            />
             {item.description && (
-              <p className="mt-2 text-xs leading-relaxed text-white/85">
-                {item.description}
-              </p>
+              <MarkdownRenderer
+                content={item.description}
+                className={`mt-1.5 ${items.length > 3 ? "text-[10px]" : "text-xs"} leading-relaxed text-white/85`}
+              />
             )}
           </div>
         );
@@ -633,11 +672,9 @@ export function ChevronFlow({ content, theme }: { content: string; theme: SlideT
               paddingLeft: i === 0 ? "1.5rem" : "2rem",
             }}
           >
-            <p className="text-sm font-bold text-white">{item.title}</p>
+            <MarkdownRenderer content={item.title} className="text-sm font-bold text-white" />
             {item.description && (
-              <p className="mt-1 text-[10px] leading-tight text-white/80">
-                {item.description}
-              </p>
+              <MarkdownRenderer content={item.description} className="mt-1 text-[10px] leading-tight text-white/80" />
             )}
           </div>
         );
@@ -672,17 +709,21 @@ export function AccentList({ content, theme }: { content: string; theme: SlideTh
             key={i}
             className={`rounded-lg ${compact ? "px-4 py-2" : "px-5 py-3.5"}`}
             style={{
-              backgroundColor: `${color}08`,
+              backgroundColor: `${color}15`,
               borderLeft: `4px solid ${color}`,
             }}
           >
-            <p className={`${compact ? "text-xs" : "text-sm"} font-bold`} style={{ color: theme.colors.text }}>
-              {item.title}
-            </p>
+            <MarkdownRenderer
+              content={item.title}
+              className={`${compact ? "text-xs" : "text-sm"} font-bold`}
+              style={{ color: theme.colors.text }}
+            />
             {item.description && (
-              <p className={`mt-0.5 ${compact ? "text-[10px]" : "text-xs"} leading-relaxed`} style={{ color: theme.colors.textMuted }}>
-                {item.description}
-              </p>
+              <MarkdownRenderer
+                content={item.description}
+                className={`mt-0.5 ${compact ? "text-[10px]" : "text-xs"} leading-relaxed`}
+                style={{ color: theme.colors.textMuted }}
+              />
             )}
           </div>
         );

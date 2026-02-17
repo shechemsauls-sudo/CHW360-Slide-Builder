@@ -343,8 +343,8 @@ ${hints}
 
 /** Calculate a proportional image count range for the given slide count */
 function getImageRange(slideCount: number): string {
-  const min = Math.max(4, Math.round(slideCount * 0.1));
-  const max = Math.min(Math.max(8, Math.round(slideCount * 0.2)), 20);
+  const min = Math.max(5, Math.round(slideCount * 0.25));
+  const max = Math.min(Math.max(10, Math.round(slideCount * 0.35)), 30);
   return `${min}-${max}`;
 }
 

@@ -1,6 +1,6 @@
 "use client";
 
-import { useRef, useState, useEffect } from "react";
+import { useRef, useState, useEffect, useCallback, type ReactNode } from "react";
 import type { SlideData } from "~/lib/ai/types";
 import type { SlideTheme } from "~/lib/themes";
 import { MarkdownRenderer } from "./markdown-renderer";
@@ -10,11 +10,35 @@ import { BlockRenderer } from "./blocks/block-renderer";
 const SLIDE_W = 960;
 const SLIDE_H = 540;
 
+/** Count internal items within block directives for density scoring */
+function countBlockItems(body: string): number {
+  let score = 0;
+  const blockRegex = /:::(\w[\w-]*)\s*[^\n]*\n([\s\S]*?):::/g;
+  let match;
+  while ((match = blockRegex.exec(body)) !== null) {
+    const type = match[1]!;
+    const content = match[2]!;
+    const lines = content.split("\n").filter((l) => l.trim()).length;
+    // Weight items by block type — these take more vertical space per item
+    if (type === "checklist" || type === "numbered-steps" || type === "accent-list") {
+      score += lines * 2;
+    } else if (type === "timeline" || type === "card-grid" || type === "icon-grid") {
+      score += lines * 2.5;
+    } else if (type === "info-box" || type === "highlight-box") {
+      score += lines + 4; // box chrome adds padding
+    } else {
+      score += lines;
+    }
+  }
+  return score;
+}
+
 /** Estimate content density and return a smaller text class for dense slides */
 function getContentScale(body: string, layout?: string): string {
   const lineCount = body.split("\n").filter((l) => l.trim()).length;
-  const blockCount = (body.match(/:::/g) ?? []).length / 2; // open + close pairs
-  const density = lineCount + blockCount * 3;
+  const blockCount = (body.match(/:::/g) ?? []).length / 2;
+  const blockItemScore = countBlockItems(body);
+  const density = lineCount + blockCount * 3 + blockItemScore;
 
   // Split layouts have half the width — much more aggressive scaling
   const isCompact = layout === "split-left" || layout === "split-right";
@@ -33,7 +57,58 @@ function getContentScale(body: string, layout?: string): string {
 function isDenseContent(body: string): boolean {
   const lineCount = body.split("\n").filter((l) => l.trim()).length;
   const blockCount = (body.match(/:::/g) ?? []).length / 2;
-  return lineCount + blockCount * 3 > 10;
+  const blockItemScore = countBlockItems(body);
+  return lineCount + blockCount * 3 + blockItemScore > 10;
+}
+
+/** Safety-net wrapper: shrinks content via CSS scale if it overflows its container.
+ *  Uses flex: 1 to fill available space (so it can detect overflow), and when
+ *  content fits, applies internal flex centering for balanced vertical placement. */
+function ContentFitter({ children, className }: { children: ReactNode; className?: string }) {
+  const outerRef = useRef<HTMLDivElement>(null);
+  const innerRef = useRef<HTMLDivElement>(null);
+  const [shrink, setShrink] = useState(1);
+
+  const measure = useCallback(() => {
+    const outer = outerRef.current;
+    const inner = innerRef.current;
+    if (!outer || !inner) return;
+    const available = outer.clientHeight;
+    const needed = inner.scrollHeight;
+    if (needed > available && available > 0) {
+      setShrink(Math.max(0.55, available / needed));
+    } else {
+      setShrink(1);
+    }
+  }, []);
+
+  useEffect(() => {
+    const outer = outerRef.current;
+    const inner = innerRef.current;
+    if (!outer || !inner) return;
+    const ro = new ResizeObserver(measure);
+    ro.observe(outer);
+    ro.observe(inner);
+    // Measure after first paint + delayed for late-rendering content (SVGs, fonts)
+    requestAnimationFrame(measure);
+    const timer = setTimeout(measure, 300);
+    return () => { ro.disconnect(); clearTimeout(timer); };
+  }, [measure]);
+
+  return (
+    <div ref={outerRef} className={`overflow-hidden ${className ?? ""}`} style={{ flex: "1 1 0%", minHeight: 0 }}>
+      <div
+        ref={innerRef}
+        style={
+          shrink < 1
+            ? { transform: `scale(${shrink})`, transformOrigin: "top left", width: `${100 / shrink}%` }
+            : { minHeight: "100%", display: "flex", flexDirection: "column", justifyContent: "center" }
+        }
+      >
+        {children}
+      </div>
+    </div>
+  );
 }
 
 interface SlideRendererProps {
@@ -175,13 +250,15 @@ function SlideBody({
   slide,
   theme,
   hasBlocks,
+  dense,
 }: {
   slide: SlideData;
   theme: SlideTheme;
   hasBlocks: boolean;
+  dense?: boolean;
 }) {
   if (hasBlocks) {
-    return <BlockRenderer content={slide.body} theme={theme} layout={slide.layout} />;
+    return <BlockRenderer content={slide.body} theme={theme} layout={slide.layout} dense={dense} />;
   }
 
   return (
@@ -217,6 +294,30 @@ function extractFooter(body: string): { bodyContent: string; footerText: string 
   const bodyContent = lines.slice(0, lines.length - footerLines.length).join("\n");
   const footerText = footerLines.join("\n");
   return { bodyContent, footerText };
+}
+
+/** Split body into two columns on --- separator, but only outside ::: block fences */
+function splitTwoColumns(body: string): { left: string; right: string; hasSplit: boolean } {
+  const lines = body.split("\n");
+  let depth = 0;
+  for (let i = 0; i < lines.length; i++) {
+    const trimmed = lines[i]!.trim();
+    if (trimmed.startsWith(":::") && trimmed.length > 3) {
+      depth++;
+    } else if (trimmed === ":::") {
+      depth = Math.max(0, depth - 1);
+    } else if (depth === 0 && (trimmed === "---" || trimmed === "")) {
+      // Check for --- at top level or triple newline
+      if (trimmed === "---") {
+        const left = lines.slice(0, i).join("\n");
+        const right = lines.slice(i + 1).join("\n");
+        if (right.trim().length > 0) {
+          return { left, right, hasSplit: true };
+        }
+      }
+    }
+  }
+  return { left: body, right: "", hasSplit: false };
 }
 
 function SlideFooter({ text, theme }: { text: string; theme: SlideTheme }) {
@@ -297,21 +398,23 @@ function FullLayout({
   const resolvedFooter = extractedFooter ?? (slide.type !== "title" ? footerText : undefined);
   const contentScale = getContentScale(slide.body);
 
+  const dense = isDenseContent(slide.body);
+
   return (
     <div className="flex h-full w-full flex-col overflow-hidden p-12">
-      <div className="flex flex-1 flex-col justify-center">
+      <div className="flex flex-1 flex-col justify-center min-h-0">
         {isActivity && (
           <div
-            className="mb-3 inline-flex w-fit items-center gap-1 rounded-full px-3 py-1 text-xs font-medium"
+            className="mb-3 inline-flex w-fit items-center gap-1 rounded-full px-3 py-1 text-xs font-medium shrink-0"
             style={{ backgroundColor: `${theme.colors.accent}20`, color: theme.colors.accent }}
           >
             Activity
           </div>
         )}
         <SlideTitle slide={slide} theme={theme} />
-        <div className={`mt-5 ${contentScale} leading-relaxed overflow-hidden`} style={{ textWrap: "balance" }}>
-          <SlideBody slide={bodySlide} theme={theme} hasBlocks={hasBlocks} />
-        </div>
+        <ContentFitter className={`${dense ? "mt-3" : "mt-5"} ${contentScale} leading-relaxed`}>
+          <SlideBody slide={bodySlide} theme={theme} hasBlocks={hasBlocks} dense={dense} />
+        </ContentFitter>
       </div>
       {resolvedFooter && <SlideFooter text={resolvedFooter} theme={theme} />}
     </div>
@@ -335,18 +438,20 @@ function CenteredLayout({
   const resolvedFooter = extractedFooter ?? (slide.type !== "title" ? footerText : undefined);
   const contentScale = getContentScale(slide.body);
 
+  const dense = isDenseContent(slide.body);
+
   return (
     <div className="flex h-full w-full flex-col items-center overflow-hidden text-center p-12">
-      <div className="flex flex-1 flex-col items-center justify-center">
+      <div className="flex flex-1 flex-col items-center justify-center min-h-0">
         {isQuote && (
-          <span className="mb-2 text-5xl" style={{ color: theme.colors.accent }}>
+          <span className="mb-2 text-5xl shrink-0" style={{ color: theme.colors.accent }}>
             &ldquo;
           </span>
         )}
         <SlideTitle slide={slide} theme={theme} />
-        <div className={`mt-5 max-w-[80%] ${contentScale} leading-relaxed overflow-hidden`} style={{ textWrap: "balance" }}>
-          <SlideBody slide={bodySlide} theme={theme} hasBlocks={hasBlocks} />
-        </div>
+        <ContentFitter className={`${dense ? "mt-3" : "mt-5"} max-w-[80%] ${contentScale} leading-relaxed`}>
+          <SlideBody slide={bodySlide} theme={theme} hasBlocks={hasBlocks} dense={dense} />
+        </ContentFitter>
       </div>
       {resolvedFooter && <SlideFooter text={resolvedFooter} theme={theme} />}
     </div>
@@ -388,11 +493,11 @@ function SplitLayout({
 
   const contentSide = (
     <div className={`flex h-full flex-col overflow-hidden ${dense ? "p-6" : "p-10"}`}>
-      <div className={`flex flex-1 flex-col ${dense ? "justify-start" : "justify-center"}`}>
+      <div className="flex flex-1 flex-col justify-center min-h-0">
         <SlideTitle slide={slide} theme={theme} />
-        <div className={`${dense ? "mt-3" : "mt-5"} ${contentScale} leading-relaxed overflow-hidden`}>
-          <SlideBody slide={bodySlide} theme={theme} hasBlocks={hasBlocks} />
-        </div>
+        <ContentFitter className={`${dense ? "mt-3" : "mt-5"} ${contentScale} leading-relaxed`}>
+          <SlideBody slide={bodySlide} theme={theme} hasBlocks={hasBlocks} dense={dense} />
+        </ContentFitter>
       </div>
       {resolvedFooter && <SlideFooter text={resolvedFooter} theme={theme} />}
     </div>
@@ -426,30 +531,29 @@ function TwoColumnLayout({
   const resolvedFooter = extractedFooter ?? (slide.type !== "title" ? footerText : undefined);
   const contentScale = getContentScale(slide.body);
 
-  // Split body by --- or double newline for two columns
-  const parts = bodyContent.split(/\n---\n|\n\n\n/);
-  const left = parts[0] ?? "";
-  const right = parts[1] ?? "";
-  const hasSplit = parts.length >= 2 && right.trim().length > 0;
+  // Split body by --- or triple newline for two columns, respecting ::: block fences
+  const { left, right, hasSplit } = splitTwoColumns(bodyContent);
+
+  const dense = isDenseContent(slide.body);
 
   return (
     <div className="flex h-full w-full flex-col overflow-hidden p-12">
-      <div className="flex flex-1 flex-col justify-center">
+      <div className="flex flex-1 flex-col justify-center min-h-0">
         <SlideTitle slide={slide} theme={theme} />
-        {hasSplit ? (
-          <div className={`mt-5 flex flex-1 gap-4 ${contentScale} leading-relaxed overflow-hidden`}>
-            <SurfaceCard theme={theme} className="flex-1 overflow-hidden">
-              <TwoColumnContent content={left} theme={theme} layout={slide.layout} />
-            </SurfaceCard>
-            <SurfaceCard theme={theme} className="flex-1 overflow-hidden">
-              <TwoColumnContent content={right} theme={theme} layout={slide.layout} />
-            </SurfaceCard>
-          </div>
-        ) : (
-          <div className={`mt-5 flex-1 ${contentScale} leading-relaxed overflow-hidden`}>
+        <ContentFitter className={`${dense ? "mt-3" : "mt-5"} ${contentScale} leading-relaxed`}>
+          {hasSplit ? (
+            <div className="flex gap-4">
+              <SurfaceCard theme={theme} className="flex-1 overflow-hidden">
+                <TwoColumnContent content={left} theme={theme} layout={slide.layout} />
+              </SurfaceCard>
+              <SurfaceCard theme={theme} className="flex-1 overflow-hidden">
+                <TwoColumnContent content={right} theme={theme} layout={slide.layout} />
+              </SurfaceCard>
+            </div>
+          ) : (
             <TwoColumnContent content={bodyContent} theme={theme} layout={slide.layout} />
-          </div>
-        )}
+          )}
+        </ContentFitter>
       </div>
       {resolvedFooter && <SlideFooter text={resolvedFooter} theme={theme} />}
     </div>
@@ -565,9 +669,9 @@ function ImageTopLayout({
       {/* Content area — bottom 65% */}
       <div className="flex flex-1 flex-col overflow-hidden p-8">
         <SlideTitle slide={slide} theme={theme} />
-        <div className={`mt-3 flex-1 ${contentScale} leading-relaxed overflow-hidden`} style={{ textWrap: "balance" }}>
-          <SlideBody slide={bodySlide} theme={theme} hasBlocks={hasBlocks} />
-        </div>
+        <ContentFitter className={`mt-3 ${contentScale} leading-relaxed`}>
+          <SlideBody slide={bodySlide} theme={theme} hasBlocks={hasBlocks} dense={isDenseContent(slide.body)} />
+        </ContentFitter>
         {resolvedFooter && <SlideFooter text={resolvedFooter} theme={theme} />}
       </div>
     </div>

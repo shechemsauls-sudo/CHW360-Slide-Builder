@@ -21,7 +21,7 @@ import { Button } from "~/components/ui/button";
 import { ThemeSelector } from "~/components/slides/theme-selector";
 import { api } from "~/trpc/react";
 import { toast } from "sonner";
-import type { ToneOption } from "~/lib/ai/types";
+import type { ToneOption, FidelityLevel } from "~/lib/ai/types";
 
 const TONE_OPTIONS: {
   value: ToneOption;
@@ -50,6 +50,28 @@ const TONE_OPTIONS: {
   },
 ];
 
+const FIDELITY_OPTIONS: {
+  value: FidelityLevel;
+  label: string;
+  description: string;
+}[] = [
+  {
+    value: "verbatim",
+    label: "Verbatim",
+    description: "Preserve source text exactly. AI only assigns slide types and layouts.",
+  },
+  {
+    value: "balanced",
+    label: "Balanced",
+    description: "Preserve key content. AI may improve formatting and add transitions.",
+  },
+  {
+    value: "creative",
+    label: "Creative",
+    description: "AI restructures freely for maximum engagement and visual impact.",
+  },
+];
+
 interface DeckSettingsPanelProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
@@ -73,16 +95,18 @@ export function DeckSettingsPanel({
   const { data: providers } = api.deck.providers.useQuery();
   const utils = api.useUtils();
 
-  const [llmProvider, setLlmProvider] = useState("openai");
-  const [imageProvider, setImageProvider] = useState("dalle3");
+  const [llmProvider, setLlmProvider] = useState("anthropic");
+  const [imageProvider, setImageProvider] = useState("gpt-image-1");
+  const [fidelity, setFidelity] = useState<FidelityLevel>("balanced");
   const [tone, setTone] = useState<ToneOption>("professional");
   const [customInstructions, setCustomInstructions] = useState("");
   const [isDirty, setIsDirty] = useState(false);
 
   useEffect(() => {
     if (prefs) {
-      setLlmProvider(prefs.llmProvider ?? "openai");
-      setImageProvider(prefs.imageProvider ?? "dalle3");
+      setLlmProvider(prefs.llmProvider ?? "anthropic");
+      setImageProvider(prefs.imageProvider ?? "gpt-image-1");
+      setFidelity((prefs.fidelity as FidelityLevel) ?? "balanced");
       setTone((prefs.tone as ToneOption) ?? "professional");
       setCustomInstructions(prefs.customInstructions ?? "");
       setIsDirty(false);
@@ -102,6 +126,7 @@ export function DeckSettingsPanel({
     setPreferences.mutate({
       llmProvider,
       imageProvider,
+      fidelity,
       tone,
       customInstructions,
     });
@@ -140,6 +165,33 @@ export function DeckSettingsPanel({
             />
           </section>
 
+          {/* Source Fidelity */}
+          <section>
+            <div className="mb-3 flex items-center gap-2">
+              <SlidersHorizontal className="h-4 w-4 text-[#5B8A8A]" />
+              <h3 className="text-sm font-medium text-gray-200">Source Fidelity</h3>
+            </div>
+            <div className="grid grid-cols-3 gap-2">
+              {FIDELITY_OPTIONS.map((opt) => (
+                <button
+                  key={opt.value}
+                  type="button"
+                  onClick={() => { setFidelity(opt.value); markDirty(); }}
+                  className={`rounded-lg border p-2.5 text-left transition-all ${
+                    fidelity === opt.value
+                      ? "border-[#5B8A8A] bg-[#2D5A5A]/15"
+                      : "border-white/10 bg-white/5 hover:border-white/20"
+                  }`}
+                >
+                  <div className="text-xs font-medium text-white">{opt.label}</div>
+                  <p className="mt-0.5 text-[10px] leading-snug text-gray-500">
+                    {opt.description}
+                  </p>
+                </button>
+              ))}
+            </div>
+          </section>
+
           {/* Generation Section */}
           <section>
             <div className="mb-3 flex items-center gap-2">
@@ -151,7 +203,7 @@ export function DeckSettingsPanel({
               <div className="space-y-2">
                 <label className="text-xs font-medium text-gray-400">AI Text Provider</label>
                 <div className="grid grid-cols-2 gap-2">
-                  {(providers?.llm ?? []).map((p) => (
+                  {(providers?.llm ?? []).filter((p) => p.configured).map((p) => (
                     <button
                       key={p.id}
                       type="button"
@@ -182,7 +234,7 @@ export function DeckSettingsPanel({
               <div className="space-y-2">
                 <label className="text-xs font-medium text-gray-400">Image Provider</label>
                 <div className="grid grid-cols-2 gap-2">
-                  {(providers?.image ?? []).map((p) => (
+                  {(providers?.image ?? []).filter((p) => p.configured).map((p) => (
                     <button
                       key={p.id}
                       type="button"

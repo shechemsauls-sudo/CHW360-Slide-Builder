@@ -127,4 +127,15 @@ export const openaiProvider: LLMProvider = {
     const parsed = JSON.parse(content);
     return slideSchema.parse(parsed) as SlideData;
   },
+
+  async chat(prompt: string): Promise<string> {
+    const client = getClient();
+    const response = await client.chat.completions.create({
+      model: "gpt-4o-mini",
+      messages: [{ role: "user", content: prompt }],
+      temperature: 0.7,
+      max_tokens: 300,
+    });
+    return response.choices[0]?.message?.content ?? "";
+  },
 };

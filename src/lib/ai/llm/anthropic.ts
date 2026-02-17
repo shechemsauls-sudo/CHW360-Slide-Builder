@@ -133,4 +133,16 @@ export const anthropicProvider: LLMProvider = {
     const parsed = JSON.parse(jsonStr);
     return slideSchema.parse(parsed) as SlideData;
   },
+
+  async chat(prompt: string): Promise<string> {
+    const client = getClient();
+    const response = await client.messages.create({
+      model: "claude-sonnet-4-5-20250929",
+      max_tokens: 300,
+      temperature: 0.7,
+      messages: [{ role: "user", content: prompt }],
+    });
+    const block = response.content[0];
+    return block?.type === "text" ? block.text : "";
+  },
 };

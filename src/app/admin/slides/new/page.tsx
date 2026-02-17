@@ -48,8 +48,8 @@ export default function NewDeckPage() {
   const [content, setContent] = useState("");
   const [sourceFormat, setSourceFormat] = useState<"plaintext" | "markdown" | "pdf" | "docx">("plaintext");
   const [slideCount, setSlideCount] = useState(20);
-  const [llmProvider, setLlmProvider] = useState("openai");
-  const [imageProvider, setImageProvider] = useState("disabled");
+  const [llmProvider, setLlmProvider] = useState("anthropic");
+  const [imageProvider, setImageProvider] = useState("gpt-image-1");
   const [themeId, setThemeId] = useState("chw-teal");
   const [fidelity, setFidelity] = useState<FidelityLevel>("balanced");
   const [detectedFidelity, setDetectedFidelity] = useState<FidelityLevel | null>(null);
@@ -179,7 +179,7 @@ export default function NewDeckPage() {
       {isGenerating ? (
         <Card className="border-0 bg-white/5">
           <CardContent className="p-6">
-            <GenerationStatus status="generating" provider={llmProvider} />
+            <GenerationStatus status="generating" provider={llmProvider} slideCount={slideCount} />
           </CardContent>
         </Card>
       ) : (

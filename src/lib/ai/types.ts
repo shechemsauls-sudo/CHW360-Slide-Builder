@@ -90,6 +90,8 @@ export interface LLMProvider {
   id: string;
   generateSlides(input: GenerateInput): Promise<GenerationResult>;
   regenerateSlide(input: RegenerateInput): Promise<SlideData>;
+  /** Simple text-in/text-out chat for lightweight tasks (image prompt generation, etc.) */
+  chat(prompt: string): Promise<string>;
 }
 
 export interface ImageProvider {
