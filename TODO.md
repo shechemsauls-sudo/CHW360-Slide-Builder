@@ -4,9 +4,10 @@
 _(none)_
 
 ## Bugs (broken functionality)
-_(none)_
+- [ ] Fix Vercel RESEND_API_KEY (has surrounding quotes — remove them in Vercel dashboard)
 
 ## Tech Debt (code quality)
+- [ ] Remove Resend diagnostic logging once email confirmed working in production
 - [ ] Add Turnstile spam protection to contact form (package installed, not wired)
 - [ ] Enable leaked password protection in Supabase Auth dashboard
 - [ ] Clean up broken Vercel Supabase integration vars (POSTGRES_URL etc. are empty strings)

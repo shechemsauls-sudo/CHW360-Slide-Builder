@@ -1,6 +1,6 @@
 # Status — CHW360
 
-## Current Phase: Production Live — Renderer Quality Sweep Complete
+## Current Phase: Production Live — Email & Polish Fixes
 
 ### Completed
 - **Phase 1a + 1b** — Auth, roles, email, landing page, admin dashboard, CRM, analytics
@@ -14,6 +14,7 @@
 - **Phase 2d.5** — 4 CHW theme variants (cream, white, black, slate), tech debt sweep (relations, env consolidation, parseSpeakerNotes extraction), responsive polish (mobile header, slide list toggle, batch image provider)
 - **Production** — Vercel deployed, RLS on all tables, env validation hardened
 - **Renderer Quality Sweep** — 9-fix plan: markdown in blocks, overflow prevention, frosted-glass image-full, footer prop, dynamic image count, image-top spacing, text-wrap balance, CycleDiagram component, brand color fixes + iterative polish from live testing
+- **Email & Polish** — Fixed production Resend emails (await + diagnostics), settings page contrast, Spanish contact form email templates
 
 ### Up Next
 - **Phase 2e** — Export + Sharing (PPTX/PDF export, public share links)
@@ -21,11 +22,11 @@
 ### Recent Changes
 | Date | Change |
 |------|--------|
+| 2026-02-17 | Fix production emails (await contact notification, claim email error logging, tRPC onError in prod), settings page contrast (card borders, teal labels, coral CTA), Spanish contact form confirmation emails |
 | 2026-02-16 | Renderer Quality Sweep: markdown between blocks, overflow auto-scaling, frosted-glass image-full, footer prop, CycleDiagram with tangent-based arrows, block self-compacting, TwoColumnLayout block routing, brand color fixes |
 | 2026-02-15 | Phase 2d.5: 4 CHW theme variants, Drizzle relations, env consolidation, parseSpeakerNotes extraction, responsive polish |
 | 2026-02-15 | Sprint 4: DeckSettingsPanel, tone selector, custom instructions, inline regen card, quality sweep (13 audit fixes) |
 | 2026-02-15 | Sprint 3: image-full + image-top layouts, prompt engineering, layout-gated imagePrompt, auto image gen dialog |
-| 2026-02-15 | Sprint 2: Gradient themes, 2 new themes (Sunset Warmth, Ocean Professional), typography + renderer upgrades |
 
 ---
-*Last updated: 2026-02-16*
+*Last updated: 2026-02-17*
