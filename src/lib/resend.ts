@@ -1,8 +1,22 @@
 import { Resend } from "resend";
 
-const resend = new Resend(process.env.RESEND_API_KEY);
+const apiKey = process.env.RESEND_API_KEY;
+const resend = new Resend(apiKey);
 
 const FROM_EMAIL = "CHW360 <noreply@chw360.com>";
+
+/** Wrapper that logs Resend API responses for production debugging */
+async function send(params: Parameters<typeof resend.emails.send>[0]) {
+  const keyPreview = apiKey ? `${apiKey.slice(0, 6)}...${apiKey.slice(-4)}` : "MISSING";
+  console.log(`[Resend] Sending to=${params.to} subject="${params.subject}" key=${keyPreview}`);
+  const { data, error } = await resend.emails.send(params);
+  if (error) {
+    console.error(`[Resend] FAILED to=${params.to}:`, JSON.stringify(error));
+    throw new Error(`Resend error: ${error.message}`);
+  }
+  console.log(`[Resend] OK id=${data?.id} to=${params.to}`);
+  return data;
+}
 
 function escapeHtml(str: string): string {
   return str
@@ -76,7 +90,7 @@ export async function sendContactNotification(
   // Notify all admin users
   await Promise.all(
     adminEmails.map((adminEmail) =>
-      resend.emails.send({
+      send({
         from: FROM_EMAIL,
         to: adminEmail,
         subject: `New CHW360 Contact: ${submission.name}`,
@@ -86,7 +100,7 @@ export async function sendContactNotification(
   );
 
   // Send confirmation to submitter
-  await resend.emails.send({
+  await send({
     from: FROM_EMAIL,
     to: submission.email,
     subject: "Thank you for contacting CHW360",
@@ -101,7 +115,7 @@ export async function sendContactNotification(
 }
 
 export async function sendCustomEmail(to: string, subject: string, htmlBody: string) {
-  await resend.emails.send({
+  await send({
     from: FROM_EMAIL,
     to,
     subject,
@@ -121,7 +135,7 @@ export async function sendDeckReadyEmail(
   const title = escapeHtml(deckTitle);
 
   if (status === "ready") {
-    await resend.emails.send({
+    await send({
       from: FROM_EMAIL,
       to: email,
       subject: `Your deck "${deckTitle}" is ready`,
@@ -142,7 +156,7 @@ export async function sendDeckReadyEmail(
       `),
     });
   } else {
-    await resend.emails.send({
+    await send({
       from: FROM_EMAIL,
       to: email,
       subject: `Generation failed for "${deckTitle}"`,
@@ -161,7 +175,7 @@ export async function sendDeckReadyEmail(
 }
 
 export async function sendClaimEmail(email: string, magicLink: string) {
-  await resend.emails.send({
+  await send({
     from: FROM_EMAIL,
     to: email,
     subject: "You've been invited to CHW360",
