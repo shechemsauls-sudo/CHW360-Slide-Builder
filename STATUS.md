@@ -20,11 +20,11 @@
 ### Recent Changes
 | Date | Change |
 |------|--------|
-| 2026-02-17 | Slide Builder Polish: ContentFitter overflow safety net, improved density heuristic, presenter ESC fix + visible exit button, settings panel fidelity selector + configured-only providers, keyboard shortcuts modal, universal image controls with layout picker + auto-generate prompt, presenter ? help button |
+| 2026-02-17 | Block contrast & rendering sweep: CHW Teal palette reorder (coral first), opacity boosts across all 17 block types, checklist/CardGrid markdown fix, ContentFitter overflow detection restored with internal centering, image persistence race condition fix, two-column block fence parsing, split layout centering |
+| 2026-02-17 | Slide Builder Polish: ContentFitter, presenter ESC fix, settings fidelity/provider filtering, keyboard shortcuts modal, universal image controls with layout picker, presenter help button |
 | 2026-02-17 | Fix production emails, settings page contrast, Spanish contact form emails |
 | 2026-02-16 | Renderer Quality Sweep: markdown between blocks, overflow auto-scaling, frosted-glass image-full, footer prop, CycleDiagram, brand color fixes |
 | 2026-02-15 | Phase 2d.5: 4 CHW theme variants, Drizzle relations, env consolidation, responsive polish |
-| 2026-02-15 | Sprint 3-4: Smart images, DeckSettingsPanel, tone/custom instructions, quality sweep |
 
 ---
 *Last updated: 2026-02-17*
