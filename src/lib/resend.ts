@@ -70,6 +70,7 @@ export async function sendContactNotification(
     email: string;
     organization?: string | null;
     message: string;
+    lang?: string | null;
   },
   adminEmails: string[],
 ) {
@@ -77,17 +78,19 @@ export async function sendContactNotification(
   const email = escapeHtml(submission.email);
   const org = submission.organization ? escapeHtml(submission.organization) : null;
   const message = escapeHtml(submission.message);
+  const isSpanish = submission.lang === "es";
 
   const adminHtml = brandedEmailWrapper(`
     <h2 style="margin:0 0 16px;font-size:20px;color:#2D5A5A;">New Contact Form Submission</h2>
     <p style="margin:0 0 8px;font-size:14px;color:#4A5568;"><strong>Name:</strong> ${name}</p>
     <p style="margin:0 0 8px;font-size:14px;color:#4A5568;"><strong>Email:</strong> ${email}</p>
     ${org ? `<p style="margin:0 0 8px;font-size:14px;color:#4A5568;"><strong>Organization:</strong> ${org}</p>` : ""}
+    ${isSpanish ? `<p style="margin:0 0 8px;font-size:14px;color:#4A5568;"><strong>Language:</strong> Spanish</p>` : ""}
     <p style="margin:0 0 8px;font-size:14px;color:#4A5568;"><strong>Message:</strong></p>
     <p style="margin:0;font-size:14px;color:#4A5568;">${message}</p>
   `);
 
-  // Notify all admin users
+  // Notify all admin users (always English — admin-facing)
   await Promise.all(
     adminEmails.map((adminEmail) =>
       send({
@@ -99,19 +102,34 @@ export async function sendContactNotification(
     ),
   );
 
-  // Send confirmation to submitter
-  await send({
-    from: FROM_EMAIL,
-    to: submission.email,
-    subject: "Thank you for contacting CHW360",
-    html: brandedEmailWrapper(`
-      <h2 style="margin:0 0 16px;font-size:20px;color:#2D5A5A;">Thank you, ${name}!</h2>
-      <p style="margin:0 0 12px;font-size:14px;color:#4A5568;line-height:1.6;">
-        We've received your message and will get back to you shortly.
-      </p>
-      <p style="margin:0;font-size:14px;color:#4A5568;">— The CHW360 Team</p>
-    `),
-  });
+  // Send confirmation to submitter (match their language)
+  if (isSpanish) {
+    await send({
+      from: FROM_EMAIL,
+      to: submission.email,
+      subject: "Gracias por contactar a CHW360",
+      html: brandedEmailWrapper(`
+        <h2 style="margin:0 0 16px;font-size:20px;color:#2D5A5A;">¡Gracias, ${name}!</h2>
+        <p style="margin:0 0 12px;font-size:14px;color:#4A5568;line-height:1.6;">
+          Hemos recibido su mensaje y nos pondremos en contacto con usted pronto.
+        </p>
+        <p style="margin:0;font-size:14px;color:#4A5568;">— El equipo de CHW360</p>
+      `),
+    });
+  } else {
+    await send({
+      from: FROM_EMAIL,
+      to: submission.email,
+      subject: "Thank you for contacting CHW360",
+      html: brandedEmailWrapper(`
+        <h2 style="margin:0 0 16px;font-size:20px;color:#2D5A5A;">Thank you, ${name}!</h2>
+        <p style="margin:0 0 12px;font-size:14px;color:#4A5568;line-height:1.6;">
+          We've received your message and will get back to you shortly.
+        </p>
+        <p style="margin:0;font-size:14px;color:#4A5568;">— The CHW360 Team</p>
+      `),
+    });
+  }
 }
 
 export async function sendCustomEmail(to: string, subject: string, htmlBody: string) {

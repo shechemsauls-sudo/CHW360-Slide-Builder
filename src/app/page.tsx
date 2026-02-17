@@ -265,7 +265,7 @@ export default function LandingPage() {
       return;
     }
     trackEvent.mutate({ page: "landing", event: "form_submit" });
-    submitMutation.mutate({ ...formData, source: "Contact Form · Landing Page" });
+    submitMutation.mutate({ ...formData, source: "Contact Form · Landing Page", lang });
   };
 
   return (

@@ -17,6 +17,7 @@ export const contactRouter = createTRPCRouter({
         organization: z.string().max(200).optional(),
         message: z.string().min(1).max(5000),
         source: z.string().max(200).optional(),
+        lang: z.enum(["en", "es"]).optional(),
       })
     )
     .mutation(async ({ ctx, input }) => {
