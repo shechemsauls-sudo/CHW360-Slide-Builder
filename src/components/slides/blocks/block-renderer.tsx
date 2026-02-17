@@ -1,11 +1,13 @@
 "use client";
 
 import type { SlideTheme } from "~/lib/themes";
+import { MarkdownRenderer } from "../markdown-renderer";
 import {
   InfoBox,
   KeyStat,
   NumberedSteps,
   FlowDiagram,
+  CycleDiagram,
   ComparisonTable,
   IconGrid,
   QuoteBlock,
@@ -55,9 +57,12 @@ export function BlockRenderer({ content, theme, layout }: BlockRendererProps) {
       {blocks.map((block, i) => {
         if (block.type === "text") {
           return block.content ? (
-            <div key={i} className="whitespace-pre-wrap">
-              {block.content}
-            </div>
+            <MarkdownRenderer
+              key={i}
+              content={block.content}
+              className="space-y-2 leading-relaxed"
+              style={{ color: theme.colors.textMuted }}
+            />
           ) : null;
         }
 
@@ -147,8 +152,18 @@ function renderBlock(
       return <KeyStat args={arg} content={content} theme={theme} />;
     case "numbered-steps":
       return <NumberedSteps content={content} theme={theme} />;
-    case "flow-diagram":
+    case "flow-diagram": {
+      // Auto-detect cycles: if last item matches the first, render as cycle
+      const flowItems = content.includes("->")
+        ? content.split("->").map((s) => s.trim()).filter(Boolean)
+        : content.split("\n").map((s) => s.trim()).filter(Boolean);
+      if (flowItems.length >= 3 && flowItems[0]!.toLowerCase() === flowItems[flowItems.length - 1]!.toLowerCase()) {
+        return <CycleDiagram content={flowItems.slice(0, -1).join(" -> ")} theme={theme} />;
+      }
       return <FlowDiagram content={content} theme={theme} />;
+    }
+    case "cycle":
+      return <CycleDiagram content={content} theme={theme} />;
     case "comparison-table":
       return <ComparisonTable content={content} theme={theme} />;
     case "icon-grid":
@@ -193,7 +208,11 @@ function renderBlock(
           style={{ backgroundColor: `${theme.colors.accent}10`, border: `1px solid ${theme.colors.accent}25` }}
         >
           <p className="text-xs opacity-60">[{type}]</p>
-          <div className="whitespace-pre-wrap text-sm">{content}</div>
+          <MarkdownRenderer
+            content={content}
+            className="text-sm leading-relaxed"
+            style={{ color: theme.colors.textMuted }}
+          />
         </div>
       );
   }

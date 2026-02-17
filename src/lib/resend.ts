@@ -109,6 +109,57 @@ export async function sendCustomEmail(to: string, subject: string, htmlBody: str
   });
 }
 
+export async function sendDeckReadyEmail(
+  email: string,
+  deckTitle: string,
+  deckId: string,
+  status: "ready" | "error",
+  errorMessage?: string,
+) {
+  const baseUrl = process.env.NEXT_PUBLIC_SITE_URL ?? "https://www.chw360.com";
+  const deckUrl = `${baseUrl}/admin/slides/${deckId}`;
+  const title = escapeHtml(deckTitle);
+
+  if (status === "ready") {
+    await resend.emails.send({
+      from: FROM_EMAIL,
+      to: email,
+      subject: `Your deck "${deckTitle}" is ready`,
+      html: brandedEmailWrapper(`
+        <h2 style="margin:0 0 16px;font-size:20px;color:#2D5A5A;">Slides Ready</h2>
+        <p style="margin:0 0 16px;font-size:14px;color:#4A5568;line-height:1.6;">
+          Your deck <strong>${title}</strong> has finished generating and is ready to view.
+        </p>
+        <table cellpadding="0" cellspacing="0" style="margin:0 0 20px;">
+          <tr>
+            <td style="background-color:#C9725B;border-radius:9999px;">
+              <a href="${escapeHtml(deckUrl)}" style="display:inline-block;padding:12px 32px;color:#FFFFFF;font-size:14px;font-weight:600;text-decoration:none;">
+                View Deck
+              </a>
+            </td>
+          </tr>
+        </table>
+      `),
+    });
+  } else {
+    await resend.emails.send({
+      from: FROM_EMAIL,
+      to: email,
+      subject: `Generation failed for "${deckTitle}"`,
+      html: brandedEmailWrapper(`
+        <h2 style="margin:0 0 16px;font-size:20px;color:#C9725B;">Generation Failed</h2>
+        <p style="margin:0 0 12px;font-size:14px;color:#4A5568;line-height:1.6;">
+          Your deck <strong>${title}</strong> could not be generated.
+        </p>
+        ${errorMessage ? `<p style="margin:0 0 16px;font-size:13px;color:#6B7280;background:#F5F5F5;padding:12px;border-radius:8px;">${escapeHtml(errorMessage)}</p>` : ""}
+        <p style="margin:0;font-size:14px;color:#4A5568;">
+          You can try again from the <a href="${escapeHtml(deckUrl)}" style="color:#2D5A5A;font-weight:600;">Slide Builder</a>.
+        </p>
+      `),
+    });
+  }
+}
+
 export async function sendClaimEmail(email: string, magicLink: string) {
   await resend.emails.send({
     from: FROM_EMAIL,

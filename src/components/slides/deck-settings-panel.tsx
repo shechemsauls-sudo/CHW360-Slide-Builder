@@ -113,7 +113,7 @@ export function DeckSettingsPanel({
     <Sheet open={open} onOpenChange={onOpenChange}>
       <SheetContent
         side="right"
-        className="w-full overflow-y-auto border-white/10 bg-[#1a1a2e] sm:max-w-lg"
+        className="w-full overflow-y-auto border-white/10 bg-[#1a2e2e] sm:max-w-xl lg:max-w-2xl"
       >
         <SheetHeader className="border-b border-white/10 pb-4">
           <SheetTitle className="flex items-center gap-2 text-white">

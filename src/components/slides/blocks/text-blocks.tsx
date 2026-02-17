@@ -79,12 +79,13 @@ export function KeyStat({ args, content, theme }: { args?: string; content: stri
 
 export function NumberedSteps({ content, theme }: { content: string; theme: SlideTheme }) {
   const steps = content.split("\n").filter((l) => l.trim());
+  const compact = steps.length > 4;
   return (
-    <div className="relative space-y-1">
+    <div className={`relative ${compact ? "space-y-0.5" : "space-y-1"}`}>
       {/* Connector line */}
       {steps.length > 1 && (
         <div
-          className="absolute left-[15px] top-5 bottom-5 w-0.5 rounded-full"
+          className={`absolute ${compact ? "left-[11px]" : "left-[15px]"} top-5 bottom-5 w-0.5 rounded-full`}
           style={{
             background: `linear-gradient(180deg, ${theme.colors.accent}60, ${theme.colors.accent}15)`,
           }}
@@ -93,9 +94,9 @@ export function NumberedSteps({ content, theme }: { content: string; theme: Slid
       {steps.map((step, i) => {
         const color = getPaletteColor(theme, i);
         return (
-        <div key={i} className="relative flex items-start gap-4 py-1.5">
+        <div key={i} className={`relative flex items-start gap-3 ${compact ? "py-0.5" : "py-1.5"}`}>
           <div
-            className="relative z-10 flex h-8 w-8 shrink-0 items-center justify-center rounded-full text-xs font-bold shadow-sm"
+            className={`relative z-10 flex ${compact ? "h-6 w-6 text-[10px]" : "h-8 w-8 text-xs"} shrink-0 items-center justify-center rounded-full font-bold shadow-sm`}
             style={{
               background: `linear-gradient(135deg, ${color}, ${color}cc)`,
               color: theme.colors.background,
@@ -105,13 +106,13 @@ export function NumberedSteps({ content, theme }: { content: string; theme: Slid
             {i + 1}
           </div>
           <div
-            className="flex-1 rounded-xl px-4 py-2.5"
+            className={`flex-1 rounded-xl ${compact ? "px-3 py-1.5" : "px-4 py-2.5"}`}
             style={{
               backgroundColor: `${color}08`,
               border: `1px solid ${color}12`,
             }}
           >
-            <p className="text-sm leading-relaxed" style={{ color: theme.colors.text }}>
+            <p className={`${compact ? "text-xs" : "text-sm"} leading-relaxed`} style={{ color: theme.colors.text }}>
               {step.replace(/^\d+[.)]\s*/, "")}
             </p>
           </div>
@@ -159,6 +160,133 @@ export function FlowDiagram({ content, theme }: { content: string; theme: SlideT
         </div>
         );
       })}
+    </div>
+  );
+}
+
+export function CycleDiagram({ content, theme }: { content: string; theme: SlideTheme }) {
+  const items = content.includes("->")
+    ? content.split("->").map((s) => s.trim()).filter(Boolean)
+    : content.split("\n").map((s) => s.trim()).filter(Boolean);
+
+  const n = items.length;
+  if (n === 0) return null;
+
+  // Scale layout based on item count
+  const svgW = 480;
+  const svgH = n <= 4 ? 225 : n <= 5 ? 250 : 270;
+  const cxPos = svgW / 2;
+  const cyPos = svgH / 2;
+  const elRx = n <= 4 ? 178 : 185;
+  const elRy = n <= 4 ? 82 : n <= 5 ? 100 : 110;
+  const nW = n <= 4 ? 130 : n <= 5 ? 115 : 100;
+  const nH = n <= 4 ? 40 : 36;
+  const badgeSize = n <= 4 ? 28 : 24;
+
+  const nodes = items.map((_, i) => {
+    const angle = (i / n) * 2 * Math.PI - Math.PI / 2;
+    return { x: cxPos + elRx * Math.cos(angle), y: cyPos + elRy * Math.sin(angle), angle };
+  });
+
+  // Smart anchor: use ellipse tangent to find where arrow exits/enters each pill
+  function getAnchor(idx: number, outgoing: boolean) {
+    const nd = nodes[idx]!;
+    // Tangent direction on ellipse (clockwise flow)
+    let tx = -elRx * Math.sin(nd.angle);
+    let ty = elRy * Math.cos(nd.angle);
+    const len = Math.sqrt(tx * tx + ty * ty);
+    tx /= len;
+    ty /= len;
+    if (!outgoing) { tx = -tx; ty = -ty; }
+    // Intersect ray from center with pill boundary
+    const hw = nW / 2;
+    const hh = nH / 2;
+    const s = Math.min(
+      Math.abs(tx) > 0.001 ? hw / Math.abs(tx) : 1e9,
+      Math.abs(ty) > 0.001 ? hh / Math.abs(ty) : 1e9,
+    );
+    return { x: nd.x + tx * (s + 5), y: nd.y + ty * (s + 5) };
+  }
+
+  return (
+    <div className="flex items-center justify-center py-1">
+      <div className="relative" style={{ width: svgW, height: svgH }}>
+        {/* Arrow layer */}
+        <svg viewBox={`0 0 ${svgW} ${svgH}`} className="absolute inset-0 h-full w-full" fill="none">
+          <defs>
+            {nodes.map((_, i) => {
+              const color = getPaletteColor(theme, i);
+              const next = getPaletteColor(theme, (i + 1) % n);
+              return [
+                <marker key={`m-${i}`} id={`cy-m-${i}`} markerWidth="6" markerHeight="5" refX="5" refY="2.5" orient="auto">
+                  <path d="M0,0.5 L5,2.5 L0,4.5" fill="none" stroke={next} strokeWidth="1.2" strokeLinecap="round" strokeLinejoin="round" />
+                </marker>,
+                <linearGradient key={`g-${i}`} id={`cy-g-${i}`}>
+                  <stop offset="0%" stopColor={color} stopOpacity="0.55" />
+                  <stop offset="100%" stopColor={next} stopOpacity="0.55" />
+                </linearGradient>,
+              ];
+            })}
+          </defs>
+          {nodes.map((_, i) => {
+            const start = getAnchor(i, true);
+            const end = getAnchor((i + 1) % n, false);
+            // Control point bows outward from ellipse center
+            const mx = (start.x + end.x) / 2;
+            const my = (start.y + end.y) / 2;
+            const dx = mx - cxPos;
+            const dy = my - cyPos;
+            const d = Math.sqrt(dx * dx + dy * dy) || 1;
+            const bow = 45;
+            const cpx = mx + (dx / d) * bow;
+            const cpy = my + (dy / d) * bow;
+            return (
+              <path
+                key={`a-${i}`}
+                d={`M${start.x},${start.y} Q${cpx},${cpy} ${end.x},${end.y}`}
+                stroke={`url(#cy-g-${i})`}
+                strokeWidth="1.5"
+                strokeLinecap="round"
+                markerEnd={`url(#cy-m-${i})`}
+              />
+            );
+          })}
+        </svg>
+
+        {/* Node pills */}
+        {nodes.map((node, i) => {
+          const color = getPaletteColor(theme, i);
+          return (
+            <div
+              key={`n-${i}`}
+              className="absolute flex items-center gap-1.5 rounded-full pl-1.5 pr-3 text-center"
+              style={{
+                left: node.x - nW / 2,
+                top: node.y - nH / 2,
+                width: nW,
+                height: nH,
+                background: `linear-gradient(135deg, ${color}, ${color}cc)`,
+                boxShadow: `0 4px 14px ${color}25`,
+              }}
+            >
+              <div
+                className="flex shrink-0 items-center justify-center rounded-full text-[10px] font-bold"
+                style={{
+                  width: badgeSize,
+                  height: badgeSize,
+                  backgroundColor: "rgba(255,255,255,0.2)",
+                  color: "white",
+                }}
+              >
+                {i + 1}
+              </div>
+              <span className="flex-1 text-[10px] font-semibold leading-tight text-white">
+                {items[i]}
+              </span>
+            </div>
+          );
+        })}
+      </div>
     </div>
   );
 }
@@ -304,20 +432,21 @@ export function QuoteBlock({ attribution, content, theme }: { attribution?: stri
 
 export function Checklist({ content, theme }: { content: string; theme: SlideTheme }) {
   const items = content.split("\n").filter((l) => l.trim());
+  const compact = items.length > 5;
 
   return (
-    <div className="space-y-2">
+    <div className={compact ? "space-y-1" : "space-y-2"}>
       {items.map((item, i) => (
         <div
           key={i}
-          className="flex items-start gap-3 rounded-xl px-4 py-2.5"
+          className={`flex items-start gap-2.5 rounded-xl ${compact ? "px-3 py-1.5" : "px-4 py-2.5"}`}
           style={{
             backgroundColor: `${theme.colors.accent}06`,
             border: `1px solid ${theme.colors.accent}10`,
           }}
         >
           <div
-            className="mt-0.5 flex h-5.5 w-5.5 shrink-0 items-center justify-center rounded-md shadow-sm"
+            className={`mt-0.5 flex ${compact ? "h-4 w-4" : "h-5.5 w-5.5"} shrink-0 items-center justify-center rounded-md shadow-sm`}
             style={{
               background: `linear-gradient(135deg, ${theme.colors.accent}, ${theme.colors.accent}cc)`,
               boxShadow: `0 1px 4px ${theme.colors.accent}30`,
@@ -325,7 +454,7 @@ export function Checklist({ content, theme }: { content: string; theme: SlideThe
           >
             <svg
               viewBox="0 0 12 12"
-              className="h-3 w-3"
+              className={compact ? "h-2.5 w-2.5" : "h-3 w-3"}
               fill="none"
               stroke={theme.colors.background}
               strokeWidth="2"
@@ -335,7 +464,7 @@ export function Checklist({ content, theme }: { content: string; theme: SlideThe
               <path d="M2.5 6L5 8.5L9.5 3.5" />
             </svg>
           </div>
-          <p className="text-sm leading-relaxed" style={{ color: theme.colors.text }}>
+          <p className={`${compact ? "text-xs" : "text-sm"} leading-relaxed`} style={{ color: theme.colors.text }}>
             {item.replace(/^[-*]\s*/, "")}
           </p>
         </div>
@@ -531,24 +660,27 @@ export function AccentList({ content, theme }: { content: string; theme: SlideTh
       };
     });
 
+  // Use compact spacing when there are many items
+  const compact = items.length > 3;
+
   return (
-    <div className="space-y-2.5">
+    <div className={compact ? "space-y-1.5" : "space-y-2.5"}>
       {items.map((item, i) => {
         const color = getPaletteColor(theme, i);
         return (
           <div
             key={i}
-            className="rounded-lg px-5 py-3.5"
+            className={`rounded-lg ${compact ? "px-4 py-2" : "px-5 py-3.5"}`}
             style={{
               backgroundColor: `${color}08`,
               borderLeft: `4px solid ${color}`,
             }}
           >
-            <p className="text-sm font-bold" style={{ color: theme.colors.text }}>
+            <p className={`${compact ? "text-xs" : "text-sm"} font-bold`} style={{ color: theme.colors.text }}>
               {item.title}
             </p>
             {item.description && (
-              <p className="mt-1 text-xs leading-relaxed" style={{ color: theme.colors.textMuted }}>
+              <p className={`mt-0.5 ${compact ? "text-[10px]" : "text-xs"} leading-relaxed`} style={{ color: theme.colors.textMuted }}>
                 {item.description}
               </p>
             )}

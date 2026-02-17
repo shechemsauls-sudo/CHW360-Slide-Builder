@@ -115,7 +115,7 @@ export function SlideEditPanel({
     <Sheet open={open} onOpenChange={onOpenChange}>
       <SheetContent
         side="right"
-        className="w-full border-white/10 bg-[#1a1a2e] sm:max-w-md lg:max-w-xl"
+        className="w-full border-white/10 bg-[#1a2e2e] sm:max-w-md lg:max-w-xl"
       >
         {/* Branded teal header */}
         <SheetHeader className="border-b border-[#2D5A5A]/30 bg-[#2D5A5A]/15 pb-3">

@@ -34,6 +34,7 @@ export const VISUAL_BLOCK_TYPES = [
   "key-stat",
   "numbered-steps",
   "flow-diagram",
+  "cycle",
   "comparison-table",
   "checklist",
   "quote-block",

@@ -1,6 +1,8 @@
 "use client";
 
-import { Loader2, Sparkles, AlertCircle } from "lucide-react";
+import { useState, useEffect } from "react";
+import { Loader2, Sparkles, AlertCircle, ArrowLeft, Clock } from "lucide-react";
+import Link from "next/link";
 
 interface GenerationStatusProps {
   status: "idle" | "generating" | "error";
@@ -9,6 +11,21 @@ interface GenerationStatusProps {
 }
 
 export function GenerationStatus({ status, error, provider }: GenerationStatusProps) {
+  const [elapsed, setElapsed] = useState(0);
+
+  useEffect(() => {
+    if (status !== "generating") {
+      setElapsed(0);
+      return;
+    }
+
+    const interval = setInterval(() => {
+      setElapsed((prev) => prev + 1);
+    }, 1000);
+
+    return () => clearInterval(interval);
+  }, [status]);
+
   if (status === "idle") return null;
 
   if (status === "error") {
@@ -23,6 +40,12 @@ export function GenerationStatus({ status, error, provider }: GenerationStatusPr
     );
   }
 
+  const formatTime = (s: number) => {
+    const mins = Math.floor(s / 60);
+    const secs = s % 60;
+    return mins > 0 ? `${mins}:${secs.toString().padStart(2, "0")}` : `${secs}s`;
+  };
+
   return (
     <div className="flex flex-col items-center justify-center py-16">
       <div className="relative mb-6">
@@ -32,10 +55,34 @@ export function GenerationStatus({ status, error, provider }: GenerationStatusPr
         <Loader2 className="absolute -right-1 -top-1 h-5 w-5 animate-spin text-[#C9725B]" />
       </div>
       <h3 className="mb-1 text-lg font-semibold text-white">Generating Slides</h3>
-      <p className="text-sm text-gray-400">
+      <p className="mb-6 text-sm text-gray-400">
         {provider === "anthropic" ? "Claude" : "GPT-4o"} is creating your presentation...
       </p>
-      <p className="mt-1 text-xs text-gray-500">This usually takes 10-30 seconds</p>
+
+      {/* Estimated wait + elapsed timer */}
+      <div className="flex flex-col items-center gap-3 rounded-xl bg-white/5 px-8 py-5">
+        <div className="flex items-center gap-2 text-sm text-gray-300">
+          <Clock className="h-4 w-4 text-[#5B8A8A]" />
+          <span>Estimated wait: <strong className="text-white">1 &ndash; 3 minutes</strong></span>
+        </div>
+        <div className="text-xs text-gray-500">
+          Elapsed: {formatTime(elapsed)}
+        </div>
+      </div>
+
+      {/* Safe to leave */}
+      <div className="mt-8 flex flex-col items-center gap-2">
+        <p className="text-xs text-gray-500">
+          You&apos;ll receive an email when it&apos;s done. Safe to close this page.
+        </p>
+        <Link
+          href="/admin/slides"
+          className="flex items-center gap-1.5 text-xs font-medium text-[#5B8A8A] transition-colors hover:text-[#7AACAC]"
+        >
+          <ArrowLeft className="h-3 w-3" />
+          Back to Decks
+        </Link>
+      </div>
     </div>
   );
 }

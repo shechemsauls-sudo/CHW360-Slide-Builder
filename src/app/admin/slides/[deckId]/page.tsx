@@ -21,7 +21,6 @@ import {
   Lightbulb,
   ArrowRightCircle,
   Settings,
-  MessageSquareText,
   List,
 } from "lucide-react";
 import { Button } from "~/components/ui/button";
@@ -36,13 +35,7 @@ import { getTheme } from "~/lib/themes";
 import { parseSpeakerNotes } from "~/lib/slides/parse-speaker-notes";
 import { api } from "~/trpc/react";
 import { toast } from "sonner";
-import type { SlideData, FidelityLevel, ToneOption } from "~/lib/ai/types";
-
-const FIDELITY_OPTIONS: { value: FidelityLevel; label: string }[] = [
-  { value: "verbatim", label: "Verbatim" },
-  { value: "balanced", label: "Balanced" },
-  { value: "creative", label: "Creative" },
-];
+import type { SlideData } from "~/lib/ai/types";
 
 export default function DeckViewPage() {
   const params = useParams();
@@ -54,12 +47,7 @@ export default function DeckViewPage() {
   const { data: deck, isLoading } = api.deck.getById.useQuery({ id: deckId });
   const [activeSlideId, setActiveSlideId] = useState<string | null>(null);
   const [showSource, setShowSource] = useState(false);
-  const [showRegenOptions, setShowRegenOptions] = useState(false);
-  const [regenFidelity, setRegenFidelity] = useState<FidelityLevel>("balanced");
-  const [regenSlideCount, setRegenSlideCount] = useState<number>(20);
-  const [regenTone, setRegenTone] = useState<ToneOption>("professional");
-  const [regenInstructions, setRegenInstructions] = useState("");
-  const [regenLlmProvider, setRegenLlmProvider] = useState<string | null>(null);
+  const [showRegenConfirm, setShowRegenConfirm] = useState(false);
   const [showSettingsPanel, setShowSettingsPanel] = useState(false);
   const [editPanelOpen, setEditPanelOpen] = useState(false);
   const [isGeneratingImages, setIsGeneratingImages] = useState(false);
@@ -69,17 +57,6 @@ export default function DeckViewPage() {
 
   const { data: prefs } = api.deck.getPreferences.useQuery();
   const { data: providers } = api.deck.providers.useQuery();
-
-  // Sync regen defaults from deck + preferences
-  useEffect(() => {
-    if (deck?.slideCount) setRegenSlideCount(deck.slideCount);
-    if (deck?.llmProvider) setRegenLlmProvider(deck.llmProvider);
-  }, [deck?.slideCount, deck?.llmProvider]);
-
-  useEffect(() => {
-    if (prefs?.tone) setRegenTone(prefs.tone as ToneOption);
-    if (prefs?.customInstructions) setRegenInstructions(prefs.customInstructions);
-  }, [prefs]);
 
   // Auto-show image generation dialog for newly created decks
   useEffect(() => {
@@ -112,7 +89,7 @@ export default function DeckViewPage() {
   const regenerateDeck = api.deck.regenerate.useMutation({
     onSuccess: () => {
       toast.success("Deck regenerated!");
-      setShowRegenOptions(false);
+      setShowRegenConfirm(false);
       void utils.deck.getById.invalidate({ id: deckId });
     },
     onError: (err) => toast.error(err.message),
@@ -185,11 +162,11 @@ export default function DeckViewPage() {
     }
     regenerateDeck.mutate({
       id: deckId,
-      fidelity: regenFidelity,
-      slideCount: regenSlideCount,
-      llmProvider: (regenLlmProvider ?? deck?.llmProvider ?? "openai") as "openai" | "anthropic",
-      tone: regenTone,
-      customInstructions: regenInstructions || undefined,
+      fidelity: (prefs?.fidelity as "verbatim" | "balanced" | "creative") ?? "balanced",
+      slideCount: deck.slideCount ?? 20,
+      llmProvider: (prefs?.llmProvider ?? deck?.llmProvider ?? "openai") as "openai" | "anthropic",
+      tone: (prefs?.tone as "professional" | "conversational" | "academic" | "training") ?? "professional",
+      customInstructions: prefs?.customInstructions || undefined,
     });
   };
 
@@ -348,7 +325,7 @@ export default function DeckViewPage() {
               variant="ghost"
               size="sm"
               className="gap-1.5 text-gray-400 hover:text-[#5B8A8A]"
-              onClick={() => setShowRegenOptions(!showRegenOptions)}
+              onClick={() => setShowRegenConfirm(!showRegenConfirm)}
               disabled={isRegenerating}
               title="Regenerate deck"
             >
@@ -385,134 +362,44 @@ export default function DeckViewPage() {
         </div>
       </div>
 
-      {/* Inline Regeneration Card */}
-      {showRegenOptions && !isRegenerating && (
+      {/* Regeneration Confirmation */}
+      {showRegenConfirm && !isRegenerating && (
         <Card className="border-0 bg-white/5">
-          <CardContent className="space-y-5 p-6">
-            <div className="flex items-center justify-between">
-              <h3 className="text-sm font-medium text-white">Regenerate Deck</h3>
-              <button
-                type="button"
-                onClick={() => setShowRegenOptions(false)}
-                className="text-xs text-gray-500 hover:text-gray-300"
-              >
-                Cancel
-              </button>
-            </div>
-
-            {/* LLM Provider */}
-            {providers && (
-              <div className="space-y-2">
-                <label className="text-xs font-medium text-gray-400">AI Provider</label>
-                <div className="grid grid-cols-2 gap-2 sm:grid-cols-4">
-                  {providers.llm.map((p) => (
-                    <button
-                      key={p.id}
-                      type="button"
-                      onClick={() => setRegenLlmProvider(p.id)}
-                      className={`rounded-lg border p-2 text-left transition-all ${
-                        (regenLlmProvider ?? deck.llmProvider ?? "openai") === p.id
-                          ? "border-[#5B8A8A] bg-[#2D5A5A]/15"
-                          : "border-white/10 bg-white/5 hover:border-white/20"
-                      }`}
-                    >
-                      <div className="text-xs font-medium text-white">{p.name}</div>
-                    </button>
-                  ))}
-                </div>
-              </div>
-            )}
-
-            {/* Fidelity */}
-            <div className="space-y-2">
-              <label className="text-xs font-medium text-gray-400">Fidelity</label>
-              <div className="grid grid-cols-1 gap-2 sm:grid-cols-3">
-                {FIDELITY_OPTIONS.map((opt) => (
+          <CardContent className="p-5">
+            <div className="flex items-center justify-between gap-4">
+              <div className="min-w-0">
+                <h3 className="text-sm font-medium text-white">Regenerate this deck?</h3>
+                <p className="mt-1 text-xs text-gray-400">
+                  This will replace all slides using your current{" "}
                   <button
-                    key={opt.value}
                     type="button"
-                    onClick={() => setRegenFidelity(opt.value)}
-                    className={`rounded-lg border p-2 text-center text-xs transition-all ${
-                      regenFidelity === opt.value
-                        ? "border-[#5B8A8A] bg-[#2D5A5A]/15 text-white"
-                        : "border-white/10 bg-white/5 text-gray-400 hover:border-white/20 hover:text-white"
-                    }`}
+                    onClick={() => { setShowRegenConfirm(false); setShowSettingsPanel(true); }}
+                    className="font-medium text-[#5B8A8A] underline decoration-dotted hover:text-[#7AACAC]"
                   >
-                    {opt.label}
-                  </button>
-                ))}
+                    settings
+                  </button>.
+                </p>
+              </div>
+              <div className="flex shrink-0 items-center gap-2">
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  className="text-gray-400 hover:text-white"
+                  onClick={() => setShowRegenConfirm(false)}
+                >
+                  Cancel
+                </Button>
+                <Button
+                  size="sm"
+                  className="gap-1.5"
+                  style={{ backgroundColor: "#C9725B" }}
+                  onClick={handleRegenerate}
+                >
+                  <RefreshCw className="h-3.5 w-3.5" />
+                  Regenerate
+                </Button>
               </div>
             </div>
-
-            {/* Slide Count */}
-            <div className="space-y-2">
-              <label htmlFor="regen-slide-count" className="text-xs font-medium text-gray-400">Max Slides</label>
-              <div className="flex items-center gap-3">
-                <input
-                  id="regen-slide-count"
-                  type="range"
-                  min={5}
-                  max={120}
-                  value={regenSlideCount}
-                  onChange={(e) => setRegenSlideCount(Number(e.target.value))}
-                  className="h-1.5 flex-1 cursor-pointer appearance-none rounded-full bg-white/10 accent-[#2D5A5A]"
-                />
-                <span className="w-8 text-center text-xs font-medium text-white tabular-nums">
-                  {regenSlideCount}
-                </span>
-              </div>
-            </div>
-
-            {/* Tone */}
-            <div className="space-y-2">
-              <div className="flex items-center gap-1.5">
-                <MessageSquareText className="h-3.5 w-3.5 text-gray-400" />
-                <label className="text-xs font-medium text-gray-400">Tone</label>
-              </div>
-              <div className="grid grid-cols-2 gap-2 sm:grid-cols-4">
-                {(["professional", "conversational", "academic", "training"] as const).map((t) => (
-                  <button
-                    key={t}
-                    type="button"
-                    onClick={() => setRegenTone(t)}
-                    className={`rounded-lg border p-2 text-center text-xs capitalize transition-all ${
-                      regenTone === t
-                        ? "border-[#5B8A8A] bg-[#2D5A5A]/15 text-white"
-                        : "border-white/10 bg-white/5 text-gray-400 hover:border-white/20 hover:text-white"
-                    }`}
-                  >
-                    {t}
-                  </button>
-                ))}
-              </div>
-            </div>
-
-            {/* Custom Instructions */}
-            <div className="space-y-2">
-              <label htmlFor="regen-instructions" className="text-xs font-medium text-gray-400">Custom Instructions</label>
-              <textarea
-                id="regen-instructions"
-                value={regenInstructions}
-                onChange={(e) => {
-                  if (e.target.value.length <= 500) setRegenInstructions(e.target.value);
-                }}
-                placeholder="Optional: specific instructions for this regeneration..."
-                rows={2}
-                className="w-full resize-none rounded-lg border border-white/10 bg-white/5 px-3 py-2 text-sm text-white placeholder:text-gray-500 focus:border-[#2D5A5A]/50 focus:outline-none focus:ring-1 focus:ring-[#2D5A5A]/50"
-              />
-              <div className="text-right text-[10px] text-gray-500">
-                {regenInstructions.length}/500
-              </div>
-            </div>
-
-            <Button
-              className="w-full gap-1.5"
-              style={{ backgroundColor: "#C9725B" }}
-              onClick={handleRegenerate}
-            >
-              <RefreshCw className="h-3.5 w-3.5" />
-              Regenerate with these settings
-            </Button>
           </CardContent>
         </Card>
       )}
@@ -525,7 +412,7 @@ export default function DeckViewPage() {
             <div>
               <p className="text-sm font-medium text-white">Regenerating slides...</p>
               <p className="text-xs text-gray-400">
-                Using {regenFidelity} fidelity with {deck.llmProvider === "openai" ? "GPT-4o" : "Claude Sonnet"}
+                Using {prefs?.fidelity ?? "balanced"} fidelity with {(prefs?.llmProvider ?? deck.llmProvider) === "openai" ? "GPT-4o" : "Claude Sonnet"}
               </p>
             </div>
           </CardContent>
@@ -708,6 +595,7 @@ export default function DeckViewPage() {
                   slide={activeSlide}
                   theme={getTheme(deck.themeId)}
                   className="mb-6"
+                  footerText={`\u00A9 CHW360 | ${deck.title} | Educational Use Only`}
                 />
 
                 {/* Speaker notes */}

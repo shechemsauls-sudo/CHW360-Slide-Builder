@@ -71,6 +71,7 @@ export default function AudiencePage() {
           <SlideRenderer
             slide={currentSlide}
             theme={theme}
+            footerText={deck ? `\u00A9 CHW360 | ${deck.title} | Educational Use Only` : undefined}
           />
         )}
       </div>

@@ -21,7 +21,7 @@ const slideSchema = z.object({
   speakerNotes: z.string(),
   imageUrl: z.string().nullable().default(null),
   imagePrompt: z.string().nullable().default(null),
-  layout: z.enum(["full", "split-left", "split-right", "centered", "two-column"]).default("full"),
+  layout: z.enum(["full", "split-left", "split-right", "centered", "two-column", "image-full", "image-top"]).default("full"),
 });
 
 const slidesResponseSchema = z.object({
@@ -41,6 +41,29 @@ function extractJSON(text: string): string {
   throw new Error("No JSON found in response");
 }
 
+/**
+ * Attempt to repair truncated JSON from LLM responses.
+ * When max_tokens is hit, the JSON gets cut off mid-slide.
+ * This finds the last complete slide object and closes the JSON.
+ */
+function repairTruncatedJSON(json: string): string {
+  try {
+    JSON.parse(json);
+    return json;
+  } catch {
+    const lastComplete = json.lastIndexOf('},');
+    if (lastComplete === -1) {
+      throw new Error("Could not repair truncated JSON — no complete slides found");
+    }
+
+    const repaired = json.substring(0, lastComplete + 1) + ']}';
+
+    JSON.parse(repaired);
+    console.warn(`[anthropic] Repaired truncated JSON — kept content up to position ${lastComplete}`);
+    return repaired;
+  }
+}
+
 async function parseWithRetry(
   client: Anthropic,
   prompt: string,
@@ -49,12 +72,14 @@ async function parseWithRetry(
   let lastError: Error | null = null;
 
   for (let i = 0; i <= retries; i++) {
-    const response = await client.messages.create({
+    const stream = client.messages.stream({
       model: "claude-sonnet-4-5-20250929",
-      max_tokens: 16000,
+      max_tokens: 32000,
       temperature: 0.7,
       messages: [{ role: "user", content: prompt + "\n\nRespond with ONLY the JSON object. No other text." }],
     });
+
+    const response = await stream.finalMessage();
 
     const content = response.content[0];
     if (content?.type !== "text" || !content.text) {
@@ -64,7 +89,8 @@ async function parseWithRetry(
 
     try {
       const jsonStr = extractJSON(content.text);
-      const parsed = JSON.parse(jsonStr);
+      const repaired = repairTruncatedJSON(jsonStr);
+      const parsed = JSON.parse(repaired);
       const validated = slidesResponseSchema.parse(parsed);
       const tokensUsed = (response.usage?.input_tokens ?? 0) + (response.usage?.output_tokens ?? 0);
       return { slides: validated.slides as SlideData[], tokensUsed };
@@ -91,12 +117,14 @@ export const anthropicProvider: LLMProvider = {
     const client = getClient();
     const prompt = buildRegeneratePrompt(input);
 
-    const response = await client.messages.create({
+    const stream = client.messages.stream({
       model: "claude-sonnet-4-5-20250929",
       max_tokens: 2000,
       temperature: 0.7,
       messages: [{ role: "user", content: prompt + "\n\nRespond with ONLY the JSON object. No other text." }],
     });
+
+    const response = await stream.finalMessage();
 
     const content = response.content[0];
     if (content?.type !== "text" || !content.text) throw new Error("Empty response from Anthropic");

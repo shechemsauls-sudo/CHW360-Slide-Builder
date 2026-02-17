@@ -14,6 +14,7 @@ import {
   uploadSlideImage,
   deleteDeckImages,
 } from "~/lib/storage/upload-image";
+import { sendDeckReadyEmail } from "~/lib/resend";
 
 const IMAGE_ELIGIBLE_SET = new Set<string>(IMAGE_ELIGIBLE_LAYOUTS);
 
@@ -187,6 +188,12 @@ export const deckRouter = createTRPCRouter({
           .where(eq(decks.id, deck.id))
           .returning();
 
+        // Email notification (non-blocking)
+        const userEmail = ctx.user.email;
+        if (userEmail) {
+          sendDeckReadyEmail(userEmail, input.title, deck.id, "ready").catch(() => {});
+        }
+
         return updated;
       } catch (error) {
         // Mark deck as error
@@ -201,6 +208,12 @@ export const deckRouter = createTRPCRouter({
             updatedAt: new Date(),
           })
           .where(eq(decks.id, deck.id));
+
+        // Email notification (non-blocking)
+        const userEmail = ctx.user.email;
+        if (userEmail) {
+          sendDeckReadyEmail(userEmail, input.title, deck.id, "error", error instanceof Error ? error.message : undefined).catch(() => {});
+        }
 
         throw new TRPCError({
           code: "INTERNAL_SERVER_ERROR",
@@ -585,6 +598,12 @@ export const deckRouter = createTRPCRouter({
           .where(eq(decks.id, deck.id))
           .returning();
 
+        // Email notification (non-blocking)
+        const userEmail = ctx.user.email;
+        if (userEmail) {
+          sendDeckReadyEmail(userEmail, deck.title, deck.id, "ready").catch(() => {});
+        }
+
         return updated;
       } catch (error) {
         await ctx.db
@@ -598,6 +617,12 @@ export const deckRouter = createTRPCRouter({
             updatedAt: new Date(),
           })
           .where(eq(decks.id, deck.id));
+
+        // Email notification (non-blocking)
+        const userEmail = ctx.user.email;
+        if (userEmail) {
+          sendDeckReadyEmail(userEmail, deck.title, deck.id, "error", error instanceof Error ? error.message : undefined).catch(() => {});
+        }
 
         throw new TRPCError({
           code: "INTERNAL_SERVER_ERROR",

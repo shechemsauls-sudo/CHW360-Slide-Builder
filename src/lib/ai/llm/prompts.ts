@@ -89,6 +89,16 @@ Assessment -> Diagnosis -> Treatment -> Follow-up
 \`\`\``,
     hint: "Processes or workflows → `:::flow-diagram`",
   },
+  "cycle": {
+    doc: `**:::cycle**
+Circular cycle diagram with arrows looping back from last to first. Use for recurring processes and feedback loops (3-6 items).
+\`\`\`
+:::cycle
+Implement -> Use -> Evaluate -> Adjust
+:::
+\`\`\``,
+    hint: "Recurring processes or feedback loops → `:::cycle`",
+  },
   "comparison-table": {
     doc: `**:::comparison-table**
 Side-by-side comparison. First row is headers, use | to separate columns.
@@ -331,6 +341,13 @@ ${hints}
 - One chart per slide is ideal — combine with a text block if needed for context${restriction}`;
 }
 
+/** Calculate a proportional image count range for the given slide count */
+function getImageRange(slideCount: number): string {
+  const min = Math.max(4, Math.round(slideCount * 0.1));
+  const max = Math.min(Math.max(8, Math.round(slideCount * 0.2)), 20);
+  return `${min}-${max}`;
+}
+
 export function buildGeneratePrompt(input: GenerateInput): string {
   const slideCount = input.slideCount ?? 20;
   const fidelity = input.fidelity ?? "balanced";
@@ -360,7 +377,7 @@ If the source content does NOT contain slide markers (it's just prose, notes, or
 - First slide must be type "title" with the deck title
 - Last slide must be type "closing" with key takeaways
 - Use a mix of slide types: section, content, bullets, comparison, activity, quote
-- Include "imagePrompt" on 4-8 slides using ONLY image-eligible layouts (split-left, split-right, image-full, image-top)
+- Include "imagePrompt" on ${getImageRange(slideCount)} slides using ONLY image-eligible layouts (split-left, split-right, image-full, image-top)
 - Use image-full for at least 1-2 dramatic visual slides (title, section dividers, or closing)
 - Use image-top for content slides that benefit from a visual anchor
 - Set imagePrompt to null on full, centered, and two-column layouts

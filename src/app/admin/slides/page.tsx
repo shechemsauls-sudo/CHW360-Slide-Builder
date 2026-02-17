@@ -1,6 +1,8 @@
 "use client";
 
+import { useEffect, useRef } from "react";
 import Link from "next/link";
+import { useRouter } from "next/navigation";
 import { Plus, Layers } from "lucide-react";
 import { Button } from "~/components/ui/button";
 import { Card, CardContent } from "~/components/ui/card";
@@ -10,7 +12,37 @@ import { toast } from "sonner";
 
 export default function SlidesPage() {
   const utils = api.useUtils();
-  const { data: decks, isLoading } = api.deck.list.useQuery();
+  const router = useRouter();
+  const hasGenerating = useRef(false);
+
+  const { data: decks, isLoading } = api.deck.list.useQuery(undefined, {
+    // Poll every 3s when any deck is generating
+    refetchInterval: (query) => {
+      const data = query.state.data;
+      const generating = data?.some((d) => d.status === "generating");
+      return generating ? 3000 : false;
+    },
+  });
+
+  // Notify when a generating deck becomes ready
+  useEffect(() => {
+    const generating = decks?.some((d) => d.status === "generating") ?? false;
+    if (hasGenerating.current && !generating && decks && decks.length > 0) {
+      // A deck just finished generating — find the most recently updated ready deck
+      const justReady = decks
+        .filter((d) => d.status === "ready")
+        .sort((a, b) => new Date(b.updatedAt).getTime() - new Date(a.updatedAt).getTime())[0];
+      if (justReady) {
+        toast.success(`"${justReady.title}" is ready!`, {
+          action: {
+            label: "View",
+            onClick: () => router.push(`/admin/slides/${justReady.id}`),
+          },
+        });
+      }
+    }
+    hasGenerating.current = generating;
+  }, [decks, router]);
   const deleteDeck = api.deck.delete.useMutation({
     onSuccess: () => {
       utils.deck.list.invalidate();

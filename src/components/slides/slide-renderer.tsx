@@ -10,10 +10,37 @@ import { BlockRenderer } from "./blocks/block-renderer";
 const SLIDE_W = 960;
 const SLIDE_H = 540;
 
+/** Estimate content density and return a smaller text class for dense slides */
+function getContentScale(body: string, layout?: string): string {
+  const lineCount = body.split("\n").filter((l) => l.trim()).length;
+  const blockCount = (body.match(/:::/g) ?? []).length / 2; // open + close pairs
+  const density = lineCount + blockCount * 3;
+
+  // Split layouts have half the width — much more aggressive scaling
+  const isCompact = layout === "split-left" || layout === "split-right";
+  if (isCompact) {
+    if (density > 15) return "text-xs";
+    if (density > 8) return "text-sm";
+    return "text-sm";
+  }
+
+  if (density > 30) return "text-xs";
+  if (density > 18) return "text-sm";
+  return "text-base";
+}
+
+/** Check if content is dense enough to need compact layout adjustments */
+function isDenseContent(body: string): boolean {
+  const lineCount = body.split("\n").filter((l) => l.trim()).length;
+  const blockCount = (body.match(/:::/g) ?? []).length / 2;
+  return lineCount + blockCount * 3 > 10;
+}
+
 interface SlideRendererProps {
   slide: SlideData;
   theme: SlideTheme;
   className?: string;
+  footerText?: string;
 }
 
 /**
@@ -21,7 +48,7 @@ interface SlideRendererProps {
  * then CSS-scales to fit the container. This ensures identical
  * spatial rendering in preview, deck viewer, and presentation mode.
  */
-export function SlideRenderer({ slide, theme, className }: SlideRendererProps) {
+export function SlideRenderer({ slide, theme, className, footerText }: SlideRendererProps) {
   const hasBlocks = slide.body.includes(":::");
   const containerRef = useRef<HTMLDivElement>(null);
   const [scale, setScale] = useState(1);
@@ -67,7 +94,7 @@ export function SlideRenderer({ slide, theme, className }: SlideRendererProps) {
 
         {/* Layout container */}
         <div className="flex h-full w-full">
-          {renderLayout(slide, theme, hasBlocks)}
+          {renderLayout(slide, theme, hasBlocks, footerText)}
         </div>
       </div>
     </div>
@@ -78,22 +105,23 @@ function renderLayout(
   slide: SlideData,
   theme: SlideTheme,
   hasBlocks: boolean,
+  footerText?: string,
 ): React.ReactNode {
   switch (slide.layout) {
     case "centered":
-      return <CenteredLayout slide={slide} theme={theme} hasBlocks={hasBlocks} />;
+      return <CenteredLayout slide={slide} theme={theme} hasBlocks={hasBlocks} footerText={footerText} />;
     case "split-left":
-      return <SplitLayout slide={slide} theme={theme} hasBlocks={hasBlocks} imagePosition="left" />;
+      return <SplitLayout slide={slide} theme={theme} hasBlocks={hasBlocks} imagePosition="left" footerText={footerText} />;
     case "split-right":
-      return <SplitLayout slide={slide} theme={theme} hasBlocks={hasBlocks} imagePosition="right" />;
+      return <SplitLayout slide={slide} theme={theme} hasBlocks={hasBlocks} imagePosition="right" footerText={footerText} />;
     case "two-column":
-      return <TwoColumnLayout slide={slide} theme={theme} />;
+      return <TwoColumnLayout slide={slide} theme={theme} footerText={footerText} />;
     case "image-full":
-      return <ImageFullLayout slide={slide} theme={theme} hasBlocks={hasBlocks} />;
+      return <ImageFullLayout slide={slide} theme={theme} hasBlocks={hasBlocks} footerText={footerText} />;
     case "image-top":
-      return <ImageTopLayout slide={slide} theme={theme} hasBlocks={hasBlocks} />;
+      return <ImageTopLayout slide={slide} theme={theme} hasBlocks={hasBlocks} footerText={footerText} />;
     default:
-      return <FullLayout slide={slide} theme={theme} hasBlocks={hasBlocks} />;
+      return <FullLayout slide={slide} theme={theme} hasBlocks={hasBlocks} footerText={footerText} />;
   }
 }
 
@@ -117,6 +145,7 @@ function SlideTitle({ slide, theme }: { slide: SlideData; theme: SlideTheme }) {
         fontFamily: theme.typography.headingFont,
         fontWeight: theme.typography.headingWeight,
         color: theme.colors.text,
+        textWrap: "balance",
       }}
     >
       {slide.title}
@@ -255,17 +284,21 @@ function FullLayout({
   slide,
   theme,
   hasBlocks,
+  footerText,
 }: {
   slide: SlideData;
   theme: SlideTheme;
   hasBlocks: boolean;
+  footerText?: string;
 }) {
   const isActivity = slide.type === "activity";
-  const { bodyContent, footerText } = extractFooter(slide.body);
+  const { bodyContent, footerText: extractedFooter } = extractFooter(slide.body);
   const bodySlide = { ...slide, body: bodyContent };
+  const resolvedFooter = extractedFooter ?? (slide.type !== "title" ? footerText : undefined);
+  const contentScale = getContentScale(slide.body);
 
   return (
-    <div className="flex h-full w-full flex-col p-12">
+    <div className="flex h-full w-full flex-col overflow-hidden p-12">
       <div className="flex flex-1 flex-col justify-center">
         {isActivity && (
           <div
@@ -276,11 +309,11 @@ function FullLayout({
           </div>
         )}
         <SlideTitle slide={slide} theme={theme} />
-        <div className="mt-5 text-base leading-relaxed">
+        <div className={`mt-5 ${contentScale} leading-relaxed overflow-hidden`} style={{ textWrap: "balance" }}>
           <SlideBody slide={bodySlide} theme={theme} hasBlocks={hasBlocks} />
         </div>
       </div>
-      {footerText && <SlideFooter text={footerText} theme={theme} />}
+      {resolvedFooter && <SlideFooter text={resolvedFooter} theme={theme} />}
     </div>
   );
 }
@@ -289,17 +322,21 @@ function CenteredLayout({
   slide,
   theme,
   hasBlocks,
+  footerText,
 }: {
   slide: SlideData;
   theme: SlideTheme;
   hasBlocks: boolean;
+  footerText?: string;
 }) {
   const isQuote = slide.type === "quote";
-  const { bodyContent, footerText } = extractFooter(slide.body);
+  const { bodyContent, footerText: extractedFooter } = extractFooter(slide.body);
   const bodySlide = { ...slide, body: bodyContent };
+  const resolvedFooter = extractedFooter ?? (slide.type !== "title" ? footerText : undefined);
+  const contentScale = getContentScale(slide.body);
 
   return (
-    <div className="flex h-full w-full flex-col items-center text-center p-12">
+    <div className="flex h-full w-full flex-col items-center overflow-hidden text-center p-12">
       <div className="flex flex-1 flex-col items-center justify-center">
         {isQuote && (
           <span className="mb-2 text-5xl" style={{ color: theme.colors.accent }}>
@@ -307,11 +344,11 @@ function CenteredLayout({
           </span>
         )}
         <SlideTitle slide={slide} theme={theme} />
-        <div className="mt-5 max-w-[80%] text-base leading-relaxed">
+        <div className={`mt-5 max-w-[80%] ${contentScale} leading-relaxed overflow-hidden`} style={{ textWrap: "balance" }}>
           <SlideBody slide={bodySlide} theme={theme} hasBlocks={hasBlocks} />
         </div>
       </div>
-      {footerText && <SlideFooter text={footerText} theme={theme} />}
+      {resolvedFooter && <SlideFooter text={resolvedFooter} theme={theme} />}
     </div>
   );
 }
@@ -321,11 +358,13 @@ function SplitLayout({
   theme,
   hasBlocks,
   imagePosition,
+  footerText,
 }: {
   slide: SlideData;
   theme: SlideTheme;
   hasBlocks: boolean;
   imagePosition: "left" | "right";
+  footerText?: string;
 }) {
   const imagePanel = slide.imageUrl ? (
     <div className="h-full">
@@ -340,18 +379,22 @@ function SplitLayout({
     <ImagePlaceholder theme={theme} />
   );
 
-  const { bodyContent, footerText } = extractFooter(slide.body);
+  const { bodyContent, footerText: extractedFooter } = extractFooter(slide.body);
   const bodySlide = { ...slide, body: bodyContent };
+  const resolvedFooter = extractedFooter ?? (slide.type !== "title" ? footerText : undefined);
+
+  const dense = isDenseContent(slide.body);
+  const contentScale = getContentScale(slide.body, slide.layout);
 
   const contentSide = (
-    <div className="flex h-full flex-col p-10 overflow-auto">
-      <div className="flex flex-1 flex-col justify-center">
+    <div className={`flex h-full flex-col overflow-hidden ${dense ? "p-6" : "p-10"}`}>
+      <div className={`flex flex-1 flex-col ${dense ? "justify-start" : "justify-center"}`}>
         <SlideTitle slide={slide} theme={theme} />
-        <div className="mt-5 text-base leading-relaxed">
+        <div className={`${dense ? "mt-3" : "mt-5"} ${contentScale} leading-relaxed overflow-hidden`}>
           <SlideBody slide={bodySlide} theme={theme} hasBlocks={hasBlocks} />
         </div>
       </div>
-      {footerText && <SlideFooter text={footerText} theme={theme} />}
+      {resolvedFooter && <SlideFooter text={resolvedFooter} theme={theme} />}
     </div>
   );
 
@@ -363,34 +406,52 @@ function SplitLayout({
   );
 }
 
+function TwoColumnContent({ content, theme, layout }: { content: string; theme: SlideTheme; layout: string }) {
+  if (content.includes(":::")) {
+    return <BlockRenderer content={content} theme={theme} layout={layout} />;
+  }
+  return <MarkdownRenderer content={content} style={{ color: theme.colors.text }} />;
+}
+
 function TwoColumnLayout({
   slide,
   theme,
+  footerText,
 }: {
   slide: SlideData;
   theme: SlideTheme;
+  footerText?: string;
 }) {
-  const { bodyContent, footerText } = extractFooter(slide.body);
+  const { bodyContent, footerText: extractedFooter } = extractFooter(slide.body);
+  const resolvedFooter = extractedFooter ?? (slide.type !== "title" ? footerText : undefined);
+  const contentScale = getContentScale(slide.body);
 
   // Split body by --- or double newline for two columns
   const parts = bodyContent.split(/\n---\n|\n\n\n/);
   const left = parts[0] ?? "";
   const right = parts[1] ?? "";
+  const hasSplit = parts.length >= 2 && right.trim().length > 0;
 
   return (
-    <div className="flex h-full w-full flex-col p-12">
+    <div className="flex h-full w-full flex-col overflow-hidden p-12">
       <div className="flex flex-1 flex-col justify-center">
         <SlideTitle slide={slide} theme={theme} />
-        <div className="mt-5 flex flex-1 gap-4 text-base leading-relaxed">
-          <SurfaceCard theme={theme} className="flex-1">
-            <MarkdownRenderer content={left} style={{ color: theme.colors.text }} />
-          </SurfaceCard>
-          <SurfaceCard theme={theme} className="flex-1">
-            <MarkdownRenderer content={right} style={{ color: theme.colors.text }} />
-          </SurfaceCard>
-        </div>
+        {hasSplit ? (
+          <div className={`mt-5 flex flex-1 gap-4 ${contentScale} leading-relaxed overflow-hidden`}>
+            <SurfaceCard theme={theme} className="flex-1 overflow-hidden">
+              <TwoColumnContent content={left} theme={theme} layout={slide.layout} />
+            </SurfaceCard>
+            <SurfaceCard theme={theme} className="flex-1 overflow-hidden">
+              <TwoColumnContent content={right} theme={theme} layout={slide.layout} />
+            </SurfaceCard>
+          </div>
+        ) : (
+          <div className={`mt-5 flex-1 ${contentScale} leading-relaxed overflow-hidden`}>
+            <TwoColumnContent content={bodyContent} theme={theme} layout={slide.layout} />
+          </div>
+        )}
       </div>
-      {footerText && <SlideFooter text={footerText} theme={theme} />}
+      {resolvedFooter && <SlideFooter text={resolvedFooter} theme={theme} />}
     </div>
   );
 }
@@ -399,13 +460,16 @@ function ImageFullLayout({
   slide,
   theme,
   hasBlocks,
+  footerText,
 }: {
   slide: SlideData;
   theme: SlideTheme;
   hasBlocks: boolean;
+  footerText?: string;
 }) {
-  const { bodyContent, footerText } = extractFooter(slide.body);
+  const { bodyContent, footerText: extractedFooter } = extractFooter(slide.body);
   const bodySlide = { ...slide, body: bodyContent };
+  const resolvedFooter = extractedFooter ?? (slide.type !== "title" ? footerText : undefined);
 
   return (
     <div className="relative h-full w-full">
@@ -423,35 +487,37 @@ function ImageFullLayout({
         </div>
       )}
 
-      {/* Dark gradient overlay for text readability */}
-      <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-black/40 to-black/20" />
+      {/* Softened gradient overlay */}
+      <div className="absolute inset-0 bg-gradient-to-t from-black/50 via-black/20 to-transparent" />
 
-      {/* Content positioned at bottom */}
-      <div className="relative flex h-full flex-col justify-end p-12">
-        <h2
-          className="text-5xl font-bold leading-tight tracking-tight text-white"
-          style={{
-            fontFamily: theme.typography.headingFont,
-            fontWeight: theme.typography.headingWeight,
-            textShadow: "0 2px 8px rgba(0,0,0,0.3)",
-          }}
-        >
-          {slide.title}
-          <div
-            className="mt-3 h-1 w-24 rounded-full"
-            style={{ background: theme.gradient?.accent ?? theme.colors.accent }}
-          />
-        </h2>
-        {bodyContent.trim() && (
-          <div className="mt-4 max-w-[70%] text-base leading-relaxed text-white/80">
-            <SlideBody slide={bodySlide} theme={theme} hasBlocks={hasBlocks} />
-          </div>
-        )}
-        {footerText && (
-          <div className="mt-auto pt-2 text-[10px] leading-tight text-white/30">
-            {footerText}
-          </div>
-        )}
+      {/* Content positioned at bottom with frosted-glass card */}
+      <div className="relative flex h-full flex-col justify-end p-10">
+        <div className="rounded-xl bg-black/50 p-8 ring-1 ring-white/10 backdrop-blur-md">
+          <h2
+            className="text-4xl font-bold leading-tight tracking-tight text-white"
+            style={{
+              fontFamily: theme.typography.headingFont,
+              fontWeight: theme.typography.headingWeight,
+              textShadow: "0 2px 12px rgba(0,0,0,0.5)",
+            }}
+          >
+            {slide.title}
+            <div
+              className="mt-3 h-1 w-24 rounded-full"
+              style={{ background: theme.gradient?.accent ?? theme.colors.accent }}
+            />
+          </h2>
+          {bodyContent.trim() && (
+            <div className="mt-4 max-w-[85%] text-base leading-relaxed text-white/85">
+              <SlideBody slide={bodySlide} theme={theme} hasBlocks={hasBlocks} />
+            </div>
+          )}
+          {resolvedFooter && (
+            <div className="mt-4 pt-2 text-[10px] leading-tight text-white/40">
+              {resolvedFooter}
+            </div>
+          )}
+        </div>
       </div>
     </div>
   );
@@ -461,18 +527,22 @@ function ImageTopLayout({
   slide,
   theme,
   hasBlocks,
+  footerText,
 }: {
   slide: SlideData;
   theme: SlideTheme;
   hasBlocks: boolean;
+  footerText?: string;
 }) {
-  const { bodyContent, footerText } = extractFooter(slide.body);
+  const { bodyContent, footerText: extractedFooter } = extractFooter(slide.body);
   const bodySlide = { ...slide, body: bodyContent };
+  const resolvedFooter = extractedFooter ?? (slide.type !== "title" ? footerText : undefined);
+  const contentScale = getContentScale(slide.body);
 
   return (
     <div className="flex h-full w-full flex-col">
-      {/* Image area — top 40% */}
-      <div className="relative h-[40%] w-full shrink-0">
+      {/* Image area — top 35% */}
+      <div className="relative h-[35%] w-full shrink-0">
         {slide.imageUrl ? (
           /* eslint-disable-next-line @next/next/no-img-element */
           <img
@@ -483,15 +553,22 @@ function ImageTopLayout({
         ) : (
           <ImagePlaceholder theme={theme} />
         )}
+        {/* Gradient divider */}
+        <div
+          className="absolute bottom-0 left-0 right-0 h-4"
+          style={{
+            background: `linear-gradient(to top, ${theme.colors.background}, transparent)`,
+          }}
+        />
       </div>
 
-      {/* Content area — bottom 60% */}
-      <div className="flex flex-1 flex-col p-8">
+      {/* Content area — bottom 65% */}
+      <div className="flex flex-1 flex-col overflow-hidden p-8">
         <SlideTitle slide={slide} theme={theme} />
-        <div className="mt-3 flex-1 text-base leading-relaxed">
+        <div className={`mt-3 flex-1 ${contentScale} leading-relaxed overflow-hidden`} style={{ textWrap: "balance" }}>
           <SlideBody slide={bodySlide} theme={theme} hasBlocks={hasBlocks} />
         </div>
-        {footerText && <SlideFooter text={footerText} theme={theme} />}
+        {resolvedFooter && <SlideFooter text={resolvedFooter} theme={theme} />}
       </div>
     </div>
   );

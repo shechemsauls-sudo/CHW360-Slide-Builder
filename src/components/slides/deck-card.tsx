@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { Layers, Clock, Sparkles, Trash2 } from "lucide-react";
+import { Layers, Clock, Sparkles, Trash2, Loader2 } from "lucide-react";
 import { Card, CardContent } from "~/components/ui/card";
 import { Button } from "~/components/ui/button";
 
@@ -38,9 +38,10 @@ export function DeckCard({ deck, onDelete }: DeckCardProps) {
               {deck.title}
             </h3>
             <span
-              className="shrink-0 rounded-full px-2 py-0.5 text-xs font-medium"
+              className={`inline-flex shrink-0 items-center gap-1 rounded-full px-2 py-0.5 text-xs font-medium ${deck.status === "generating" ? "animate-pulse" : ""}`}
               style={{ backgroundColor: status.bg, color: status.text }}
             >
+              {deck.status === "generating" && <Loader2 className="h-3 w-3 animate-spin" />}
               {status.label}
             </span>
           </div>

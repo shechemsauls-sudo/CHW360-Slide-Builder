@@ -21,7 +21,7 @@ const slideSchema = z.object({
   speakerNotes: z.string(),
   imageUrl: z.string().nullable().default(null),
   imagePrompt: z.string().nullable().default(null),
-  layout: z.enum(["full", "split-left", "split-right", "centered", "two-column"]).default("full"),
+  layout: z.enum(["full", "split-left", "split-right", "centered", "two-column", "image-full", "image-top"]).default("full"),
 });
 
 const slidesResponseSchema = z.object({
@@ -32,6 +32,32 @@ function getClient(): OpenAI {
   const apiKey = process.env.OPENAI_API_KEY;
   if (!apiKey) throw new Error("OPENAI_API_KEY not configured");
   return new OpenAI({ apiKey });
+}
+
+/**
+ * Attempt to repair truncated JSON from LLM responses.
+ * When max_tokens is hit, the JSON gets cut off mid-slide.
+ * This finds the last complete slide object and closes the JSON.
+ */
+function repairTruncatedJSON(json: string): string {
+  try {
+    JSON.parse(json);
+    return json;
+  } catch {
+    // Find the last complete slide separator "},\n" or "}, " pattern
+    const lastComplete = json.lastIndexOf('},');
+    if (lastComplete === -1) {
+      throw new Error("Could not repair truncated JSON — no complete slides found");
+    }
+
+    // Take everything up to the last complete slide, close the array and object
+    const repaired = json.substring(0, lastComplete + 1) + ']}';
+
+    // Verify it parses
+    JSON.parse(repaired);
+    console.warn(`[openai] Repaired truncated JSON — kept content up to position ${lastComplete}`);
+    return repaired;
+  }
 }
 
 async function parseWithRetry(
@@ -47,7 +73,7 @@ async function parseWithRetry(
       messages: [{ role: "user", content: prompt }],
       response_format: { type: "json_object" },
       temperature: 0.7,
-      max_tokens: 16000,
+      max_tokens: 16384,
     });
 
     const content = response.choices[0]?.message?.content;
@@ -57,7 +83,8 @@ async function parseWithRetry(
     }
 
     try {
-      const parsed = JSON.parse(content);
+      const json = repairTruncatedJSON(content);
+      const parsed = JSON.parse(json);
       const validated = slidesResponseSchema.parse(parsed);
       return {
         slides: validated.slides as SlideData[],
