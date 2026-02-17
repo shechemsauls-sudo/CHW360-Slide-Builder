@@ -25,19 +25,19 @@ export function PasswordResetCard({ email }: { email: string }) {
   };
 
   return (
-    <Card className="border-0 bg-white/5">
+    <Card className="border border-white/10 bg-white/[0.07]">
       <CardHeader>
         <CardTitle className="text-white">Password</CardTitle>
       </CardHeader>
       <CardContent className="space-y-4">
-        <p className="text-sm text-gray-400">
+        <p className="text-sm" style={{ color: "#8AACAC" }}>
           Reset your password by receiving a reset link at your email address.
         </p>
         <Button
           onClick={handleReset}
           disabled={loading}
-          variant="outline"
-          className="border-white/20 text-white hover:bg-white/10"
+          className="text-white"
+          style={{ backgroundColor: "#C9725B" }}
         >
           {loading ? (
             <>

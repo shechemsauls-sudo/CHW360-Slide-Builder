@@ -70,17 +70,18 @@ export const contactRouter = createTRPCRouter({
         })
         .returning();
 
-      // Fire email notification (don't block response on failure)
+      // Send email notification (awaited so Vercel doesn't kill the process)
       if (process.env.RESEND_API_KEY) {
-        ctx.db
-          .select({ email: profiles.email })
-          .from(profiles)
-          .where(eq(profiles.role, "admin"))
-          .then((admins) => {
-            const adminEmails = admins.map((a) => a.email);
-            return sendContactNotification(input, adminEmails);
-          })
-          .catch(console.error);
+        try {
+          const admins = await ctx.db
+            .select({ email: profiles.email })
+            .from(profiles)
+            .where(eq(profiles.role, "admin"));
+          const adminEmails = admins.map((a) => a.email);
+          await sendContactNotification(input, adminEmails);
+        } catch (err) {
+          console.error("Failed to send contact notification:", err);
+        }
       }
 
       return { success: true, id: submission?.id };

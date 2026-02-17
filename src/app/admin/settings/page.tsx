@@ -17,21 +17,21 @@ export default async function AdminSettingsPage() {
     <div className="space-y-6">
       <h1 className="text-2xl font-bold text-white">Settings</h1>
 
-      <Card className="border-0 bg-white/5">
+      <Card className="border border-white/10 bg-white/[0.07]">
         <CardHeader>
           <CardTitle className="text-white">Account</CardTitle>
         </CardHeader>
         <CardContent className="space-y-4">
           <div>
-            <label className="text-sm font-medium text-gray-400">Email</label>
+            <label className="text-sm font-medium" style={{ color: "#8AACAC" }}>Email</label>
             <p className="mt-1 text-white">{user.email}</p>
           </div>
           <div>
-            <label className="text-sm font-medium text-gray-400">User ID</label>
+            <label className="text-sm font-medium" style={{ color: "#8AACAC" }}>User ID</label>
             <p className="mt-1 font-mono text-sm text-gray-300">{user.id}</p>
           </div>
           <div>
-            <label className="text-sm font-medium text-gray-400">Last Sign In</label>
+            <label className="text-sm font-medium" style={{ color: "#8AACAC" }}>Last Sign In</label>
             <p className="mt-1 text-sm text-gray-300">
               {user.last_sign_in_at
                 ? new Date(user.last_sign_in_at).toLocaleString()
@@ -43,7 +43,7 @@ export default async function AdminSettingsPage() {
 
       <PasswordResetCard email={user.email ?? ""} />
 
-      <Card className="border-0 bg-white/5">
+      <Card className="border border-white/10 bg-white/[0.07]">
         <CardHeader>
           <CardTitle className="text-white">Environment</CardTitle>
         </CardHeader>

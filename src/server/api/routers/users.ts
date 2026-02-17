@@ -84,10 +84,12 @@ export const usersRouter = createTRPCRouter({
 
           if (!linkError && linkData?.properties?.hashed_token) {
             await sendClaimEmail(input.email, buildClaimLink(linkData.properties.hashed_token));
+          } else {
+            console.error("Failed to generate magic link:", linkError?.message ?? "No hashed_token returned");
           }
-        } catch {
+        } catch (err) {
           // Email send failure shouldn't fail the invite
-          console.error("Failed to send claim email");
+          console.error("Failed to send claim email:", err);
         }
       }
 
