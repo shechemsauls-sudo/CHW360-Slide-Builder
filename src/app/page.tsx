@@ -203,6 +203,11 @@ export default function LandingPage() {
     if (saved) setLang(saved);
   }, []);
 
+  // Sync <html lang> attribute for screen readers
+  useEffect(() => {
+    document.documentElement.lang = lang;
+  }, [lang]);
+
   const setLanguage = (newLang: "en" | "es") => {
     setLang(newLang);
     localStorage.setItem("chw360-lang", newLang);
@@ -299,14 +304,14 @@ export default function LandingPage() {
             <div className="flex items-center gap-1 rounded-full bg-white/10 p-0.5 text-sm">
               <button
                 onClick={() => setLanguage("en")}
-                className={`rounded-full px-2.5 py-1 font-medium transition-colors ${lang === "en" ? "bg-white/20 text-white" : "text-white/60 hover:text-white/80"}`}
+                className={`rounded-full px-3 py-2 font-medium transition-colors ${lang === "en" ? "bg-white/20 text-white" : "text-white/60 hover:text-white/80"}`}
                 aria-label="English"
               >
                 EN
               </button>
               <button
                 onClick={() => setLanguage("es")}
-                className={`rounded-full px-2.5 py-1 font-medium transition-colors ${lang === "es" ? "bg-white/20 text-white" : "text-white/60 hover:text-white/80"}`}
+                className={`rounded-full px-3 py-2 font-medium transition-colors ${lang === "es" ? "bg-white/20 text-white" : "text-white/60 hover:text-white/80"}`}
                 aria-label="Español"
               >
                 ES

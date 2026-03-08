@@ -145,6 +145,7 @@ export default function CRMPage() {
           value={search}
           onChange={(e) => handleSearch(e.target.value)}
           placeholder="Search by name or email..."
+          aria-label="Search contacts"
           className="w-full rounded-lg border border-white/10 bg-white/5 py-2.5 pl-10 pr-4 text-sm text-white placeholder-gray-500 outline-none focus:border-[#2D5A5A]/50 focus:ring-1 focus:ring-[#2D5A5A]/50"
         />
       </div>
@@ -231,11 +232,12 @@ export default function CRMPage() {
                     <div className="mt-4 space-y-5 border-t border-white/10 pt-4">
                       {/* Notes */}
                       <div>
-                        <label className="mb-1.5 block text-xs font-medium text-gray-400">
+                        <label htmlFor={`notes-${contact.id}`} className="mb-1.5 block text-xs font-medium text-gray-400">
                           Notes
                         </label>
                         <div className="flex gap-2">
                           <textarea
+                            id={`notes-${contact.id}`}
                             value={
                               notes[contact.id] ??
                               detail?.notes ??
@@ -258,6 +260,7 @@ export default function CRMPage() {
                             className="self-end text-gray-400 hover:text-white"
                             onClick={() => handleSaveNotes(contact.id)}
                             disabled={updateNotes.isPending}
+                            aria-label="Save notes"
                           >
                             {updateNotes.isPending ? (
                               <Loader2 className="h-4 w-4 animate-spin" />
@@ -321,6 +324,7 @@ export default function CRMPage() {
                             value={emailSubject}
                             onChange={(e) => setEmailSubject(e.target.value)}
                             placeholder="Subject"
+                            aria-label="Email subject"
                             className="border-white/10 bg-white/5 text-white placeholder-gray-500"
                           />
                           <div className="overflow-hidden rounded-lg border border-white/10 bg-white/5">

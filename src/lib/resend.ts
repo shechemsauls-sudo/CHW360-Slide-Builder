@@ -5,16 +5,12 @@ const resend = new Resend(apiKey);
 
 const FROM_EMAIL = "CHW360 <noreply@chw360.com>";
 
-/** Wrapper that logs Resend API responses for production debugging */
 async function send(params: Parameters<typeof resend.emails.send>[0]) {
-  const keyPreview = apiKey ? `${apiKey.slice(0, 6)}...${apiKey.slice(-4)}` : "MISSING";
-  console.log(`[Resend] Sending to=${params.to} subject="${params.subject}" key=${keyPreview}`);
   const { data, error } = await resend.emails.send(params);
   if (error) {
     console.error(`[Resend] FAILED to=${params.to}:`, JSON.stringify(error));
     throw new Error(`Resend error: ${error.message}`);
   }
-  console.log(`[Resend] OK id=${data?.id} to=${params.to}`);
   return data;
 }
 

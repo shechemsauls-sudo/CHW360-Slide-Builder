@@ -3,12 +3,11 @@
 ## Critical (blocks production)
 _(none)_
 
-## Bugs (broken functionality — from 2/19 client review)
+## Bugs (from 2/19 client review)
 - [ ] Fix bold markdown not rendering in slide content
 - [ ] Fix content overflow on dense slides
-- [ ] Fix images too dark — lighter/brighter defaults needed
+- [ ] Fix images too dark — lighter/brighter defaults, text contrast
 - [ ] Enforce consistent title slide layout across all modules
-- [ ] Fix Vercel RESEND_API_KEY (has surrounding quotes — remove them in Vercel dashboard)
 
 ## Enhancements (from 2/19 client review)
 - [ ] Set cream as default theme
@@ -18,20 +17,18 @@ _(none)_
 - [ ] Add image drag/reposition feature for cropped faces
 - [ ] Add bulk upload — generate multiple decks from batch content
 - [ ] Auto-review/coherence check for generated decks
-- [ ] YouTube embed support (awaiting API key from client)
+- [ ] YouTube embed support (API key received — needs UI + renderer)
 
 ## Enhancements (backlog)
 - [ ] PPTX/PDF export (Phase 2e)
 - [ ] Public share links (Phase 2e)
+- [ ] Client-facing turnkey LMS-style interface (future phase)
 - [ ] Admin: export submissions as CSV
 
 ## Tech Debt (code quality)
-- [ ] Remove Resend diagnostic logging once email confirmed working in production
 - [ ] Add Turnstile spam protection to contact form (package installed, not wired)
 - [ ] Enable leaked password protection in Supabase Auth dashboard
 - [ ] Clean up broken Vercel Supabase integration vars (POSTGRES_URL etc. are empty strings)
-- [ ] `IMAGE_ELIGIBLE_LAYOUTS` export in types.ts may be unused now — verify and remove if so
-- [ ] `cleanImagePrompts()` removed from generation — verify no side effects on existing decks
 
 ## Brand Polish (slide builder UI drift)
 - [ ] Replace hardcoded hex colors with shared brand tokens where possible

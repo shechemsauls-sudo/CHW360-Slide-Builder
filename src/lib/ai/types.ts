@@ -19,14 +19,6 @@ export interface SlideData {
   layout: "full" | "split-left" | "split-right" | "centered" | "two-column" | "image-full" | "image-top";
 }
 
-/** Layouts that support imagePrompt — only these should have images */
-export const IMAGE_ELIGIBLE_LAYOUTS = [
-  "split-left",
-  "split-right",
-  "image-full",
-  "image-top",
-] as const;
-
 export type FidelityLevel = "verbatim" | "balanced" | "creative";
 
 export const VISUAL_BLOCK_TYPES = [

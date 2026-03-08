@@ -7,6 +7,7 @@ const server = z.object({
   DATABASE_URL: z.preprocess(coerce, z.string().url().optional()),
   POSTGRES_URL: z.preprocess(coerce, z.string().url().optional()),
   SUPABASE_SERVICE_ROLE_KEY: z.preprocess(coerce, z.string().min(1).optional()),
+  DATABASE_URL_DIRECT: z.preprocess(coerce, z.string().url().optional()),
   RESEND_API_KEY: z.preprocess(coerce, z.string().min(1).optional()),
   OPENAI_API_KEY: z.preprocess(coerce, z.string().min(1).optional()),
   ANTHROPIC_API_KEY: z.preprocess(coerce, z.string().min(1).optional()),
@@ -22,6 +23,7 @@ const client = z.object({
 const processEnv = {
   DATABASE_URL: process.env.DATABASE_URL,
   POSTGRES_URL: process.env.POSTGRES_URL,
+  DATABASE_URL_DIRECT: process.env.DATABASE_URL_DIRECT,
   SUPABASE_SERVICE_ROLE_KEY: process.env.SUPABASE_SERVICE_ROLE_KEY,
   RESEND_API_KEY: process.env.RESEND_API_KEY,
   OPENAI_API_KEY: process.env.OPENAI_API_KEY,

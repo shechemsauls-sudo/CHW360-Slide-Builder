@@ -1,5 +1,6 @@
 import { z } from "zod";
 import { desc, eq, and, count } from "drizzle-orm";
+import { TRPCError } from "@trpc/server";
 import {
   createTRPCRouter,
   publicProcedure,
@@ -37,7 +38,6 @@ export const contactRouter = createTRPCRouter({
           .update(crmContacts)
           .set({
             name: input.name,
-            phone: input.organization ? undefined : undefined,
             organization: input.organization ?? undefined,
             lastContactAt: new Date(),
             updatedAt: new Date(),
@@ -56,7 +56,13 @@ export const contactRouter = createTRPCRouter({
             lastContactAt: new Date(),
           })
           .returning({ id: crmContacts.id });
-        crmContactId = newContact!.id;
+        if (!newContact) {
+          throw new TRPCError({
+            code: "INTERNAL_SERVER_ERROR",
+            message: "Failed to create CRM contact record.",
+          });
+        }
+        crmContactId = newContact.id;
       }
 
       const [submission] = await ctx.db
@@ -78,7 +84,6 @@ export const contactRouter = createTRPCRouter({
           .from(profiles)
           .where(eq(profiles.role, "admin"));
         const adminEmails = admins.map((a) => a.email);
-        console.log(`[Contact] Sending notification to ${adminEmails.length} admins:`, adminEmails);
         await sendContactNotification(input, adminEmails);
       } catch (err) {
         console.error("Failed to send contact notification:", err);

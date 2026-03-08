@@ -42,3 +42,6 @@ next-env.d.ts
 
 # drizzle
 drizzle/meta/
+
+# test content (client materials — not committed)
+/test-content/

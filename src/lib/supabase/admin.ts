@@ -1,9 +1,13 @@
 import { createClient } from "@supabase/supabase-js";
 import { env } from "~/env";
 
+if (!env.SUPABASE_SERVICE_ROLE_KEY) {
+  throw new Error("SUPABASE_SERVICE_ROLE_KEY is required for admin operations");
+}
+
 export const supabaseAdmin = createClient(
   env.NEXT_PUBLIC_SUPABASE_URL,
-  env.SUPABASE_SERVICE_ROLE_KEY!,
+  env.SUPABASE_SERVICE_ROLE_KEY,
   {
     auth: {
       autoRefreshToken: false,

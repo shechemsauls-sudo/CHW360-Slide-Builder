@@ -39,7 +39,8 @@ src/server/api/routers/     # tRPC routers (deck, contact, analytics, users, crm
 src/server/db/schema.ts     # Database schema
 src/trpc/                   # tRPC client (RSC + React)
 public/chw/                 # Brand assets (logo, heroes, icons)
-docs/                       # PRD and proposals
+docs/                       # PRD, proposals, generation prompts
+test-content/               # Client sample inputs for testing (gitignored)
 ```
 
 ## Routes

@@ -1,5 +1,6 @@
 import { z } from "zod";
-import { desc, eq, ilike, or, count, sql } from "drizzle-orm";
+import { desc, eq, ilike, or, count, sql, getTableName } from "drizzle-orm";
+import { TRPCError } from "@trpc/server";
 import { createTRPCRouter, adminProcedure } from "~/server/api/trpc";
 import { crmContacts, contactSubmissions } from "~/server/db/schema";
 import { sendCustomEmail } from "~/lib/resend";
@@ -51,7 +52,7 @@ export const crmRouter = createTRPCRouter({
             firstContactAt: crmContacts.firstContactAt,
             lastContactAt: crmContacts.lastContactAt,
             submissionCount: sql<number>`(
-              SELECT COUNT(*) FROM chw360_contact_submissions
+              SELECT COUNT(*) FROM ${sql.identifier(getTableName(contactSubmissions))}
               WHERE crm_contact_id = ${crmContacts.id}
             )`.as("submission_count"),
           })
@@ -121,7 +122,15 @@ export const crmRouter = createTRPCRouter({
       })
     )
     .mutation(async ({ input }) => {
-      await sendCustomEmail(input.to, input.subject, input.htmlBody);
+      try {
+        await sendCustomEmail(input.to, input.subject, input.htmlBody);
+      } catch (err) {
+        console.error("Failed to send CRM email:", err);
+        throw new TRPCError({
+          code: "INTERNAL_SERVER_ERROR",
+          message: "Failed to send email. Please try again.",
+        });
+      }
       return { success: true };
     }),
 });

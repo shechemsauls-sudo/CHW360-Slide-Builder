@@ -765,6 +765,8 @@ function KeyboardShortcutsModal({ onClose }: { onClose: () => void }) {
   return (
     <div
       className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm"
+      role="dialog"
+      aria-modal="true"
       onClick={onClose}
     >
       <div
@@ -775,6 +777,7 @@ function KeyboardShortcutsModal({ onClose }: { onClose: () => void }) {
           type="button"
           onClick={onClose}
           className="absolute right-3 top-3 rounded-md p-1 text-gray-400 hover:text-white"
+          aria-label="Close"
         >
           <X className="h-4 w-4" />
         </button>

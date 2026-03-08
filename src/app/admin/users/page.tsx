@@ -166,8 +166,9 @@ export default function UsersPage() {
                       <button
                         onClick={() => sendClaimMutation.mutate({ email: user.email })}
                         disabled={sendClaimMutation.isPending}
-                        className="rounded p-1 text-xs text-[#C9725B] hover:bg-white/10"
+                        className="rounded p-2 text-xs text-[#C9725B] hover:bg-white/10"
                         title="Send claim email"
+                        aria-label="Send claim email"
                       >
                         <Mail className="h-4 w-4" />
                       </button>
@@ -179,8 +180,9 @@ export default function UsersPage() {
                           })
                         }
                         disabled={updateRoleMutation.isPending}
-                        className="rounded p-1 text-xs text-[#5B8A8A] hover:bg-white/10"
+                        className="rounded p-2 text-xs text-[#5B8A8A] hover:bg-white/10"
                         title={user.role === "admin" ? "Demote to user" : "Promote to admin"}
+                        aria-label={user.role === "admin" ? "Demote to user" : "Promote to admin"}
                       >
                         <Shield className="h-4 w-4" />
                       </button>
@@ -203,8 +205,9 @@ export default function UsersPage() {
                       ) : (
                         <button
                           onClick={() => setDeleteConfirm(user.id)}
-                          className="rounded p-1 text-xs text-red-400/60 hover:bg-white/10 hover:text-red-400"
+                          className="rounded p-2 text-xs text-red-400/60 hover:bg-white/10 hover:text-red-400"
                           title="Delete user"
+                          aria-label="Delete user"
                         >
                           <Trash2 className="h-4 w-4" />
                         </button>

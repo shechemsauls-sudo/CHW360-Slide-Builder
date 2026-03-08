@@ -191,10 +191,11 @@ export default function NewDeckPage() {
           <Card className="border-0 bg-white/5">
             <CardContent className="space-y-5 p-6">
               <div className="space-y-3">
-                <label className="text-sm font-medium text-gray-300">
+                <label htmlFor="deck-title" className="text-sm font-medium text-gray-300">
                   Deck Title
                 </label>
                 <Input
+                  id="deck-title"
                   placeholder="e.g., CHW Malaria Prevention Training"
                   value={title}
                   onChange={(e) => setTitle(e.target.value)}
@@ -203,10 +204,11 @@ export default function NewDeckPage() {
               </div>
 
               <div className="space-y-3">
-                <label className="text-sm font-medium text-gray-300">
+                <label htmlFor="deck-description" className="text-sm font-medium text-gray-300">
                   Description <span className="text-gray-500">(optional)</span>
                 </label>
                 <Input
+                  id="deck-description"
                   placeholder="Brief description of the training content"
                   value={description}
                   onChange={(e) => setDescription(e.target.value)}
