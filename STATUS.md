@@ -9,38 +9,26 @@ Scale: 9 modules × ~4 parts each ≈ 2,250 slides total.
 - **Phase 2a + 2a.1** — Core generation pipeline, fidelity detection, prompt intelligence
 - **Phase 2b + 2b.1** — Theme system, visual blocks (17 types), presentation mode, data viz
 - **Phase 2c** — Image generation (DALL-E 3 / gpt-image-1), chat editing, structured notes
-- **Phase 2d Sprint 1-4** — Slide CRUD, theme overhaul, smart images, settings UX, quality sweep
-- **Phase 2d.5** — 4 CHW theme variants, tech debt sweep, responsive polish
+- **Phase 2d** — Slide CRUD, theme overhaul, smart images, settings UX, quality sweep, 4 CHW theme variants, tech debt sweep, responsive polish
 - **Production** — Vercel deployed, RLS on all tables, env validation hardened
-- **Renderer Quality Sweep** — Overflow prevention, frosted-glass image-full, footer prop, CycleDiagram, brand fixes
-- **Email & Polish** — Production Resend emails, settings page contrast, Spanish email templates
-- **Slide Builder Polish** — Overflow ContentFitter, presenter ESC fix, settings fidelity/provider filtering, keyboard shortcuts modal, universal image controls with layout picker, presenter help button
-- **Infra** — Client API keys added (YouTube, xAI/Grok, Stability, Replicate, Leonardo), Supabase keep-alive cron, Vercel env fix
-- **Admin Hub Overhaul** — CRM notes system, submissions Gmail-style inbox, production audit (19 fixes), UX polish, Turnstile, CSV export, brand tokens, DB indexes
-
-### Completed Sprints (this session)
-- **Sprint 1 (Foundation)** — Bold markdown in 8 blocks, title consistency in image-full, ContentFitter 0.45 shrink + dual delayed measure, centralized image style directive
-- **Sprint 2 (Images)** — Brand style injected into LLM prompt, per-slide generation, and all image generation calls
-- **Sprint 3 (Citations)** — APA 7th citations in generation prompt, References slide post-processing + compact rendering, slide count separation
-- **Sprint 4 (Providers)** — Removed 4 broken providers, filtered creation wizard, Generation Preferences card on Settings page, imageProvider override on regenerate
+- **Quality Sweeps** — Overflow prevention, frosted-glass image-full, ContentFitter, brand fixes, email polish, Spanish templates
+- **Infra** — Client API keys (YouTube, xAI/Grok, Stability, Replicate, Leonardo), Supabase keep-alive cron
+- **Admin Hub Overhaul** — CRM notes, submissions inbox, production audit (19 fixes), Turnstile, CSV export, brand tokens, DB indexes
+- **Slide Builder Production (6 sprints)** — Bold markdown, image style, APA citations, provider cleanup, deck groups, YouTube recs, bulk upload, AI review, 3 image providers (Stability/Replicate/Leonardo), presenter ESC fix, image drag/reposition
 
 ### Up Next
-> Full plan: `docs/slide-builder-plan.md`
+> All production sprints complete. Remaining backlog:
 
-- **Sprint 4.5** — Wire xAI/Grok as LLM provider (API key available)
-- **Sprint 5 (Deck List)** — Sleek row UI, sorting, filtering, search, deck groups with group theme editing
-- **Sprint 6 (Advanced)** — YouTube video recs, bulk upload, auto-review/coherence check
 - **Phase 2e** — PPTX/PDF export, public share links
 - **Future** — Client-facing turnkey LMS-style interface
 
 ### Recent Changes
 | Date | Change |
 |------|--------|
-| 2026-03-08 | Sprints 1-4 complete: markdown blocks, image style, citations, provider cleanup, settings UI |
-| 2026-03-08 | Slide builder production plan: 6-sprint roadmap with deep audit findings |
+| 2026-03-08 | Sprints 5-6 + final polish: deck groups, YouTube, bulk upload, review, 3 image providers, presenter fix, focal point |
+| 2026-03-08 | Sprints 1-4: markdown blocks, image style, citations, provider cleanup, settings UI |
 | 2026-03-08 | Admin hub overhaul: CRM notes, submissions inbox, production audit, UX polish |
-| 2026-03-08 | Turnstile spam protection, CSV export, brand tokens, 8 DB indexes |
-| 2026-03-08 | Added client API keys, Supabase keep-alive cron, Vercel env fix |
+| 2026-03-08 | Turnstile, CSV export, brand tokens, API keys, Supabase keep-alive |
 | 2026-02-19 | Client review meeting — iterative polish phase |
 
 ### Image Style Prompt (from Shechem)
@@ -60,4 +48,4 @@ Add evidence-based citations (2020–2025, APA 7th edition) to presentations. 1�
 - Reference slides: Communication Skills Parts 1–4 (PPTX, Gamma) → `test-content/reference-slides/` — quality benchmark, ours must exceed these
 
 ---
-*Last updated: 2026-03-08 (session 3)*
+*Last updated: 2026-03-08 (session 4)*
