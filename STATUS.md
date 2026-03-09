@@ -18,24 +18,25 @@ Scale: 9 modules × ~4 parts each ≈ 2,250 slides total.
 - **Infra** — Client API keys added (YouTube, xAI/Grok, Stability, Replicate, Leonardo), Supabase keep-alive cron, Vercel env fix
 - **Admin Hub Overhaul** — CRM notes system, submissions Gmail-style inbox, production audit (19 fixes), UX polish, Turnstile, CSV export, brand tokens, DB indexes
 
-### Up Next (from 2/19 client review)
-- **Rendering fixes** — Bold markdown rendering, content overflow, consistent title slides
-- **Theme finalization** — Cream default, 6 theme options (cream, white, black, gray, teal, green), default color per module
-- **Image quality** — Lighter/brighter images, text contrast fixes, image drag/reposition for cropped faces
-- **Visual variety** — More smart art/visual layout variety via prompting heuristics
-- **Bulk upload** — Generate multiple decks from batch content
-- **Auto-review** — Coherence check for generated decks
-- **YouTube embeds** — API key received, needs UI + renderer integration
-- **Phase 2e** — Export + Sharing (PPTX/PDF export, public share links)
+### Up Next — Slide Builder Production Plan (6 sprints)
+> Full plan: `docs/slide-builder-plan.md`
+
+- **Sprint 1 (Foundation)** — Bold markdown in all blocks, title slide consistency, overflow fix, image style directive file
+- **Sprint 2 (Images)** — Inject client style prompt into all 3 image paths (LLM prompt, per-slide regen, direct generation)
+- **Sprint 3 (Citations)** — APA 7th citations in generation, References as appended slides outside slide count
+- **Sprint 4 (Providers)** — Remove broken providers, align creation/editing settings, add settings UI, wire xAI/Grok
+- **Sprint 5 (Deck List)** — Sleek row UI, sorting, filtering, search, deck groups with group theme editing
+- **Sprint 6 (Advanced)** — YouTube video recs, bulk upload, auto-review/coherence check
+- **Phase 2e** — PPTX/PDF export, public share links
 - **Future** — Client-facing turnkey LMS-style interface
 
 ### Recent Changes
 | Date | Change |
 |------|--------|
+| 2026-03-08 | Slide builder production plan: 6-sprint roadmap with deep audit findings |
 | 2026-03-08 | Admin hub overhaul: CRM notes, submissions inbox, production audit, UX polish |
 | 2026-03-08 | Turnstile spam protection, CSV export, brand tokens, 8 DB indexes |
 | 2026-03-08 | Added client API keys, Supabase keep-alive cron, Vercel env fix |
-| 2026-02-19 | API key setup guide (PDF) for client |
 | 2026-02-19 | Client review meeting — iterative polish phase |
 
 ### Image Style Prompt (from Shechem)
@@ -55,4 +56,4 @@ Add evidence-based citations (2020–2025, APA 7th edition) to presentations. 1�
 - Reference slides: Communication Skills Parts 1–4 (PPTX, Gamma) → `test-content/reference-slides/` — quality benchmark, ours must exceed these
 
 ---
-*Last updated: 2026-03-08 (session 2)*
+*Last updated: 2026-03-08 (session 3)*
