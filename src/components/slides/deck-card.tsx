@@ -2,7 +2,6 @@
 
 import Link from "next/link";
 import { Layers, Clock, Sparkles, Trash2, Loader2 } from "lucide-react";
-import { Card, CardContent } from "~/components/ui/card";
 import { Button } from "~/components/ui/button";
 
 interface DeckCardProps {
@@ -13,9 +12,13 @@ interface DeckCardProps {
     status: string;
     slideCount: number | null;
     llmProvider: string | null;
+    themeId: string;
+    groupId: string | null;
     updatedAt: Date;
   };
   onDelete: (id: string) => void;
+  selected?: boolean;
+  onSelect?: (id: string) => void;
 }
 
 const STATUS_COLORS: Record<string, { bg: string; text: string; label: string }> = {
@@ -25,58 +28,70 @@ const STATUS_COLORS: Record<string, { bg: string; text: string; label: string }>
   error: { bg: "rgba(201, 114, 91, 0.2)", text: "#C9725B", label: "Error" },
 };
 
-export function DeckCard({ deck, onDelete }: DeckCardProps) {
+const PROVIDER_LABELS: Record<string, string> = {
+  openai: "GPT-4o",
+  anthropic: "Claude",
+  xai: "Grok",
+};
+
+export function DeckCard({ deck, onDelete, selected, onSelect }: DeckCardProps) {
   const status = STATUS_COLORS[deck.status] ?? STATUS_COLORS.draft;
   const timeAgo = getRelativeTime(deck.updatedAt);
 
   return (
-    <Card className="group border-0 bg-white/5 transition-colors hover:bg-white/[0.08]">
-      <CardContent className="flex items-start gap-3 p-5">
-        <Link href={`/admin/slides/${deck.id}`} className="min-w-0 flex-1">
-          <div className="mb-1 flex items-center gap-2">
-            <h3 className="truncate text-base font-semibold text-white">
-              {deck.title}
-            </h3>
-            <span
-              className={`inline-flex shrink-0 items-center gap-1 rounded-full px-2 py-0.5 text-xs font-medium ${deck.status === "generating" ? "animate-pulse" : ""}`}
-              style={{ backgroundColor: status.bg, color: status.text }}
-            >
-              {deck.status === "generating" && <Loader2 className="h-3 w-3 animate-spin" />}
-              {status.label}
+    <div
+      className={`group flex items-center gap-3 rounded-lg border px-4 py-3 transition-colors hover:bg-white/[0.08] ${
+        selected ? "border-[#5B8A8A]/50 bg-[#2D5A5A]/10" : "border-transparent bg-white/5"
+      }`}
+    >
+      {onSelect && (
+        <input
+          type="checkbox"
+          checked={selected}
+          onChange={() => onSelect(deck.id)}
+          className="h-4 w-4 shrink-0 cursor-pointer rounded border-white/20 bg-white/5 accent-[#2D5A5A]"
+        />
+      )}
+      <Link href={`/admin/slides/${deck.id}`} className="min-w-0 flex-1">
+        <div className="flex items-center gap-2">
+          <h3 className="truncate text-sm font-semibold text-white">
+            {deck.title}
+          </h3>
+          <span
+            className={`inline-flex shrink-0 items-center gap-1 rounded-full px-2 py-0.5 text-[10px] font-medium ${deck.status === "generating" ? "animate-pulse" : ""}`}
+            style={{ backgroundColor: status.bg, color: status.text }}
+          >
+            {deck.status === "generating" && <Loader2 className="h-3 w-3 animate-spin" />}
+            {status.label}
+          </span>
+        </div>
+        <div className="mt-1 flex items-center gap-4 text-xs text-gray-500">
+          <span className="flex items-center gap-1">
+            <Layers className="h-3 w-3" />
+            {deck.slideCount ?? 0}
+          </span>
+          {deck.llmProvider && (
+            <span className="flex items-center gap-1">
+              <Sparkles className="h-3 w-3" />
+              {PROVIDER_LABELS[deck.llmProvider] ?? deck.llmProvider}
             </span>
-          </div>
-          {deck.description && (
-            <p className="mb-3 line-clamp-2 text-sm text-gray-400">
-              {deck.description}
-            </p>
           )}
-          <div className="flex items-center gap-4 text-xs text-gray-500">
-            <span className="flex items-center gap-1">
-              <Layers className="h-3.5 w-3.5" />
-              {deck.slideCount ?? 0} slides
-            </span>
-            {deck.llmProvider && (
-              <span className="flex items-center gap-1">
-                <Sparkles className="h-3.5 w-3.5" />
-                {deck.llmProvider === "openai" ? "GPT-4o" : "Claude"}
-              </span>
-            )}
-            <span className="flex items-center gap-1">
-              <Clock className="h-3.5 w-3.5" />
-              {timeAgo}
-            </span>
-          </div>
-        </Link>
-        <Button
-          variant="ghost"
-          size="icon"
-          className="h-8 w-8 shrink-0 text-gray-500 opacity-0 transition-opacity hover:text-red-400 group-hover:opacity-100"
-          onClick={() => onDelete(deck.id)}
-        >
-          <Trash2 className="h-4 w-4" />
-        </Button>
-      </CardContent>
-    </Card>
+          <span className="flex items-center gap-1">
+            <Clock className="h-3 w-3" />
+            {timeAgo}
+          </span>
+        </div>
+      </Link>
+      <Button
+        variant="ghost"
+        size="icon"
+        className="h-7 w-7 shrink-0 text-gray-500 opacity-0 transition-opacity hover:text-red-400 group-hover:opacity-100"
+        onClick={() => onDelete(deck.id)}
+        aria-label={`Delete ${deck.title}`}
+      >
+        <Trash2 className="h-3.5 w-3.5" />
+      </Button>
+    </div>
   );
 }
 

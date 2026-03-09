@@ -2,10 +2,16 @@ import type { ImageProvider } from "../types";
 import { IMAGE_PROVIDERS, isProviderConfigured } from "../providers-config";
 import { dalle3Provider } from "./dalle3";
 import { gptImage1Provider } from "./gpt-image-1";
+import { stabilityProvider } from "./stability";
+import { replicateProvider } from "./replicate";
+import { leonardoProvider } from "./leonardo";
 
 const providers: Record<string, ImageProvider> = {
   dalle3: dalle3Provider,
   "gpt-image-1": gptImage1Provider,
+  stability: stabilityProvider,
+  replicate: replicateProvider,
+  leonardo: leonardoProvider,
 };
 
 export function getImageProvider(id: string): ImageProvider {

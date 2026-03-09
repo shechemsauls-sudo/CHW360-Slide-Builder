@@ -1,8 +1,8 @@
 import { z } from "zod";
-import { eq, and, desc } from "drizzle-orm";
+import { eq, and, desc, asc, ilike, inArray, sql, count } from "drizzle-orm";
 import { TRPCError } from "@trpc/server";
 import { createTRPCRouter, protectedProcedure } from "~/server/api/trpc";
-import { decks, profiles, providerPreferences } from "~/server/db/schema";
+import { decks, deckGroups, profiles, providerPreferences } from "~/server/db/schema";
 import { getLLMProvider, getAvailableLLMProviders } from "~/lib/ai/llm";
 import { getImageProvider, getAvailableImageProviders } from "~/lib/ai/image";
 import { detectFidelity } from "~/lib/ai/fidelity";
@@ -16,6 +16,7 @@ import {
 } from "~/lib/storage/upload-image";
 import { sendDeckReadyEmail } from "~/lib/resend";
 import { IMAGE_STYLE_DIRECTIVE, enhanceImagePrompt } from "~/lib/ai/image/style-prompt";
+import { searchYouTube } from "~/lib/youtube";
 
 /** Post-process: tag any References slides the LLM missed tagging, strip imagePrompt */
 function tagReferenceSlides(slides: SlideData[]): SlideData[] {
@@ -51,28 +52,85 @@ const slideDataSchema = z.object({
   speakerNotes: z.string(),
   imageUrl: z.string().nullable(),
   imagePrompt: z.string().nullable(),
+  imageFocalPoint: z.object({ x: z.number().min(0).max(100), y: z.number().min(0).max(100) }).optional(),
   layout: z.enum(["full", "split-left", "split-right", "centered", "two-column", "image-full", "image-top"]),
 });
 
 export const deckRouter = createTRPCRouter({
-  list: protectedProcedure.query(async ({ ctx }) => {
-    const profileId = await getProfileId(ctx.db, ctx.user.id);
-    return ctx.db
-      .select({
-        id: decks.id,
+  list: protectedProcedure
+    .input(
+      z.object({
+        search: z.string().optional(),
+        status: z.enum(["draft", "generating", "ready", "error"]).optional(),
+        groupId: z.string().uuid().nullable().optional(),
+        sortBy: z.enum(["title", "createdAt", "updatedAt", "slideCount", "status"]).default("updatedAt"),
+        sortDir: z.enum(["asc", "desc"]).default("desc"),
+        page: z.number().min(1).default(1),
+        pageSize: z.number().min(5).max(100).default(25),
+      }).optional(),
+    )
+    .query(async ({ ctx, input }) => {
+      const profileId = await getProfileId(ctx.db, ctx.user.id);
+      const { search, status, groupId, sortBy = "updatedAt", sortDir = "desc", page = 1, pageSize = 25 } = input ?? {};
+
+      // Build conditions
+      const conditions = [eq(decks.profileId, profileId)];
+      if (search) conditions.push(ilike(decks.title, `%${search}%`));
+      if (status) conditions.push(eq(decks.status, status));
+      if (groupId !== undefined) {
+        if (groupId === null) {
+          conditions.push(sql`${decks.groupId} IS NULL`);
+        } else {
+          conditions.push(eq(decks.groupId, groupId));
+        }
+      }
+
+      const where = and(...conditions);
+
+      // Sort
+      const sortColumn = {
         title: decks.title,
-        description: decks.description,
-        themeId: decks.themeId,
-        status: decks.status,
-        slideCount: decks.slideCount,
-        llmProvider: decks.llmProvider,
         createdAt: decks.createdAt,
         updatedAt: decks.updatedAt,
-      })
-      .from(decks)
-      .where(eq(decks.profileId, profileId))
-      .orderBy(desc(decks.updatedAt));
-  }),
+        slideCount: decks.slideCount,
+        status: decks.status,
+      }[sortBy] ?? decks.updatedAt;
+      const orderFn = sortDir === "asc" ? asc : desc;
+
+      // Count
+      const [countResult] = await ctx.db
+        .select({ total: count() })
+        .from(decks)
+        .where(where);
+
+      // Fetch page
+      const items = await ctx.db
+        .select({
+          id: decks.id,
+          title: decks.title,
+          description: decks.description,
+          themeId: decks.themeId,
+          status: decks.status,
+          slideCount: decks.slideCount,
+          llmProvider: decks.llmProvider,
+          groupId: decks.groupId,
+          createdAt: decks.createdAt,
+          updatedAt: decks.updatedAt,
+        })
+        .from(decks)
+        .where(where)
+        .orderBy(orderFn(sortColumn))
+        .limit(pageSize)
+        .offset((page - 1) * pageSize);
+
+      return {
+        items,
+        total: countResult?.total ?? 0,
+        page,
+        pageSize,
+        totalPages: Math.ceil((countResult?.total ?? 0) / pageSize),
+      };
+    }),
 
   getById: protectedProcedure
     .input(z.object({ id: z.string().uuid() }))
@@ -117,7 +175,7 @@ export const deckRouter = createTRPCRouter({
         content: z.string().min(1),
         sourceFormat: z.enum(["markdown", "plaintext", "pdf", "docx"]).default("plaintext"),
         llmProvider: z.enum(["openai", "anthropic", "xai"]).default("anthropic"),
-        imageProvider: z.enum(["dalle3", "gpt-image-1", "disabled"]).default("gpt-image-1"),
+        imageProvider: z.enum(["dalle3", "gpt-image-1", "stability", "replicate", "leonardo", "disabled"]).default("gpt-image-1"),
         themeId: z.string().default("chw-teal"),
         slideCount: z.number().min(5).max(120).optional(),
         fidelity: z.enum(["verbatim", "balanced", "creative"]).optional(),
@@ -406,7 +464,7 @@ export const deckRouter = createTRPCRouter({
         deckId: z.string().uuid(),
         slideId: z.string(),
         imagePrompt: z.string().optional(),
-        imageProvider: z.enum(["dalle3", "gpt-image-1"]).default("gpt-image-1"),
+        imageProvider: z.enum(["dalle3", "gpt-image-1", "stability", "replicate", "leonardo"]).default("gpt-image-1"),
       }),
     )
     .mutation(async ({ ctx, input }) => {
@@ -589,7 +647,7 @@ Respond with ONLY the image prompt, no explanation.`;
         id: z.string().uuid(),
         fidelity: z.enum(["verbatim", "balanced", "creative"]).optional(),
         llmProvider: z.enum(["openai", "anthropic", "xai"]).optional(),
-        imageProvider: z.enum(["dalle3", "gpt-image-1", "disabled"]).optional(),
+        imageProvider: z.enum(["dalle3", "gpt-image-1", "stability", "replicate", "leonardo", "disabled"]).optional(),
         slideCount: z.number().min(5).max(120).optional(),
         selectedBlocks: z.array(z.enum(VISUAL_BLOCK_TYPES)).optional(),
         customInstructions: z.string().max(500).optional(),
@@ -781,5 +839,355 @@ Respond with ONLY the image prompt, no explanation.`;
         .values({ profileId, ...input })
         .returning();
       return created;
+    }),
+
+  // --- Deck Groups ---
+
+  listGroups: protectedProcedure.query(async ({ ctx }) => {
+    const profileId = await getProfileId(ctx.db, ctx.user.id);
+
+    const groups = await ctx.db
+      .select({
+        id: deckGroups.id,
+        name: deckGroups.name,
+        themeId: deckGroups.themeId,
+        sortOrder: deckGroups.sortOrder,
+        deckCount: count(decks.id),
+        createdAt: deckGroups.createdAt,
+      })
+      .from(deckGroups)
+      .leftJoin(decks, eq(decks.groupId, deckGroups.id))
+      .where(eq(deckGroups.profileId, profileId))
+      .groupBy(deckGroups.id)
+      .orderBy(asc(deckGroups.sortOrder), asc(deckGroups.name));
+
+    return groups;
+  }),
+
+  createGroup: protectedProcedure
+    .input(z.object({
+      name: z.string().min(1).max(100),
+      themeId: z.string().optional(),
+    }))
+    .mutation(async ({ ctx, input }) => {
+      const profileId = await getProfileId(ctx.db, ctx.user.id);
+      const [group] = await ctx.db
+        .insert(deckGroups)
+        .values({ profileId, name: input.name, themeId: input.themeId })
+        .returning();
+      return group;
+    }),
+
+  updateGroup: protectedProcedure
+    .input(z.object({
+      id: z.string().uuid(),
+      name: z.string().min(1).max(100).optional(),
+      themeId: z.string().nullable().optional(),
+    }))
+    .mutation(async ({ ctx, input }) => {
+      const profileId = await getProfileId(ctx.db, ctx.user.id);
+      const { id, ...data } = input;
+      const [group] = await ctx.db
+        .update(deckGroups)
+        .set({ ...data, updatedAt: new Date() })
+        .where(and(eq(deckGroups.id, id), eq(deckGroups.profileId, profileId)))
+        .returning();
+      if (!group) throw new TRPCError({ code: "NOT_FOUND", message: "Group not found" });
+      return group;
+    }),
+
+  deleteGroup: protectedProcedure
+    .input(z.object({ id: z.string().uuid() }))
+    .mutation(async ({ ctx, input }) => {
+      const profileId = await getProfileId(ctx.db, ctx.user.id);
+      const result = await ctx.db
+        .delete(deckGroups)
+        .where(and(eq(deckGroups.id, input.id), eq(deckGroups.profileId, profileId)))
+        .returning({ id: deckGroups.id });
+      if (result.length === 0) throw new TRPCError({ code: "NOT_FOUND", message: "Group not found" });
+      return { success: true };
+    }),
+
+  assignDecksToGroup: protectedProcedure
+    .input(z.object({
+      deckIds: z.array(z.string().uuid()).min(1),
+      groupId: z.string().uuid().nullable(),
+    }))
+    .mutation(async ({ ctx, input }) => {
+      const profileId = await getProfileId(ctx.db, ctx.user.id);
+      // Verify group ownership if assigning to a group
+      if (input.groupId) {
+        const group = await ctx.db.query.deckGroups.findFirst({
+          where: and(eq(deckGroups.id, input.groupId), eq(deckGroups.profileId, profileId)),
+        });
+        if (!group) throw new TRPCError({ code: "NOT_FOUND", message: "Group not found" });
+      }
+      await ctx.db
+        .update(decks)
+        .set({ groupId: input.groupId, updatedAt: new Date() })
+        .where(and(
+          inArray(decks.id, input.deckIds),
+          eq(decks.profileId, profileId),
+        ));
+      return { success: true };
+    }),
+
+  applyGroupTheme: protectedProcedure
+    .input(z.object({ groupId: z.string().uuid() }))
+    .mutation(async ({ ctx, input }) => {
+      const profileId = await getProfileId(ctx.db, ctx.user.id);
+      const group = await ctx.db.query.deckGroups.findFirst({
+        where: and(eq(deckGroups.id, input.groupId), eq(deckGroups.profileId, profileId)),
+      });
+      if (!group) throw new TRPCError({ code: "NOT_FOUND", message: "Group not found" });
+      if (!group.themeId) throw new TRPCError({ code: "BAD_REQUEST", message: "Group has no theme set" });
+
+      const result = await ctx.db
+        .update(decks)
+        .set({ themeId: group.themeId, updatedAt: new Date() })
+        .where(and(eq(decks.groupId, input.groupId), eq(decks.profileId, profileId)))
+        .returning({ id: decks.id });
+
+      return { updated: result.length };
+    }),
+
+  // --- Sprint 6: YouTube, Bulk, Review ---
+
+  generateVideoRecs: protectedProcedure
+    .input(z.object({
+      deckId: z.string().uuid(),
+      llmProvider: z.enum(["openai", "anthropic", "xai"]).optional(),
+    }))
+    .mutation(async ({ ctx, input }) => {
+      const profileId = await getProfileId(ctx.db, ctx.user.id);
+      const deck = await ctx.db.query.decks.findFirst({
+        where: and(eq(decks.id, input.deckId), eq(decks.profileId, profileId)),
+      });
+      if (!deck) throw new TRPCError({ code: "NOT_FOUND", message: "Deck not found" });
+
+      // Use LLM to generate search queries from deck content
+      const slides = (deck.slides ?? []) as SlideData[];
+      const slideContent = slides
+        .slice(0, 10)
+        .map((s) => `${s.title}: ${s.body.slice(0, 100)}`)
+        .join("\n");
+
+      const llmId = input.llmProvider ?? deck.llmProvider ?? "openai";
+      const provider = getLLMProvider(llmId);
+
+      const queryPrompt = `Based on this training deck titled "${deck.title}", generate exactly 5 YouTube search queries to find relevant educational/training videos. Each query should target a different key topic from the deck.
+
+Deck content:
+${slideContent}
+
+Respond with exactly 5 search queries, one per line. No numbering, no bullets, just the queries.`;
+
+      const queryResult = await provider.chat(queryPrompt);
+      const queries = queryResult
+        .split("\n")
+        .map((q) => q.trim())
+        .filter((q) => q.length > 3)
+        .slice(0, 5);
+
+      if (queries.length === 0) {
+        throw new TRPCError({ code: "INTERNAL_SERVER_ERROR", message: "Failed to generate search queries" });
+      }
+
+      // Search YouTube for each query (3 results each, dedup by videoId)
+      const seenIds = new Set<string>();
+      const allRecs: Array<{
+        videoId: string;
+        title: string;
+        channelName: string;
+        thumbnail: string;
+        publishedAt: string;
+        query: string;
+      }> = [];
+
+      for (const query of queries) {
+        const results = await searchYouTube(query, 3);
+        for (const r of results) {
+          if (!seenIds.has(r.videoId)) {
+            seenIds.add(r.videoId);
+            allRecs.push({ ...r, query });
+          }
+        }
+      }
+
+      // Take top 8 unique results
+      const videoRecs = allRecs.slice(0, 8);
+
+      // Store in deck
+      const [updated] = await ctx.db
+        .update(decks)
+        .set({ videoRecs, updatedAt: new Date() })
+        .where(eq(decks.id, input.deckId))
+        .returning();
+
+      return updated;
+    }),
+
+  reviewDeck: protectedProcedure
+    .input(z.object({
+      deckId: z.string().uuid(),
+      llmProvider: z.enum(["openai", "anthropic", "xai"]).optional(),
+    }))
+    .mutation(async ({ ctx, input }) => {
+      const profileId = await getProfileId(ctx.db, ctx.user.id);
+      const deck = await ctx.db.query.decks.findFirst({
+        where: and(eq(decks.id, input.deckId), eq(decks.profileId, profileId)),
+      });
+      if (!deck) throw new TRPCError({ code: "NOT_FOUND", message: "Deck not found" });
+
+      const slides = (deck.slides ?? []) as SlideData[];
+      if (slides.length === 0) {
+        throw new TRPCError({ code: "BAD_REQUEST", message: "Deck has no slides to review" });
+      }
+
+      const llmId = input.llmProvider ?? deck.llmProvider ?? "openai";
+      const provider = getLLMProvider(llmId);
+
+      // Build compact slide summary for review
+      const slideSummary = slides
+        .map((s) => `[Slide ${s.order} | ${s.type} | "${s.title}"]\n${s.body.slice(0, 300)}`)
+        .join("\n\n");
+
+      const reviewPrompt = `You are a presentation quality reviewer. Review this ${slides.length}-slide training deck titled "${deck.title}".
+
+Analyze for:
+1. Content accuracy and completeness
+2. Flow and logical progression between slides
+3. Consistent tone and reading level
+4. Missing topics that should be covered
+5. Slides that are too dense or too sparse
+6. Any factual claims without citations
+
+${slideSummary}
+
+Respond with a JSON array of issues found. Each issue:
+{"slideOrder": <number or null for deck-wide>, "severity": "high"|"medium"|"low", "category": "accuracy"|"flow"|"tone"|"coverage"|"density"|"citation", "issue": "<brief description>", "suggestion": "<how to fix>"}
+
+Return ONLY valid JSON array. If no issues, return [].`;
+
+      const result = await provider.chat(reviewPrompt);
+
+      // Parse JSON from response
+      const jsonMatch = result.match(/\[[\s\S]*\]/);
+      if (!jsonMatch) return { issues: [], slideCount: slides.length };
+
+      try {
+        const issues = JSON.parse(jsonMatch[0]) as Array<{
+          slideOrder: number | null;
+          severity: "high" | "medium" | "low";
+          category: string;
+          issue: string;
+          suggestion: string;
+        }>;
+        return { issues, slideCount: slides.length };
+      } catch {
+        return { issues: [], slideCount: slides.length };
+      }
+    }),
+
+  bulkGenerate: protectedProcedure
+    .input(z.object({
+      items: z.array(z.object({
+        title: z.string().min(1).max(255),
+        content: z.string().min(1),
+        sourceFormat: z.enum(["markdown", "plaintext", "pdf", "docx"]).default("plaintext"),
+      })).min(1).max(10),
+      llmProvider: z.enum(["openai", "anthropic", "xai"]).default("anthropic"),
+      imageProvider: z.enum(["dalle3", "gpt-image-1", "stability", "replicate", "leonardo", "disabled"]).default("disabled"),
+      themeId: z.string().default("chw-teal"),
+      slideCount: z.number().min(5).max(120).optional(),
+      fidelity: z.enum(["verbatim", "balanced", "creative"]).optional(),
+      tone: z.enum(["professional", "conversational", "academic", "training"]).optional(),
+      customInstructions: z.string().max(500).optional(),
+      groupId: z.string().uuid().optional(),
+    }))
+    .mutation(async ({ ctx, input }) => {
+      const profileId = await getProfileId(ctx.db, ctx.user.id);
+
+      // Create all decks in "generating" status
+      const deckIds: string[] = [];
+      for (const item of input.items) {
+        const [deck] = await ctx.db
+          .insert(decks)
+          .values({
+            profileId,
+            title: item.title,
+            sourceContent: item.content,
+            sourceFormat: item.sourceFormat,
+            themeId: input.themeId,
+            llmProvider: input.llmProvider,
+            imageProvider: input.imageProvider,
+            groupId: input.groupId,
+            status: "generating",
+          })
+          .returning();
+        if (deck) deckIds.push(deck.id);
+      }
+
+      // Generate sequentially to avoid rate limits
+      const provider = getLLMProvider(input.llmProvider);
+
+      for (let i = 0; i < input.items.length; i++) {
+        const item = input.items[i]!;
+        const deckId = deckIds[i]!;
+
+        try {
+          const parsedContent =
+            item.sourceFormat === "markdown"
+              ? await parseContent(item.content, "markdown")
+              : item.content;
+
+          const result = await provider.generateSlides({
+            content: parsedContent,
+            title: item.title,
+            slideCount: input.slideCount,
+            fidelity: input.fidelity,
+            customInstructions: input.customInstructions,
+            tone: input.tone,
+          });
+
+          const processedSlides = tagReferenceSlides(result.slides);
+          const contentSlideCount = processedSlides.filter((s) => s.type !== "references").length;
+
+          await ctx.db
+            .update(decks)
+            .set({
+              slides: processedSlides,
+              slideCount: contentSlideCount,
+              status: "ready",
+              generationLog: {
+                model: result.model,
+                tokensUsed: result.tokensUsed,
+                generatedAt: new Date().toISOString(),
+              },
+              updatedAt: new Date(),
+            })
+            .where(eq(decks.id, deckId));
+        } catch (error) {
+          await ctx.db
+            .update(decks)
+            .set({
+              status: "error",
+              generationLog: {
+                error: error instanceof Error ? error.message : "Unknown error",
+                failedAt: new Date().toISOString(),
+              },
+              updatedAt: new Date(),
+            })
+            .where(eq(decks.id, deckId));
+        }
+      }
+
+      // Email notification
+      const userEmail = ctx.user.email;
+      if (userEmail) {
+        sendDeckReadyEmail(userEmail, `Bulk: ${input.items.length} decks`, deckIds[0]!, "ready").catch(() => {});
+      }
+
+      return { deckIds, count: deckIds.length };
     }),
 });

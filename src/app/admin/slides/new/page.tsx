@@ -154,7 +154,7 @@ export default function NewDeckPage() {
       sourceFormat,
       slideCount,
       llmProvider: llmProvider as "openai" | "anthropic" | "xai",
-      imageProvider: imageProvider as "dalle3" | "gpt-image-1" | "disabled",
+      imageProvider: imageProvider as "dalle3" | "gpt-image-1" | "stability" | "replicate" | "leonardo" | "disabled",
       themeId,
       fidelity,
       selectedBlocks: selectedBlocks.length > 0 ? selectedBlocks : undefined,

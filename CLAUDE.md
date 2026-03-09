@@ -58,6 +58,7 @@ test-content/               # Client sample inputs for testing (gitignored)
 | `/admin/users` | User management (invite, roles) |
 | `/admin/slides` | Deck list (my decks) |
 | `/admin/slides/new` | Create deck wizard (content + provider selection) |
+| `/admin/slides/bulk` | Bulk upload (multiple files → multiple decks) |
 | `/admin/slides/[deckId]` | Deck viewer (slide list + detail) |
 | `/admin/slides/[deckId]/audience` | Audience view (presenter mode sync via localStorage) |
 | `/admin/slides/[deckId]/present` | Presenter mode (fullscreen, speaker notes, keyboard nav) |
@@ -76,7 +77,8 @@ Server strips `imagePrompt` from non-eligible layouts post-generation (`cleanIma
 | Table | Purpose |
 |-------|---------|
 | `profiles` | User profiles linked to Supabase auth (includes role column) |
-| `decks` | AI-generated slide decks (slides stored as JSONB, status: draft/generating/ready/error) |
+| `deck_groups` | Deck groups/folders per user (name, optional themeId, sortOrder) |
+| `decks` | AI-generated slide decks (slides stored as JSONB, status: draft/generating/ready/error, optional groupId FK) |
 | `provider_preferences` | Per-user AI provider preferences (LLM + image provider) |
 | `crm_contacts` | Unified contact records (email-dedup, notes, source tracking) |
 | `contact_submissions` | Form submissions with `source` column, linked to `crm_contacts` via `crm_contact_id` FK |

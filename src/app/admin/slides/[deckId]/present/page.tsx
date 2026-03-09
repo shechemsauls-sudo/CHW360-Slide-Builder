@@ -135,14 +135,15 @@ export default function PresentPage() {
           break;
         case "Escape":
           e.preventDefault();
-          exitPresent();
+          // Close help overlay first if it's showing, otherwise exit
+          window.dispatchEvent(new CustomEvent("close-presenter-help"));
           break;
       }
     };
 
     window.addEventListener("keydown", handleKey);
     return () => window.removeEventListener("keydown", handleKey);
-  }, [goNext, goPrev, togglePresenterMode, exitPresent]);
+  }, [goNext, goPrev, togglePresenterMode]);
 
   // Check if audience window was closed externally
   useEffect(() => {
@@ -224,7 +225,7 @@ export default function PresentPage() {
       )}
 
       {/* Navigation hint (fades after 3s) */}
-      <NavigationHint />
+      <NavigationHint exitPresent={exitPresent} />
 
       {/* Top-right controls: ? help + exit */}
       <div className="absolute right-4 top-4 flex items-center gap-2">
@@ -320,21 +321,24 @@ function PresenterNotesPanel({ notes }: { notes: string }) {
   );
 }
 
-function NavigationHint() {
+function NavigationHint({ exitPresent }: { exitPresent: () => void }) {
   const [visible, setVisible] = useState(true);
   const [showOverlay, setShowOverlay] = useState(false);
+  const overlayRef = useRef(false);
 
   useEffect(() => {
     // Show full overlay on first launch, then just the hint bar
     const hasSeenOverlay = localStorage.getItem("chw360-present-intro");
     if (!hasSeenOverlay) {
       setShowOverlay(true);
+      overlayRef.current = true;
       localStorage.setItem("chw360-present-intro", "1");
     }
 
     const timer = setTimeout(() => {
       setVisible(false);
       setShowOverlay(false);
+      overlayRef.current = false;
     }, showOverlay ? 5000 : 3000);
     return () => clearTimeout(timer);
   // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -342,24 +346,38 @@ function NavigationHint() {
 
   // Listen for "?" button to re-show overlay
   useEffect(() => {
-    const handler = () => {
+    const showHandler = () => {
       setShowOverlay(true);
+      overlayRef.current = true;
       setVisible(true);
     };
-    window.addEventListener("show-presenter-help", handler);
-    return () => window.removeEventListener("show-presenter-help", handler);
+    window.addEventListener("show-presenter-help", showHandler);
+    return () => window.removeEventListener("show-presenter-help", showHandler);
   }, []);
+
+  // Listen for ESC — close overlay if showing, otherwise exit presentation
+  useEffect(() => {
+    const closeHandler = () => {
+      if (overlayRef.current) {
+        setShowOverlay(false);
+        overlayRef.current = false;
+      } else {
+        exitPresent();
+      }
+    };
+    window.addEventListener("close-presenter-help", closeHandler);
+    return () => window.removeEventListener("close-presenter-help", closeHandler);
+  }, [exitPresent]);
 
   if (showOverlay) {
     return (
       <div
         className="absolute inset-0 z-20 flex items-center justify-center bg-black/80 backdrop-blur-sm transition-opacity"
         role="dialog"
+        aria-modal="true"
         aria-label="Keyboard shortcuts"
-        onClick={() => setShowOverlay(false)}
-        onKeyDown={(e) => {
-          if (e.key === "Escape") setShowOverlay(false);
-        }}
+        onClick={() => { setShowOverlay(false); overlayRef.current = false; }}
+        onKeyDown={(e) => { if (e.key === "Escape") { setShowOverlay(false); overlayRef.current = false; } }}
       >
         <div className="max-w-sm rounded-xl border border-white/10 bg-[#1a1a2e] p-6 text-center shadow-2xl">
           <p className="mb-4 text-sm font-medium text-white">Keyboard Controls</p>

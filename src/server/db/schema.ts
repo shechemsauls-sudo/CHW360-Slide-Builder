@@ -18,11 +18,24 @@ export const profiles = createTable("profiles", {
   updatedAt: timestamp("updated_at", { withTimezone: true }).defaultNow().notNull(),
 });
 
+export const deckGroups = createTable("deck_groups", {
+  id: uuid("id").primaryKey().defaultRandom(),
+  profileId: uuid("profile_id")
+    .notNull()
+    .references(() => profiles.id, { onDelete: "cascade" }),
+  name: text("name").notNull(),
+  themeId: text("theme_id"),
+  sortOrder: integer("sort_order").default(0),
+  createdAt: timestamp("created_at", { withTimezone: true }).defaultNow().notNull(),
+  updatedAt: timestamp("updated_at", { withTimezone: true }).defaultNow().notNull(),
+});
+
 export const decks = createTable("decks", {
   id: uuid("id").primaryKey().defaultRandom(),
   profileId: uuid("profile_id")
     .notNull()
     .references(() => profiles.id, { onDelete: "cascade" }),
+  groupId: uuid("group_id").references(() => deckGroups.id, { onDelete: "set null" }),
   title: text("title").notNull(),
   description: text("description"),
   sourceContent: text("source_content"),
@@ -103,11 +116,18 @@ export const pageViews = createTable("page_views", {
 
 export const profilesRelations = relations(profiles, ({ many, one }) => ({
   decks: many(decks),
+  deckGroups: many(deckGroups),
   providerPreferences: one(providerPreferences),
+}));
+
+export const deckGroupsRelations = relations(deckGroups, ({ one, many }) => ({
+  profile: one(profiles, { fields: [deckGroups.profileId], references: [profiles.id] }),
+  decks: many(decks),
 }));
 
 export const decksRelations = relations(decks, ({ one }) => ({
   profile: one(profiles, { fields: [decks.profileId], references: [profiles.id] }),
+  group: one(deckGroups, { fields: [decks.groupId], references: [deckGroups.id] }),
 }));
 
 export const providerPreferencesRelations = relations(providerPreferences, ({ one }) => ({

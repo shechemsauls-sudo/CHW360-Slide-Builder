@@ -17,6 +17,7 @@ export interface SlideData {
   speakerNotes: string;
   imageUrl: string | null;
   imagePrompt: string | null;
+  imageFocalPoint?: { x: number; y: number }; // 0-100 percentages for object-position
   layout: "full" | "split-left" | "split-right" | "centered" | "two-column" | "image-full" | "image-top";
 }
 

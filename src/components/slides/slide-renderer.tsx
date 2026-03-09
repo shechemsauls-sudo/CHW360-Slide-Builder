@@ -476,6 +476,10 @@ function SplitLayout({
   imagePosition: "left" | "right";
   footerText?: string;
 }) {
+  const focalStyle = slide.imageFocalPoint
+    ? { objectPosition: `${slide.imageFocalPoint.x}% ${slide.imageFocalPoint.y}%` }
+    : undefined;
+
   const imagePanel = slide.imageUrl ? (
     <div className="h-full">
       {/* eslint-disable-next-line @next/next/no-img-element */}
@@ -483,6 +487,7 @@ function SplitLayout({
         src={slide.imageUrl}
         alt={slide.imagePrompt ?? "Slide image"}
         className="h-full w-full object-cover"
+        style={focalStyle}
       />
     </div>
   ) : (
@@ -589,6 +594,7 @@ function ImageFullLayout({
           src={slide.imageUrl}
           alt={slide.imagePrompt ?? "Slide image"}
           className="absolute inset-0 h-full w-full object-cover"
+          style={slide.imageFocalPoint ? { objectPosition: `${slide.imageFocalPoint.x}% ${slide.imageFocalPoint.y}%` } : undefined}
         />
       ) : (
         <div className="absolute inset-0">
@@ -673,6 +679,7 @@ function ImageTopLayout({
             src={slide.imageUrl}
             alt={slide.imagePrompt ?? "Slide image"}
             className="h-full w-full object-cover"
+            style={slide.imageFocalPoint ? { objectPosition: `${slide.imageFocalPoint.x}% ${slide.imageFocalPoint.y}%` } : undefined}
           />
         ) : (
           <ImagePlaceholder theme={theme} />

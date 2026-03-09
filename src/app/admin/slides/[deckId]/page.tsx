@@ -33,6 +33,8 @@ import { SlideRenderer } from "~/components/slides/slide-renderer";
 import { SlideEditPanel } from "~/components/slides/slide-edit-panel";
 import { SlideImageControls } from "~/components/slides/slide-image-controls";
 import { DeckSettingsPanel } from "~/components/slides/deck-settings-panel";
+import { VideoRecsPanel } from "~/components/slides/video-recs-panel";
+import { ReviewPanel } from "~/components/slides/review-panel";
 import { getTheme } from "~/lib/themes";
 import { parseSpeakerNotes } from "~/lib/slides/parse-speaker-notes";
 import { api } from "~/trpc/react";
@@ -187,8 +189,11 @@ export default function DeckViewPage() {
 
     // Use saved image provider preference (default to gpt-image-1)
     const savedProvider = prefs?.imageProvider;
-    const provider: "dalle3" | "gpt-image-1" =
-      savedProvider === "dalle3" ? "dalle3" : "gpt-image-1";
+    const validProviders = ["dalle3", "gpt-image-1", "stability", "replicate", "leonardo"] as const;
+    type ImgProvider = (typeof validProviders)[number];
+    const provider: ImgProvider = validProviders.includes(savedProvider as ImgProvider)
+      ? (savedProvider as ImgProvider)
+      : "gpt-image-1";
 
     for (let i = 0; i < needsImages.length; i++) {
       const slide = needsImages[i]!;
@@ -525,6 +530,27 @@ export default function DeckViewPage() {
             </CardContent>
           )}
         </Card>
+      )}
+
+      {/* Video Resources */}
+      {deck.status === "ready" && slides.length > 0 && (
+        <VideoRecsPanel
+          deckId={deckId}
+          videoRecs={deck.videoRecs as Array<{ videoId: string; title: string; channelName: string; thumbnail: string; publishedAt: string }> | null}
+          onUpdated={handleSlideUpdated}
+        />
+      )}
+
+      {/* Quality Review */}
+      {deck.status === "ready" && slides.length > 0 && (
+        <ReviewPanel
+          deckId={deckId}
+          slideCount={slides.length}
+          onNavigateSlide={(order) => {
+            const slide = slides.find((s) => s.order === order);
+            if (slide) setActiveSlideId(slide.id);
+          }}
+        />
       )}
 
       {deck.status === "error" && (

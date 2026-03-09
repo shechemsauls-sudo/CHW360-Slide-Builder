@@ -54,6 +54,36 @@ export const IMAGE_PROVIDERS: ProviderMeta[] = [
     cons: ["Higher cost per image"],
     costTier: "high",
   },
+  {
+    id: "stability",
+    name: "Stability AI",
+    description: "Stable Diffusion 3 — high-quality open-source model",
+    type: "image",
+    envVar: "STABILITY_API_KEY",
+    pros: ["High quality", "Good diversity", "Competitive pricing"],
+    cons: ["Slower than DALL-E"],
+    costTier: "medium",
+  },
+  {
+    id: "replicate",
+    name: "FLUX (Replicate)",
+    description: "FLUX 1.1 Pro — state-of-the-art open model via Replicate",
+    type: "image",
+    envVar: "REPLICATE_API_TOKEN",
+    pros: ["Excellent quality", "Great prompt following", "Photorealistic"],
+    cons: ["Async generation (polling)"],
+    costTier: "medium",
+  },
+  {
+    id: "leonardo",
+    name: "Leonardo AI",
+    description: "Leonardo Phoenix — creative AI with PhotoReal mode",
+    type: "image",
+    envVar: "LEONARDO_API_KEY",
+    pros: ["Photorealistic", "Creative styles", "Good at scenes"],
+    cons: ["Async generation (polling)"],
+    costTier: "medium",
+  },
 ];
 
 export function isProviderConfigured(envVar: string): boolean {

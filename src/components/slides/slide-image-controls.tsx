@@ -17,6 +17,7 @@ import { Button } from "~/components/ui/button";
 import { Textarea } from "~/components/ui/textarea";
 import { api } from "~/trpc/react";
 import { toast } from "sonner";
+import { ImageFocalPointEditor } from "~/components/slides/image-focal-point";
 import type { SlideData } from "~/lib/ai/types";
 
 const IMAGE_LAYOUTS = [
@@ -314,6 +315,32 @@ export function SlideImageControls({
             src={slide.imageUrl!}
             alt={slide.imagePrompt ?? "Generated slide image"}
             className="w-full rounded-lg"
+          />
+        </div>
+      )}
+
+      {/* Focal point / reposition */}
+      {hasImage && isImageLayout && (
+        <div className="mt-3 border-t border-white/5 pt-3">
+          <ImageFocalPointEditor
+            imageUrl={slide.imageUrl!}
+            focalPoint={slide.imageFocalPoint}
+            onSave={(point) => {
+              updateSlide.mutate({
+                deckId,
+                slide: { ...getLatestSlide(), imageFocalPoint: point },
+              });
+              toast.success("Focal point updated");
+            }}
+            onReset={() => {
+              const latest = getLatestSlide();
+              const { imageFocalPoint: _, ...rest } = latest;
+              updateSlide.mutate({
+                deckId,
+                slide: rest as SlideData,
+              });
+              toast.success("Focal point reset to center");
+            }}
           />
         </div>
       )}
