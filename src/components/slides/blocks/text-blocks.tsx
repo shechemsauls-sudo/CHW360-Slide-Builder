@@ -1,6 +1,6 @@
 import type { SlideTheme } from "~/lib/themes";
 import { getPaletteColor } from "~/lib/themes";
-import { MarkdownRenderer } from "../markdown-renderer";
+import { MarkdownRenderer, inlineFormat } from "../markdown-renderer";
 
 export function InfoBox({ title, content, theme }: { title?: string; content: string; theme: SlideTheme }) {
   return (
@@ -146,9 +146,8 @@ export function FlowDiagram({ content, theme }: { content: string; theme: SlideT
               color: theme.colors.background,
               boxShadow: `0 4px 12px ${color}25`,
             }}
-          >
-            {item}
-          </div>
+            dangerouslySetInnerHTML={{ __html: inlineFormat(item) }}
+          />
           {i < items.length - 1 && (
             <div className="flex items-center">
               <div className="h-0.5 w-4 rounded-full" style={{ backgroundColor: `${color}50` }} />
@@ -285,9 +284,7 @@ export function CycleDiagram({ content, theme }: { content: string; theme: Slide
               >
                 {i + 1}
               </div>
-              <span className="flex-1 text-[10px] font-semibold leading-tight text-white">
-                {items[i]}
-              </span>
+              <span className="flex-1 text-[10px] font-semibold leading-tight text-white" dangerouslySetInnerHTML={{ __html: inlineFormat(items[i]!) }} />
             </div>
           );
         })}
@@ -324,9 +321,8 @@ export function ComparisonTable({ content, theme }: { content: string; theme: Sl
                 color: theme.colors.background,
                 borderLeft: i > 0 ? `1px solid ${theme.colors.background}15` : "none",
               }}
-            >
-              {h}
-            </div>
+              dangerouslySetInnerHTML={{ __html: inlineFormat(h) }}
+            />
           ))}
         </div>
       )}
@@ -347,9 +343,8 @@ export function ComparisonTable({ content, theme }: { content: string; theme: Sl
                 color: theme.colors.text,
                 borderLeft: j > 0 ? `1px solid ${theme.colors.accent}20` : "none",
               }}
-            >
-              {cell}
-            </div>
+              dangerouslySetInnerHTML={{ __html: inlineFormat(cell) }}
+            />
           ))}
         </div>
       ))}
@@ -386,9 +381,7 @@ export function IconGrid({ content, theme }: { content: string; theme: SlideThem
           >
             {item.charAt(0).toUpperCase()}
           </div>
-          <p className="text-xs font-semibold tracking-wide" style={{ color: theme.colors.text }}>
-            {item}
-          </p>
+          <p className="text-xs font-semibold tracking-wide" style={{ color: theme.colors.text }} dangerouslySetInnerHTML={{ __html: inlineFormat(item) }} />
         </div>
         );
       })}
@@ -413,12 +406,11 @@ export function QuoteBlock({ attribution, content, theme }: { attribution?: stri
         &ldquo;
       </div>
       <div className="relative">
-        <p
+        <MarkdownRenderer
+          content={content}
           className="text-base italic leading-relaxed"
           style={{ color: theme.colors.text }}
-        >
-          {content}
-        </p>
+        />
         {attribution && (
           <div className="mt-3 flex items-center gap-2">
             <div
@@ -484,9 +476,11 @@ export function Checklist({ content, theme }: { content: string; theme: SlideThe
               }}
             />
           )}
-          <p className={`${compact ? "text-xs" : "text-sm"} leading-relaxed`} style={{ color: theme.colors.text }}>
-            {item.text}
-          </p>
+          <MarkdownRenderer
+            content={item.text}
+            className={`${compact ? "text-xs" : "text-sm"} leading-relaxed`}
+            style={{ color: theme.colors.text }}
+          />
         </div>
       ))}
     </div>
@@ -533,13 +527,9 @@ export function Timeline({ content, theme }: { content: string; theme: SlideThem
                   border: `1px solid ${color}28`,
                 }}
               >
-                <p className="text-xs font-bold" style={{ color: theme.colors.text }}>
-                  {label?.trim()}
-                </p>
+                <p className="text-xs font-bold" style={{ color: theme.colors.text }} dangerouslySetInnerHTML={{ __html: inlineFormat(label?.trim() ?? "") }} />
                 {desc.length > 0 && (
-                  <p className="mt-0.5 text-[10px] leading-tight" style={{ color: theme.colors.textMuted }}>
-                    {desc.join(":").trim()}
-                  </p>
+                  <p className="mt-0.5 text-[10px] leading-tight" style={{ color: theme.colors.textMuted }} dangerouslySetInnerHTML={{ __html: inlineFormat(desc.join(":").trim()) }} />
                 )}
               </div>
             </div>
@@ -572,12 +562,11 @@ export function HighlightBox({ content, theme }: { content: string; theme: Slide
           background: `radial-gradient(circle at 100% 100%, ${theme.colors.accent}40, transparent 70%)`,
         }}
       />
-      <p
+      <MarkdownRenderer
+        content={content}
         className="relative text-sm font-semibold leading-relaxed"
         style={{ color: theme.colors.accent }}
-      >
-        {content}
-      </p>
+      />
     </div>
   );
 }

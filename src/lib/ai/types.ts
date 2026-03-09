@@ -10,7 +10,8 @@ export interface SlideData {
     | "image"
     | "activity"
     | "quote"
-    | "closing";
+    | "closing"
+    | "references";
   title: string;
   body: string;
   speakerNotes: string;

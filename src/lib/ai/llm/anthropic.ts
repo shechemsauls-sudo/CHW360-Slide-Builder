@@ -14,7 +14,7 @@ const slideSchema = z.object({
   order: z.number(),
   type: z.enum([
     "title", "section", "content", "bullets", "comparison",
-    "image", "activity", "quote", "closing",
+    "image", "activity", "quote", "closing", "references",
   ]),
   title: z.string(),
   body: z.string(),

@@ -18,13 +18,16 @@ Scale: 9 modules × ~4 parts each ≈ 2,250 slides total.
 - **Infra** — Client API keys added (YouTube, xAI/Grok, Stability, Replicate, Leonardo), Supabase keep-alive cron, Vercel env fix
 - **Admin Hub Overhaul** — CRM notes system, submissions Gmail-style inbox, production audit (19 fixes), UX polish, Turnstile, CSV export, brand tokens, DB indexes
 
-### Up Next — Slide Builder Production Plan (6 sprints)
+### Completed Sprints (this session)
+- **Sprint 1 (Foundation)** — Bold markdown in 8 blocks, title consistency in image-full, ContentFitter 0.45 shrink + dual delayed measure, centralized image style directive
+- **Sprint 2 (Images)** — Brand style injected into LLM prompt, per-slide generation, and all image generation calls
+- **Sprint 3 (Citations)** — APA 7th citations in generation prompt, References slide post-processing + compact rendering, slide count separation
+- **Sprint 4 (Providers)** — Removed 4 broken providers, filtered creation wizard, Generation Preferences card on Settings page, imageProvider override on regenerate
+
+### Up Next
 > Full plan: `docs/slide-builder-plan.md`
 
-- **Sprint 1 (Foundation)** — Bold markdown in all blocks, title slide consistency, overflow fix, image style directive file
-- **Sprint 2 (Images)** — Inject client style prompt into all 3 image paths (LLM prompt, per-slide regen, direct generation)
-- **Sprint 3 (Citations)** — APA 7th citations in generation, References as appended slides outside slide count
-- **Sprint 4 (Providers)** — Remove broken providers, align creation/editing settings, add settings UI, wire xAI/Grok
+- **Sprint 4.5** — Wire xAI/Grok as LLM provider (API key available)
 - **Sprint 5 (Deck List)** — Sleek row UI, sorting, filtering, search, deck groups with group theme editing
 - **Sprint 6 (Advanced)** — YouTube video recs, bulk upload, auto-review/coherence check
 - **Phase 2e** — PPTX/PDF export, public share links
@@ -33,6 +36,7 @@ Scale: 9 modules × ~4 parts each ≈ 2,250 slides total.
 ### Recent Changes
 | Date | Change |
 |------|--------|
+| 2026-03-08 | Sprints 1-4 complete: markdown blocks, image style, citations, provider cleanup, settings UI |
 | 2026-03-08 | Slide builder production plan: 6-sprint roadmap with deep audit findings |
 | 2026-03-08 | Admin hub overhaul: CRM notes, submissions inbox, production audit, UX polish |
 | 2026-03-08 | Turnstile spam protection, CSV export, brand tokens, 8 DB indexes |

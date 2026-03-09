@@ -2,30 +2,30 @@
 
 > Full plan with implementation details: `docs/slide-builder-plan.md`
 
-## Sprint 1: Foundation Fixes (do first)
-- [ ] 1.1 Fix bold markdown in 13 visual blocks that use plain text instead of MarkdownRenderer
-- [ ] 1.2 Fix title slide consistency — image-full hardcodes white/shadow instead of theme
-- [ ] 1.3 Fix content overflow — lower min shrink to 0.45, add delayed re-measure, safety overflow-hidden
-- [ ] 1.4 Create `src/lib/ai/image/style-prompt.ts` — centralize client image style directive
+## Sprint 1: Foundation Fixes — DONE
+- [x] 1.1 Fix bold markdown in 8 visual blocks (MarkdownRenderer + inlineFormat)
+- [x] 1.2 Fix title slide consistency — image-full now type-aware sizing + decorative dividers
+- [x] 1.3 Fix content overflow — min shrink 0.45, dual delayed measurement (300ms + 600ms)
+- [x] 1.4 Create `src/lib/ai/image/style-prompt.ts` — centralized style directive + enhanceImagePrompt()
 
-## Sprint 2: Image Quality (depends on 1.4)
-- [ ] 2.1 Inject style directive into `buildGeneratePrompt()` image guidelines
-- [ ] 2.2 Inject style directive into `generateImagePrompt()` per-slide mutation
-- [ ] 2.3 Wrap all image generation calls with `enhanceImagePrompt()` prefix
-- [ ] 2.4 Verify image provider quality/brightness settings
+## Sprint 2: Image Quality — DONE
+- [x] 2.1 Inject brand style directive into `buildGeneratePrompt()` image guidelines
+- [x] 2.2 Inject style directive into `generateImagePrompt()` per-slide mutation
+- [x] 2.3 Wrap all image generation calls with `enhanceImagePrompt()` prefix
+- [x] 2.4 Verified image provider settings (DALL-E 3 standard quality, gpt-image-1 defaults — good)
 
-## Sprint 3: Citation Integration (depends on 1.1)
-- [ ] 3.1 Integrate citation prompt into `buildGeneratePrompt()` — APA 7th, 2020–2025
-- [ ] 3.2 Post-process: tag References slides with `type: "references"`
-- [ ] 3.3 Exclude References from slide count display (20 content + N references)
-- [ ] 3.4 Render References slides with compact layout and small font
+## Sprint 3: Citation Integration — DONE
+- [x] 3.1 Integrate APA 7th citation prompt into `buildGeneratePrompt()` — in-text + references
+- [x] 3.2 Post-process: `tagReferenceSlides()` tags + strips images from reference slides
+- [x] 3.3 Exclude References from slide count — DB stores content count, UI shows "X slides + Y ref"
+- [x] 3.4 Render References slides compact — text-[11px], leading-snug, p-8, top-aligned, text-xl title
 
-## Sprint 4: Provider & Settings Cleanup (parallel with 2-3)
-- [ ] 4.1 Remove Gemini/DeepSeek/Stability/Replicate from provider config (not implemented)
-- [ ] 4.2 Filter creation wizard to only show configured providers (like editing does)
-- [ ] 4.3 Add provider preferences section to Settings page (API exists, no UI)
-- [ ] 4.4 Align editing: allow changing LLM/image provider during regenerate
-- [ ] 4.5 Wire xAI/Grok as LLM provider (API key available)
+## Sprint 4: Provider & Settings Cleanup — DONE
+- [x] 4.1 Remove Gemini/DeepSeek/Stability/Replicate from provider config
+- [x] 4.2 Filter creation wizard to only show configured providers
+- [x] 4.3 Add Generation Preferences card to Settings page (LLM, image, fidelity, tone, instructions)
+- [x] 4.4 Add imageProvider override to regenerate mutation
+- [x] 4.5 Wire xAI/Grok as LLM provider (grok-3 + grok-3-mini, OpenAI-compatible API)
 - [ ] 4.6 Future: wire Stability/Replicate/Leonardo image providers
 
 ## Sprint 5: Deck List Overhaul (independent)

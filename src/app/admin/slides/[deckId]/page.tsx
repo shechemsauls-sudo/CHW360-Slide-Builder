@@ -166,7 +166,7 @@ export default function DeckViewPage() {
       id: deckId,
       fidelity: (prefs?.fidelity as "verbatim" | "balanced" | "creative") ?? "balanced",
       slideCount: deck.slideCount ?? 20,
-      llmProvider: (prefs?.llmProvider ?? deck?.llmProvider ?? "openai") as "openai" | "anthropic",
+      llmProvider: (prefs?.llmProvider ?? deck?.llmProvider ?? "openai") as "openai" | "anthropic" | "xai",
       tone: (prefs?.tone as "professional" | "conversational" | "academic" | "training") ?? "professional",
       customInstructions: prefs?.customInstructions || undefined,
     });
@@ -249,6 +249,8 @@ export default function DeckViewPage() {
   const activeSlide = slides.find((s) => s.id === activeSlideId) ?? slides[0] ?? null;
   const isRegenerating = regenerateDeck.isPending;
   const slidesNeedingImages = slides.filter((s) => s.imagePrompt && !s.imageUrl).length;
+  const contentSlides = slides.filter((s) => s.type !== "references");
+  const referenceSlides = slides.filter((s) => s.type === "references");
 
   return (
     <div className="space-y-6">
@@ -268,12 +270,12 @@ export default function DeckViewPage() {
             <div className="mt-2 flex flex-wrap items-center gap-3 text-xs text-gray-400">
               <span className="flex items-center gap-1">
                 <Layers className="h-3.5 w-3.5" />
-                {slides.length} slides
+                {contentSlides.length} slides{referenceSlides.length > 0 && ` + ${referenceSlides.length} ref`}
               </span>
               {deck.llmProvider && (
                 <span className="flex items-center gap-1">
                   <Sparkles className="h-3.5 w-3.5" />
-                  {deck.llmProvider === "openai" ? "GPT-4o" : "Claude Sonnet"}
+                  {deck.llmProvider === "openai" ? "GPT-4o" : deck.llmProvider === "xai" ? "Grok" : "Claude Sonnet"}
                 </span>
               )}
               <span className="flex items-center gap-1">

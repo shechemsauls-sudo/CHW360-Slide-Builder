@@ -11,6 +11,7 @@ const server = z.object({
   RESEND_API_KEY: z.preprocess(coerce, z.string().min(1).optional()),
   OPENAI_API_KEY: z.preprocess(coerce, z.string().min(1).optional()),
   ANTHROPIC_API_KEY: z.preprocess(coerce, z.string().min(1).optional()),
+  XAI_API_KEY: z.preprocess(coerce, z.string().min(1).optional()),
   TURNSTILE_SECRET_KEY: z.preprocess(coerce, z.string().min(1).optional()),
   NODE_ENV: z.enum(["development", "test", "production"]).default("development"),
 });
@@ -30,6 +31,7 @@ const processEnv = {
   RESEND_API_KEY: process.env.RESEND_API_KEY,
   OPENAI_API_KEY: process.env.OPENAI_API_KEY,
   ANTHROPIC_API_KEY: process.env.ANTHROPIC_API_KEY,
+  XAI_API_KEY: process.env.XAI_API_KEY,
   TURNSTILE_SECRET_KEY: process.env.TURNSTILE_SECRET_KEY,
   NODE_ENV: process.env.NODE_ENV,
   NEXT_PUBLIC_SUPABASE_URL: process.env.NEXT_PUBLIC_SUPABASE_URL,

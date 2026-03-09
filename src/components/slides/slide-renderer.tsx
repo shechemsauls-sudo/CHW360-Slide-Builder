@@ -76,7 +76,7 @@ function ContentFitter({ children, className }: { children: ReactNode; className
     const available = outer.clientHeight;
     const needed = inner.scrollHeight;
     if (needed > available && available > 0) {
-      setShrink(Math.max(0.55, available / needed));
+      setShrink(Math.max(0.45, available / needed));
     } else {
       setShrink(1);
     }
@@ -91,8 +91,9 @@ function ContentFitter({ children, className }: { children: ReactNode; className
     ro.observe(inner);
     // Measure after first paint + delayed for late-rendering content (SVGs, fonts)
     requestAnimationFrame(measure);
-    const timer = setTimeout(measure, 300);
-    return () => { ro.disconnect(); clearTimeout(timer); };
+    const timer1 = setTimeout(measure, 300);
+    const timer2 = setTimeout(measure, 600);
+    return () => { ro.disconnect(); clearTimeout(timer1); clearTimeout(timer2); };
   }, [measure]);
 
   return (
@@ -206,12 +207,15 @@ function SlideTitle({ slide, theme }: { slide: SlideData; theme: SlideTheme }) {
   const isTitle = slide.type === "title";
   const isSection = slide.type === "section";
   const isClosing = slide.type === "closing";
+  const isReferences = slide.type === "references";
 
   const titleSize = isTitle
     ? "text-5xl tracking-tight"
     : isSection
       ? "text-4xl tracking-tight"
-      : "text-2xl";
+      : isReferences
+        ? "text-xl"
+        : "text-2xl";
 
   return (
     <h2
@@ -393,16 +397,17 @@ function FullLayout({
   footerText?: string;
 }) {
   const isActivity = slide.type === "activity";
+  const isReferences = slide.type === "references";
   const { bodyContent, footerText: extractedFooter } = extractFooter(slide.body);
   const bodySlide = { ...slide, body: bodyContent };
   const resolvedFooter = extractedFooter ?? (slide.type !== "title" ? footerText : undefined);
-  const contentScale = getContentScale(slide.body);
+  const contentScale = isReferences ? "text-[11px]" : getContentScale(slide.body);
 
-  const dense = isDenseContent(slide.body);
+  const dense = isDenseContent(slide.body) || isReferences;
 
   return (
-    <div className="flex h-full w-full flex-col overflow-hidden p-12">
-      <div className="flex flex-1 flex-col justify-center min-h-0">
+    <div className={`flex h-full w-full flex-col overflow-hidden ${isReferences ? "p-8" : "p-12"}`}>
+      <div className={`flex flex-1 flex-col ${isReferences ? "justify-start" : "justify-center"} min-h-0`}>
         {isActivity && (
           <div
             className="mb-3 inline-flex w-fit items-center gap-1 rounded-full px-3 py-1 text-xs font-medium shrink-0"
@@ -412,7 +417,7 @@ function FullLayout({
           </div>
         )}
         <SlideTitle slide={slide} theme={theme} />
-        <ContentFitter className={`${dense ? "mt-3" : "mt-5"} ${contentScale} leading-relaxed`}>
+        <ContentFitter className={`${dense ? "mt-2" : "mt-5"} ${contentScale} ${isReferences ? "leading-snug" : "leading-relaxed"}`}>
           <SlideBody slide={bodySlide} theme={theme} hasBlocks={hasBlocks} dense={dense} />
         </ContentFitter>
       </div>
@@ -598,18 +603,33 @@ function ImageFullLayout({
       <div className="relative flex h-full flex-col justify-end p-10">
         <div className="rounded-xl bg-black/50 p-8 ring-1 ring-white/10 backdrop-blur-md">
           <h2
-            className="text-4xl font-bold leading-tight tracking-tight text-white"
+            className={`${slide.type === "title" ? "text-5xl" : slide.type === "section" ? "text-4xl" : "text-2xl"} font-bold leading-tight tracking-tight text-white`}
             style={{
               fontFamily: theme.typography.headingFont,
               fontWeight: theme.typography.headingWeight,
               textShadow: "0 2px 12px rgba(0,0,0,0.5)",
+              textWrap: "balance",
             }}
           >
             {slide.title}
-            <div
-              className="mt-3 h-1 w-24 rounded-full"
-              style={{ background: theme.gradient?.accent ?? theme.colors.accent }}
-            />
+            {(slide.type === "title" || slide.type === "closing") && (
+              <div
+                className="mt-3 h-1 w-24 rounded-full"
+                style={{ background: theme.gradient?.accent ?? theme.colors.accent }}
+              />
+            )}
+            {slide.type === "section" && (
+              <div className="mt-3 flex items-center gap-3">
+                <div
+                  className="h-0.5 w-12 rounded-full"
+                  style={{ background: theme.gradient?.accent ?? theme.colors.accent }}
+                />
+                <div
+                  className="h-0.5 w-6 rounded-full opacity-40"
+                  style={{ backgroundColor: theme.colors.accent }}
+                />
+              </div>
+            )}
           </h2>
           {bodyContent.trim() && (
             <div className="mt-4 max-w-[85%] text-base leading-relaxed text-white/85">

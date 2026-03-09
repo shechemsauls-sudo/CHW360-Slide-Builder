@@ -153,7 +153,7 @@ export default function NewDeckPage() {
       content,
       sourceFormat,
       slideCount,
-      llmProvider: llmProvider as "openai" | "anthropic",
+      llmProvider: llmProvider as "openai" | "anthropic" | "xai",
       imageProvider: imageProvider as "dalle3" | "gpt-image-1" | "disabled",
       themeId,
       fidelity,
@@ -348,7 +348,7 @@ export default function NewDeckPage() {
               <CardContent className="space-y-6 p-6">
                 <ProviderSelector
                   label="AI Text Provider"
-                  providers={providers.llm}
+                  providers={providers.llm.filter((p) => p.configured)}
                   selected={llmProvider}
                   onSelect={setLlmProvider}
                 />
@@ -365,7 +365,7 @@ export default function NewDeckPage() {
                       costTier: "low",
                       configured: true,
                     },
-                    ...providers.image,
+                    ...providers.image.filter((p) => p.configured),
                   ]}
                   selected={imageProvider}
                   onSelect={setImageProvider}

@@ -1,4 +1,5 @@
 import type { FidelityLevel, GenerateInput, RegenerateInput, ToneOption, VisualBlockType } from "../types";
+import { IMAGE_STYLE_DIRECTIVE } from "../image/style-prompt";
 
 const FIDELITY_INSTRUCTIONS: Record<FidelityLevel, string> = {
   verbatim: `## Source Fidelity: VERBATIM
@@ -366,6 +367,16 @@ ${TONE_INSTRUCTIONS[tone]}
 ${customInstructions ? `\n## Custom Instructions\n${customInstructions}` : ""}
 ${includeBlocks ? "\n" + buildBlockDocs(input.selectedBlocks) : ""}
 
+## Citation Requirements
+Add evidence-based citations (2020–2025) using APA 7th edition format:
+- Density: 1–2 in-text citations per content slide where specific claims need evidence
+- Format: In-text (Author, Year) with full references on dedicated References slide(s) at the end
+- Sources: Peer-reviewed journals, major health orgs (APA, SAMHSA, NIMH, NAMI, CDC, WHO), systematic reviews/meta-analyses
+- Skip citations on: title/welcome slides, thank you/closing, test/assessment placeholders, practice scenarios, local resource slides, reflection/discussion prompts
+- Weave citations naturally — don't disrupt flow, tone, or accessibility level
+
+IMPORTANT: The References slide(s) at the end are EXTRA — they do NOT count toward the target slide count of ${slideCount}. If the user requests ${slideCount} slides, generate ${slideCount} content slides PLUS References slide(s) after. References slides should have type "references", layout "full", and no imagePrompt.
+
 ## Slide Count
 
 **IMPORTANT: If the source content already contains slide markers** (e.g., "Slide 1:", "Slide 2:", numbered slides, or clear slide-by-slide structure), you MUST follow that structure exactly — create one output slide per source slide. The user's slide count preference (${slideCount}) is secondary to the document's own structure.
@@ -382,15 +393,17 @@ If the source content does NOT contain slide markers (it's just prose, notes, or
 - Use image-top for content slides that benefit from a visual anchor
 - Set imagePrompt to null on full, centered, and two-column layouts
 
-## Image Prompt Guidelines
-When writing imagePrompt values, follow these rules:
-- **Specify subject clearly**: "A community health worker visiting a rural household" not just "healthcare"
-- **Include style**: "photorealistic", "warm documentary style", "soft illustration", or "flat vector style"
-- **Include mood/lighting**: "warm golden hour light", "bright and optimistic", "calm clinical setting"
-- **Include color palette hints**: "earth tones", "teal and warm accents", "bright primary colors"
-- **NEVER include text in images**: Do not ask for text, labels, or words rendered in the image
+## Image Prompt Guidelines — Brand Style
+CRITICAL: All imagePrompt values MUST embody this visual style:
+${IMAGE_STYLE_DIRECTIVE}
+
+Additional rules:
+- Always specify "warm natural lighting" and "brightly lit"
+- Always include diversity in people (Hispanic, Black, Asian, Middle Eastern, all ages)
+- Settings should feel like Texas community spaces
+- Images must feel calm, supportive, and optimistic — never dark, dramatic, or clinical
+- 1-2 sentence prompts only. No text in images.
 - **NEVER request clipart or stock watermarks**: Avoid "clipart", "stock photo", "watermark"
-- **Keep prompts to 1-2 sentences**: Concise but descriptive
 - Write structured speaker notes for every slide using this markdown format:
 
 **Talking Points**
@@ -424,6 +437,7 @@ Guidelines for speaker notes:
 - **activity**: Interactive exercise or discussion prompt
 - **quote**: Notable quote or statistic
 - **closing**: Summary and key takeaways
+- **references**: APA 7th edition reference list (appended after closing, EXTRA slides outside target count)
 
 ## Layouts
 - **full**: Content fills the slide (NO imagePrompt)

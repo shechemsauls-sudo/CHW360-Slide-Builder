@@ -15,6 +15,18 @@ import {
   deleteDeckImages,
 } from "~/lib/storage/upload-image";
 import { sendDeckReadyEmail } from "~/lib/resend";
+import { IMAGE_STYLE_DIRECTIVE, enhanceImagePrompt } from "~/lib/ai/image/style-prompt";
+
+/** Post-process: tag any References slides the LLM missed tagging, strip imagePrompt */
+function tagReferenceSlides(slides: SlideData[]): SlideData[] {
+  return slides.map((slide) => {
+    const isRef =
+      slide.type === "references" ||
+      (slide.title.toLowerCase().includes("reference") && slide.type !== "title");
+    if (!isRef) return slide;
+    return { ...slide, type: "references", imagePrompt: null, imageUrl: null, layout: "full" };
+  });
+}
 
 async function getProfileId(db: typeof dbInstance, authUserId: string) {
   const profile = await db.query.profiles.findFirst({
@@ -32,7 +44,7 @@ const slideDataSchema = z.object({
   order: z.number(),
   type: z.enum([
     "title", "section", "content", "bullets", "comparison",
-    "image", "activity", "quote", "closing",
+    "image", "activity", "quote", "closing", "references",
   ]),
   title: z.string(),
   body: z.string(),
@@ -104,7 +116,7 @@ export const deckRouter = createTRPCRouter({
         description: z.string().optional(),
         content: z.string().min(1),
         sourceFormat: z.enum(["markdown", "plaintext", "pdf", "docx"]).default("plaintext"),
-        llmProvider: z.enum(["openai", "anthropic"]).default("anthropic"),
+        llmProvider: z.enum(["openai", "anthropic", "xai"]).default("anthropic"),
         imageProvider: z.enum(["dalle3", "gpt-image-1", "disabled"]).default("gpt-image-1"),
         themeId: z.string().default("chw-teal"),
         slideCount: z.number().min(5).max(120).optional(),
@@ -156,12 +168,16 @@ export const deckRouter = createTRPCRouter({
           tone: input.tone,
         });
 
+        // Post-process: tag References slides, strip their images
+        const processedSlides = tagReferenceSlides(result.slides);
+        const contentSlideCount = processedSlides.filter((s) => s.type !== "references").length;
+
         // Update deck with generated slides
         const [updated] = await ctx.db
           .update(decks)
           .set({
-            slides: result.slides,
-            slideCount: result.slides.length,
+            slides: processedSlides,
+            slideCount: contentSlideCount,
             status: "ready",
             generationLog: {
               model: result.model,
@@ -414,9 +430,9 @@ export const deckRouter = createTRPCRouter({
         throw new TRPCError({ code: "BAD_REQUEST", message: "No image prompt available" });
       }
 
-      // Generate image
+      // Generate image with brand style prefix
       const provider = getImageProvider(input.imageProvider);
-      const buffer = await provider.generateImage(prompt);
+      const buffer = await provider.generateImage(enhanceImagePrompt(prompt));
 
       // Upload to storage
       const contentType = input.imageProvider === "gpt-image-1" ? "image/webp" : "image/png";
@@ -462,7 +478,7 @@ export const deckRouter = createTRPCRouter({
       z.object({
         deckId: z.string().uuid(),
         slideId: z.string(),
-        llmProvider: z.enum(["openai", "anthropic"]).optional(),
+        llmProvider: z.enum(["openai", "anthropic", "xai"]).optional(),
       }),
     )
     .mutation(async ({ ctx, input }) => {
@@ -485,10 +501,14 @@ export const deckRouter = createTRPCRouter({
       const provider = getLLMProvider(llmId);
 
       // Use a lightweight prompt to generate an image description from slide content
-      const prompt = `Generate a concise image prompt (1-2 sentences) for an AI image generator based on this slide content. The image should complement the slide visually.
+      const prompt = `Generate a concise image prompt (1-2 sentences) for an AI image generator.
 
-Title: ${slide.title}
-Content: ${slide.body.slice(0, 500)}
+REQUIRED STYLE: ${IMAGE_STYLE_DIRECTIVE}
+
+The image should be warm, brightly lit, and optimistic. Never dark or dramatic. No text in the image.
+
+Slide title: ${slide.title}
+Slide content: ${slide.body.slice(0, 500)}
 
 Respond with ONLY the image prompt, no explanation.`;
 
@@ -512,7 +532,7 @@ Respond with ONLY the image prompt, no explanation.`;
         deckId: z.string().uuid(),
         slideId: z.string(),
         feedback: z.string().min(1),
-        llmProvider: z.enum(["openai", "anthropic"]).optional(),
+        llmProvider: z.enum(["openai", "anthropic", "xai"]).optional(),
       }),
     )
     .mutation(async ({ ctx, input }) => {
@@ -568,7 +588,8 @@ Respond with ONLY the image prompt, no explanation.`;
       z.object({
         id: z.string().uuid(),
         fidelity: z.enum(["verbatim", "balanced", "creative"]).optional(),
-        llmProvider: z.enum(["openai", "anthropic"]).optional(),
+        llmProvider: z.enum(["openai", "anthropic", "xai"]).optional(),
+        imageProvider: z.enum(["dalle3", "gpt-image-1", "disabled"]).optional(),
         slideCount: z.number().min(5).max(120).optional(),
         selectedBlocks: z.array(z.enum(VISUAL_BLOCK_TYPES)).optional(),
         customInstructions: z.string().max(500).optional(),
@@ -612,12 +633,17 @@ Respond with ONLY the image prompt, no explanation.`;
           tone: input.tone,
         });
 
+        // Post-process: tag References slides
+        const processedSlides = tagReferenceSlides(result.slides);
+        const contentSlideCount = processedSlides.filter((s) => s.type !== "references").length;
+
         const [updated] = await ctx.db
           .update(decks)
           .set({
-            slides: result.slides,
-            slideCount: result.slides.length,
+            slides: processedSlides,
+            slideCount: contentSlideCount,
             llmProvider: llmId,
+            imageProvider: input.imageProvider ?? deck.imageProvider ?? "gpt-image-1",
             status: "ready",
             generationLog: {
               model: result.model,

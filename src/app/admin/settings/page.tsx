@@ -3,6 +3,7 @@ import { redirect } from "next/navigation";
 import { createClient } from "~/lib/supabase/server";
 import { Card, CardContent, CardHeader, CardTitle } from "~/components/ui/card";
 import { PasswordResetCard } from "./password-reset-card";
+import { GenerationPreferencesCard } from "./generation-preferences-card";
 
 export const metadata: Metadata = {
   title: "Settings — CHW360",
@@ -47,6 +48,8 @@ export default async function AdminSettingsPage() {
       </Card>
 
       <PasswordResetCard email={user.email ?? ""} />
+
+      <GenerationPreferencesCard />
 
       <Card className="border border-white/10 bg-white/[0.07]">
         <CardHeader>

@@ -29,33 +29,23 @@ const slidesResponseSchema = z.object({
 });
 
 function getClient(): OpenAI {
-  const apiKey = process.env.OPENAI_API_KEY;
-  if (!apiKey) throw new Error("OPENAI_API_KEY not configured");
-  return new OpenAI({ apiKey });
+  const apiKey = process.env.XAI_API_KEY;
+  if (!apiKey) throw new Error("XAI_API_KEY not configured");
+  return new OpenAI({ apiKey, baseURL: "https://api.x.ai/v1" });
 }
 
-/**
- * Attempt to repair truncated JSON from LLM responses.
- * When max_tokens is hit, the JSON gets cut off mid-slide.
- * This finds the last complete slide object and closes the JSON.
- */
 function repairTruncatedJSON(json: string): string {
   try {
     JSON.parse(json);
     return json;
   } catch {
-    // Find the last complete slide separator "},\n" or "}, " pattern
     const lastComplete = json.lastIndexOf('},');
     if (lastComplete === -1) {
       throw new Error("Could not repair truncated JSON — no complete slides found");
     }
-
-    // Take everything up to the last complete slide, close the array and object
     const repaired = json.substring(0, lastComplete + 1) + ']}';
-
-    // Verify it parses
     JSON.parse(repaired);
-    console.warn(`[openai] Repaired truncated JSON — kept content up to position ${lastComplete}`);
+    console.warn(`[xai] Repaired truncated JSON — kept content up to position ${lastComplete}`);
     return repaired;
   }
 }
@@ -69,22 +59,27 @@ async function parseWithRetry(
 
   for (let i = 0; i <= retries; i++) {
     const response = await client.chat.completions.create({
-      model: "gpt-4o",
-      messages: [{ role: "user", content: prompt }],
-      response_format: { type: "json_object" },
+      model: "grok-3",
+      messages: [
+        { role: "system", content: "You are a JSON-only assistant. Respond with valid JSON only, no other text." },
+        { role: "user", content: prompt },
+      ],
       temperature: 0.7,
       max_tokens: 16384,
     });
 
     const content = response.choices[0]?.message?.content;
     if (!content) {
-      lastError = new Error("Empty response from OpenAI");
+      lastError = new Error("Empty response from xAI");
       continue;
     }
 
     try {
-      const json = repairTruncatedJSON(content);
-      const parsed = JSON.parse(json);
+      // Extract JSON if wrapped in text or markdown code blocks
+      const jsonMatch = content.match(/\{[\s\S]*\}/);
+      const jsonStr = jsonMatch ? jsonMatch[0] : content;
+      const repaired = repairTruncatedJSON(jsonStr);
+      const parsed = JSON.parse(repaired);
       const validated = slidesResponseSchema.parse(parsed);
       return {
         slides: validated.slides as SlideData[],
@@ -98,15 +93,15 @@ async function parseWithRetry(
   throw lastError ?? new Error("Failed to generate slides");
 }
 
-export const openaiProvider: LLMProvider = {
-  id: "openai",
+export const xaiProvider: LLMProvider = {
+  id: "xai",
 
   async generateSlides(input: GenerateInput): Promise<GenerationResult> {
     const client = getClient();
     const prompt = buildGeneratePrompt(input);
     const { slides, tokensUsed } = await parseWithRetry(client, prompt);
 
-    return { slides, tokensUsed, model: "gpt-4o" };
+    return { slides, tokensUsed, model: "grok-3" };
   },
 
   async regenerateSlide(input: RegenerateInput): Promise<SlideData> {
@@ -114,24 +109,28 @@ export const openaiProvider: LLMProvider = {
     const prompt = buildRegeneratePrompt(input);
 
     const response = await client.chat.completions.create({
-      model: "gpt-4o",
-      messages: [{ role: "user", content: prompt }],
-      response_format: { type: "json_object" },
+      model: "grok-3",
+      messages: [
+        { role: "system", content: "You are a JSON-only assistant. Respond with valid JSON only, no other text." },
+        { role: "user", content: prompt },
+      ],
       temperature: 0.7,
       max_tokens: 2000,
     });
 
     const content = response.choices[0]?.message?.content;
-    if (!content) throw new Error("Empty response from OpenAI");
+    if (!content) throw new Error("Empty response from xAI");
 
-    const parsed = JSON.parse(content);
+    const jsonMatch = content.match(/\{[\s\S]*\}/);
+    const jsonStr = jsonMatch ? jsonMatch[0] : content;
+    const parsed = JSON.parse(jsonStr);
     return slideSchema.parse(parsed) as SlideData;
   },
 
   async chat(prompt: string): Promise<string> {
     const client = getClient();
     const response = await client.chat.completions.create({
-      model: "gpt-4o-mini",
+      model: "grok-3-mini",
       messages: [{ role: "user", content: prompt }],
       temperature: 0.7,
       max_tokens: 300,

@@ -104,7 +104,7 @@ function renderMarkdown(md: string): string {
   return output.join("\n");
 }
 
-function inlineFormat(text: string): string {
+export function inlineFormat(text: string): string {
   return (
     text
       // Bold: **text** or __text__
