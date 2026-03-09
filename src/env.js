@@ -11,6 +11,7 @@ const server = z.object({
   RESEND_API_KEY: z.preprocess(coerce, z.string().min(1).optional()),
   OPENAI_API_KEY: z.preprocess(coerce, z.string().min(1).optional()),
   ANTHROPIC_API_KEY: z.preprocess(coerce, z.string().min(1).optional()),
+  TURNSTILE_SECRET_KEY: z.preprocess(coerce, z.string().min(1).optional()),
   NODE_ENV: z.enum(["development", "test", "production"]).default("development"),
 });
 
@@ -18,6 +19,7 @@ const client = z.object({
   NEXT_PUBLIC_SUPABASE_URL: z.string().url(),
   NEXT_PUBLIC_SUPABASE_ANON_KEY: z.string().min(1),
   NEXT_PUBLIC_BASE_URL: z.preprocess(coerce, z.string().url().optional()),
+  NEXT_PUBLIC_TURNSTILE_SITE_KEY: z.preprocess(coerce, z.string().min(1).optional()),
 });
 
 const processEnv = {
@@ -28,10 +30,12 @@ const processEnv = {
   RESEND_API_KEY: process.env.RESEND_API_KEY,
   OPENAI_API_KEY: process.env.OPENAI_API_KEY,
   ANTHROPIC_API_KEY: process.env.ANTHROPIC_API_KEY,
+  TURNSTILE_SECRET_KEY: process.env.TURNSTILE_SECRET_KEY,
   NODE_ENV: process.env.NODE_ENV,
   NEXT_PUBLIC_SUPABASE_URL: process.env.NEXT_PUBLIC_SUPABASE_URL,
   NEXT_PUBLIC_SUPABASE_ANON_KEY: process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY,
   NEXT_PUBLIC_BASE_URL: process.env.NEXT_PUBLIC_BASE_URL,
+  NEXT_PUBLIC_TURNSTILE_SITE_KEY: process.env.NEXT_PUBLIC_TURNSTILE_SITE_KEY,
 };
 
 // Skip validation during CI/build or when explicitly requested

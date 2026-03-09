@@ -1,5 +1,7 @@
 "use client";
 
+import { brand } from "~/lib/brand";
+
 export default function AdminError({
   reset,
 }: {
@@ -16,7 +18,7 @@ export default function AdminError({
       <button
         onClick={reset}
         className="mt-2 rounded-md px-4 py-2 text-sm font-medium text-white transition-colors hover:opacity-90"
-        style={{ backgroundColor: "#C9725B" }}
+        style={{ backgroundColor: brand.coral }}
       >
         Try Again
       </button>

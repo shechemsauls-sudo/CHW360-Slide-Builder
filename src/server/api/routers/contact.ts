@@ -8,6 +8,28 @@ import {
 } from "~/server/api/trpc";
 import { contactSubmissions, crmContacts, profiles } from "~/server/db/schema";
 import { sendContactNotification } from "~/lib/resend";
+import { env } from "~/env";
+
+async function verifyTurnstileToken(token: string): Promise<boolean> {
+  const secret = env.TURNSTILE_SECRET_KEY;
+  if (!secret) return true; // Skip verification if no secret key configured
+
+  try {
+    const res = await fetch(
+      "https://challenges.cloudflare.com/turnstile/v0/siteverify",
+      {
+        method: "POST",
+        headers: { "Content-Type": "application/x-www-form-urlencoded" },
+        body: new URLSearchParams({ secret, response: token }),
+      },
+    );
+    const data = (await res.json()) as { success: boolean };
+    return data.success;
+  } catch (err) {
+    console.error("Turnstile verification failed:", err);
+    return false;
+  }
+}
 
 export const contactRouter = createTRPCRouter({
   submit: publicProcedure
@@ -19,9 +41,26 @@ export const contactRouter = createTRPCRouter({
         message: z.string().min(1).max(5000),
         source: z.string().max(200).optional(),
         lang: z.enum(["en", "es"]).optional(),
+        turnstileToken: z.string().optional(),
       })
     )
     .mutation(async ({ ctx, input }) => {
+      // Verify Turnstile token if secret key is configured
+      if (env.TURNSTILE_SECRET_KEY) {
+        if (!input.turnstileToken) {
+          throw new TRPCError({
+            code: "BAD_REQUEST",
+            message: "Spam verification required.",
+          });
+        }
+        const valid = await verifyTurnstileToken(input.turnstileToken);
+        if (!valid) {
+          throw new TRPCError({
+            code: "BAD_REQUEST",
+            message: "Spam verification failed. Please try again.",
+          });
+        }
+      }
       const submissionSource = input.source ?? "Contact Form · Landing Page";
 
       // Upsert CRM contact (dedup by email)
@@ -194,6 +233,24 @@ export const contactRouter = createTRPCRouter({
         .orderBy(desc(contactSubmissions.createdAt))
         .limit(input.limit);
     }),
+
+  exportCsv: adminProcedure.query(async ({ ctx }) => {
+    const rows = await ctx.db
+      .select({
+        name: contactSubmissions.name,
+        email: contactSubmissions.email,
+        phone: contactSubmissions.phone,
+        organization: contactSubmissions.organization,
+        message: contactSubmissions.message,
+        source: contactSubmissions.source,
+        isRead: contactSubmissions.isRead,
+        createdAt: contactSubmissions.createdAt,
+      })
+      .from(contactSubmissions)
+      .orderBy(desc(contactSubmissions.createdAt));
+
+    return rows;
+  }),
 
   sources: adminProcedure.query(async ({ ctx }) => {
     const rows = await ctx.db

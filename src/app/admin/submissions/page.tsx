@@ -1,13 +1,34 @@
 "use client";
 
 import { useState, useEffect } from "react";
-import { Inbox, Mail, MailOpen, MailCheck, ChevronDown, ChevronUp, ChevronLeft, ChevronRight, FileText, X, Trash2 } from "lucide-react";
+import { Inbox, Mail, MailOpen, MailCheck, ChevronDown, ChevronUp, ChevronLeft, ChevronRight, FileText, X, Trash2, Download } from "lucide-react";
 import { Badge } from "~/components/ui/badge";
 import { Button } from "~/components/ui/button";
 import { api } from "~/trpc/react";
 import { toast } from "sonner";
 
 type Filter = "all" | "read" | "unread";
+
+function escapeCsvField(value: string | null | undefined): string {
+  if (value == null) return "";
+  const str = String(value);
+  if (str.includes(",") || str.includes('"') || str.includes("\n")) {
+    return `"${str.replace(/"/g, '""')}"`;
+  }
+  return str;
+}
+
+function downloadCsv(filename: string, csvContent: string) {
+  const blob = new Blob([csvContent], { type: "text/csv;charset=utf-8;" });
+  const url = URL.createObjectURL(blob);
+  const link = document.createElement("a");
+  link.href = url;
+  link.download = filename;
+  document.body.appendChild(link);
+  link.click();
+  document.body.removeChild(link);
+  URL.revokeObjectURL(url);
+}
 
 export default function SubmissionsPage() {
   useEffect(() => { document.title = "Submissions — CHW360"; }, []);
@@ -19,6 +40,8 @@ export default function SubmissionsPage() {
   const [confirmDelete, setConfirmDelete] = useState<string | "bulk" | null>(null);
   const [pageSize, setPageSize] = useState(25);
   const [page, setPage] = useState(0);
+
+  const [isExporting, setIsExporting] = useState(false);
 
   const { data: sourcesData } = api.contact.sources.useQuery();
 
@@ -33,6 +56,35 @@ export default function SubmissionsPage() {
   );
 
   const utils = api.useUtils();
+
+  const handleExport = async () => {
+    setIsExporting(true);
+    try {
+      const rows = await utils.contact.exportCsv.fetch();
+      const headers = ["Name", "Email", "Phone", "Organization", "Message", "Source", "Read", "Date"];
+      const csvRows = rows.map((r) =>
+        [
+          escapeCsvField(r.name),
+          escapeCsvField(r.email),
+          escapeCsvField(r.phone),
+          escapeCsvField(r.organization),
+          escapeCsvField(r.message),
+          escapeCsvField(r.source),
+          r.isRead ? "Yes" : "No",
+          new Date(r.createdAt).toISOString(),
+        ].join(",")
+      );
+      const csv = [headers.join(","), ...csvRows].join("\n");
+      const date = new Date().toISOString().slice(0, 10);
+      downloadCsv(`submissions-${date}.csv`, csv);
+      toast.success(`Exported ${rows.length} submissions`);
+    } catch (err) {
+      toast.error("Failed to export submissions");
+    } finally {
+      setIsExporting(false);
+    }
+  };
+
   const markRead = api.contact.markRead.useMutation({
     onSuccess: () => void utils.contact.list.invalidate(),
     onError: (err) => toast.error(err.message),
@@ -98,7 +150,19 @@ export default function SubmissionsPage() {
     <div className="space-y-4">
       {/* Header */}
       <div className="flex items-center justify-between">
-        <h1 className="text-2xl font-bold text-white">Submissions</h1>
+        <div className="flex items-center gap-2">
+          <h1 className="text-2xl font-bold text-white">Submissions</h1>
+          <Button
+            variant="ghost"
+            size="sm"
+            className="text-gray-400 hover:bg-white/5 hover:text-white disabled:cursor-not-allowed"
+            disabled={isExporting}
+            onClick={handleExport}
+          >
+            <Download className="mr-1.5 h-4 w-4" />
+            {isExporting ? "Exporting…" : "Export CSV"}
+          </Button>
+        </div>
         <div className="flex items-center gap-3">
           {unreadItems.length > 0 && selected.size === 0 && (
             <Button

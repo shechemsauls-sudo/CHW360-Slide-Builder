@@ -4,6 +4,7 @@ import { useCallback, useEffect } from "react";
 import Image from "next/image";
 import { Download } from "lucide-react";
 import { Card, CardContent } from "~/components/ui/card";
+import { brand } from "~/lib/brand";
 
 function DownloadButton({ href, label }: { href: string; label?: string }) {
   return (
@@ -35,7 +36,7 @@ function CanvasDownloadButton({
     const ctx = canvas.getContext("2d")!;
 
     // Background
-    ctx.fillStyle = variant === "light" ? "#F5EDE6" : "#2D5A5A";
+    ctx.fillStyle = variant === "light" ? brand.cream : brand.teal;
     ctx.fillRect(0, 0, W, H);
 
     // Load logo
@@ -56,7 +57,7 @@ function CanvasDownloadButton({
 
     // Draw "CHW" bold
     ctx.font = "600 42px system-ui, -apple-system, sans-serif";
-    ctx.fillStyle = variant === "light" ? "#2D5A5A" : "#FFFFFF";
+    ctx.fillStyle = variant === "light" ? brand.teal : "#FFFFFF";
     ctx.textBaseline = "middle";
     const chwWidth = ctx.measureText("CHW").width;
     ctx.fillText("CHW", textX - 60, centerY);
@@ -88,14 +89,14 @@ function CanvasDownloadButton({
 const serif = "var(--font-libre-baskerville)";
 
 const colors = [
-  { name: "Dark Teal", hex: "#2D5A5A", usage: "Nav, Footer, Headings" },
-  { name: "Coral", hex: "#C9725B", usage: "CTAs, Accents" },
-  { name: "Cream", hex: "#F5EDE6", usage: "Hero & Section Backgrounds" },
-  { name: "Light Cream", hex: "#FAF7F4", usage: "Core Supports Background" },
-  { name: "Container", hex: "#EDE4DA", usage: "Form Containers" },
+  { name: "Dark Teal", hex: brand.teal, usage: "Nav, Footer, Headings" },
+  { name: "Coral", hex: brand.coral, usage: "CTAs, Accents" },
+  { name: "Cream", hex: brand.cream, usage: "Hero & Section Backgrounds" },
+  { name: "Light Cream", hex: brand.creamLight, usage: "Core Supports Background" },
+  { name: "Container", hex: brand.container, usage: "Form Containers" },
   { name: "White", hex: "#FFFFFF", usage: "Cards, Form Fields" },
-  { name: "Text Gray", hex: "#4A5568", usage: "Body Text" },
-  { name: "Light Gray", hex: "#6B7280", usage: "Secondary Text" },
+  { name: "Text Gray", hex: brand.textGray, usage: "Body Text" },
+  { name: "Light Gray", hex: brand.textLight, usage: "Secondary Text" },
 ];
 
 const heroImages = [
@@ -128,10 +129,10 @@ export default function BrandAssetsPage() {
         <div className="grid gap-6 sm:grid-cols-2">
           <Card className="overflow-hidden border-0">
             <CardContent className="p-0">
-              <div className="flex h-40 items-center justify-center" style={{ backgroundColor: "#F5EDE6" }}>
+              <div className="flex h-40 items-center justify-center" style={{ backgroundColor: brand.cream }}>
                 <div className="flex items-center gap-3">
                   <Image src="/chw/logo.png" alt="CHW360 Logo" width={50} height={50} />
-                  <span className="text-3xl tracking-tight" style={{ color: "#2D5A5A" }}>
+                  <span className="text-3xl tracking-tight" style={{ color: brand.teal }}>
                     <span className="font-semibold">CHW</span>
                     <span className="font-light" style={{ color: "#6B8A8A" }}>360</span>
                   </span>
@@ -146,7 +147,7 @@ export default function BrandAssetsPage() {
 
           <Card className="overflow-hidden border-0">
             <CardContent className="p-0">
-              <div className="flex h-40 items-center justify-center" style={{ backgroundColor: "#2D5A5A" }}>
+              <div className="flex h-40 items-center justify-center" style={{ backgroundColor: brand.teal }}>
                 <div className="flex items-center gap-3">
                   <Image src="/chw/logo.png" alt="CHW360 Logo" width={50} height={50} />
                   <span className="text-3xl tracking-tight text-white">
@@ -167,7 +168,7 @@ export default function BrandAssetsPage() {
           <Card className="overflow-hidden border-0">
             <CardContent className="p-0">
               <div className="flex items-center gap-8 bg-white/5 p-6">
-                <div className="flex h-24 w-24 items-center justify-center rounded-xl" style={{ backgroundColor: "#F5EDE6" }}>
+                <div className="flex h-24 w-24 items-center justify-center rounded-xl" style={{ backgroundColor: brand.cream }}>
                   <Image src="/chw/logo.png" alt="CHW360 Logo Icon" width={60} height={60} />
                 </div>
                 <div>
@@ -191,10 +192,10 @@ export default function BrandAssetsPage() {
           <Card className="overflow-hidden border-0 bg-white/5">
             <CardContent className="p-6">
               <p className="mb-4 text-xs font-medium uppercase tracking-wider text-gray-500">Headings</p>
-              <p className="mb-2 text-3xl" style={{ fontFamily: serif, color: "#2D5A5A" }}>Libre Baskerville</p>
+              <p className="mb-2 text-3xl" style={{ fontFamily: serif, color: brand.teal }}>Libre Baskerville</p>
               <p className="mb-4 text-sm text-gray-400">Classic serif font for headings and titles</p>
-              <div className="rounded-lg p-4" style={{ backgroundColor: "#F5EDE6" }}>
-                <p className="text-2xl" style={{ fontFamily: serif, color: "#2D5A5A" }}>
+              <div className="rounded-lg p-4" style={{ backgroundColor: brand.cream }}>
+                <p className="text-2xl" style={{ fontFamily: serif, color: brand.teal }}>
                   Empowering Community<br />Health Workers
                 </p>
               </div>
@@ -204,10 +205,10 @@ export default function BrandAssetsPage() {
           <Card className="overflow-hidden border-0 bg-white/5">
             <CardContent className="p-6">
               <p className="mb-4 text-xs font-medium uppercase tracking-wider text-gray-500">Body Text</p>
-              <p className="mb-2 text-3xl" style={{ color: "#4A5568" }}>System Sans-Serif</p>
+              <p className="mb-2 text-3xl" style={{ color: brand.textGray }}>System Sans-Serif</p>
               <p className="mb-4 text-sm text-gray-400">Clean, readable font for body copy</p>
-              <div className="rounded-lg p-4" style={{ backgroundColor: "#F5EDE6" }}>
-                <p className="text-[15px] leading-relaxed" style={{ color: "#4A5568" }}>
+              <div className="rounded-lg p-4" style={{ backgroundColor: brand.cream }}>
+                <p className="text-[15px] leading-relaxed" style={{ color: brand.textGray }}>
                   CHW360 provides training, resources, and support to help Community Health Workers learn, grow, and make a difference.
                 </p>
               </div>
@@ -266,7 +267,7 @@ export default function BrandAssetsPage() {
           {icons.map((icon) => (
             <Card key={icon.src} className="overflow-hidden border-0">
               <CardContent className="p-0">
-                <div className="flex h-32 items-center justify-center" style={{ backgroundColor: "#F5EDE6" }}>
+                <div className="flex h-32 items-center justify-center" style={{ backgroundColor: brand.cream }}>
                   <div className="relative h-20 w-24">
                     <Image src={icon.src} alt={icon.name} fill className="object-contain" />
                   </div>

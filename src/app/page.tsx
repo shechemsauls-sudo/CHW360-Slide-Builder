@@ -4,10 +4,13 @@ import { useState, useEffect, useRef } from "react";
 import Image from "next/image";
 import { Menu, X, Mail, Phone, Loader2, Globe } from "lucide-react";
 import { toast } from "sonner";
+import { Turnstile, type TurnstileInstance } from "@marsidev/react-turnstile";
 import { Button } from "~/components/ui/button";
 import { Input } from "~/components/ui/input";
 import { Textarea } from "~/components/ui/textarea";
 import { api } from "~/trpc/react";
+
+const TURNSTILE_SITE_KEY = process.env.NEXT_PUBLIC_TURNSTILE_SITE_KEY;
 
 const serif = "var(--font-libre-baskerville)";
 
@@ -193,6 +196,8 @@ export default function LandingPage() {
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const [lang, setLang] = useState<"en" | "es">("en");
   const [formData, setFormData] = useState({ name: "", email: "", organization: "", message: "" });
+  const [turnstileToken, setTurnstileToken] = useState<string | null>(null);
+  const turnstileRef = useRef<TurnstileInstance | null>(null);
   const formTracked = useRef(false);
 
   const t = translations[lang];
@@ -217,6 +222,8 @@ export default function LandingPage() {
     onSuccess: () => {
       toast.success(t.toastSuccess);
       setFormData({ name: "", email: "", organization: "", message: "" });
+      setTurnstileToken(null);
+      turnstileRef.current?.reset();
     },
     onError: () => {
       toast.error(t.toastError);
@@ -269,8 +276,17 @@ export default function LandingPage() {
       toast.error(t.toastValidation);
       return;
     }
+    if (TURNSTILE_SITE_KEY && !turnstileToken) {
+      toast.error(lang === "es" ? "Por favor complete la verificación." : "Please complete the verification.");
+      return;
+    }
     trackEvent.mutate({ page: "landing", event: "form_submit" });
-    submitMutation.mutate({ ...formData, source: "Contact Form · Landing Page", lang });
+    submitMutation.mutate({
+      ...formData,
+      source: "Contact Form · Landing Page",
+      lang,
+      turnstileToken: turnstileToken ?? undefined,
+    });
   };
 
   return (
@@ -567,9 +583,19 @@ export default function LandingPage() {
                     required
                   />
                 </div>
+                {TURNSTILE_SITE_KEY && (
+                  <Turnstile
+                    ref={turnstileRef}
+                    siteKey={TURNSTILE_SITE_KEY}
+                    onSuccess={setTurnstileToken}
+                    onError={() => setTurnstileToken(null)}
+                    onExpire={() => setTurnstileToken(null)}
+                    options={{ theme: "light", size: "normal" }}
+                  />
+                )}
                 <Button
                   type="submit"
-                  disabled={submitMutation.isPending}
+                  disabled={submitMutation.isPending || (!!TURNSTILE_SITE_KEY && !turnstileToken)}
                   className="rounded-full px-8 py-2.5 text-sm font-medium shadow-sm transition-all hover:opacity-90"
                   style={{ backgroundColor: "#C9725B", color: "white" }}
                 >
