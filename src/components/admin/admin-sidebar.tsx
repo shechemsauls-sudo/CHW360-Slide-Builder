@@ -292,7 +292,7 @@ export function AdminSidebar({ topOffset = 0 }: { topOffset?: number }) {
       <Sheet open={isMobileOpen} onOpenChange={closeMobile}>
         <SheetContent
           side="left"
-          className="w-[280px] border-r p-0"
+          className="flex w-[280px] flex-col overflow-y-auto border-r p-0"
           style={{ borderColor: "rgba(45, 90, 90, 0.3)", backgroundColor: "#1a1a1a" }}
           showCloseButton={false}
         >

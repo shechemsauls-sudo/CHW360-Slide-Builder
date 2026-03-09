@@ -81,6 +81,15 @@ export const contactSubmissions = createTable("contact_submissions", {
   createdAt: timestamp("created_at", { withTimezone: true }).defaultNow().notNull(),
 });
 
+export const crmNotes = createTable("crm_notes", {
+  id: uuid("id").primaryKey().defaultRandom(),
+  contactId: uuid("contact_id")
+    .notNull()
+    .references(() => crmContacts.id, { onDelete: "cascade" }),
+  content: text("content").notNull(),
+  createdAt: timestamp("created_at", { withTimezone: true }).defaultNow().notNull(),
+});
+
 export const pageViews = createTable("page_views", {
   id: uuid("id").primaryKey().defaultRandom(),
   page: text("page").notNull(),
@@ -107,6 +116,11 @@ export const providerPreferencesRelations = relations(providerPreferences, ({ on
 
 export const crmContactsRelations = relations(crmContacts, ({ many }) => ({
   submissions: many(contactSubmissions),
+  notes: many(crmNotes),
+}));
+
+export const crmNotesRelations = relations(crmNotes, ({ one }) => ({
+  contact: one(crmContacts, { fields: [crmNotes.contactId], references: [crmContacts.id] }),
 }));
 
 export const contactSubmissionsRelations = relations(contactSubmissions, ({ one }) => ({

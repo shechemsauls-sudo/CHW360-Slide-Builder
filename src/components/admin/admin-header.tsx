@@ -2,6 +2,7 @@
 
 import React from "react";
 import { useRouter, usePathname } from "next/navigation";
+import { toast } from "sonner";
 import { LogOut, ChevronRight } from "lucide-react";
 import { createClient } from "~/lib/supabase/client";
 import { AdminSidebarMobileToggle } from "./admin-sidebar";
@@ -55,9 +56,13 @@ export function AdminHeader({ topOffset = 0 }: { topOffset?: number }) {
   const breadcrumbs = useBreadcrumbs();
 
   const handleSignOut = async () => {
-    const supabase = createClient();
-    await supabase.auth.signOut();
-    router.push("/login");
+    try {
+      const supabase = createClient();
+      await supabase.auth.signOut();
+      router.push("/login");
+    } catch {
+      toast.error("Failed to sign out");
+    }
   };
 
   return (

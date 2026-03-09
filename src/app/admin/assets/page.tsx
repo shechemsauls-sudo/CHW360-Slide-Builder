@@ -1,7 +1,89 @@
 "use client";
 
+import { useCallback, useEffect } from "react";
 import Image from "next/image";
+import { Download } from "lucide-react";
 import { Card, CardContent } from "~/components/ui/card";
+
+function DownloadButton({ href, label }: { href: string; label?: string }) {
+  return (
+    <a
+      href={href}
+      download
+      className="inline-flex items-center gap-1 rounded-md px-2 py-1 text-[11px] text-gray-400 transition-colors hover:bg-white/10 hover:text-white"
+      aria-label={label ?? `Download ${href}`}
+    >
+      <Download className="h-3 w-3" />
+      Download
+    </a>
+  );
+}
+
+function CanvasDownloadButton({
+  variant,
+  label,
+}: {
+  variant: "light" | "dark";
+  label: string;
+}) {
+  const download = useCallback(async () => {
+    const W = 800;
+    const H = 320;
+    const canvas = document.createElement("canvas");
+    canvas.width = W;
+    canvas.height = H;
+    const ctx = canvas.getContext("2d")!;
+
+    // Background
+    ctx.fillStyle = variant === "light" ? "#F5EDE6" : "#2D5A5A";
+    ctx.fillRect(0, 0, W, H);
+
+    // Load logo
+    const img = new window.Image();
+    img.crossOrigin = "anonymous";
+    await new Promise<void>((resolve, reject) => {
+      img.onload = () => resolve();
+      img.onerror = reject;
+      img.src = "/chw/logo.png";
+    });
+
+    const logoSize = 64;
+    const textX = W / 2 + 10;
+    const centerY = H / 2;
+
+    // Draw logo
+    ctx.drawImage(img, textX - logoSize - 24 - 60, centerY - logoSize / 2, logoSize, logoSize);
+
+    // Draw "CHW" bold
+    ctx.font = "600 42px system-ui, -apple-system, sans-serif";
+    ctx.fillStyle = variant === "light" ? "#2D5A5A" : "#FFFFFF";
+    ctx.textBaseline = "middle";
+    const chwWidth = ctx.measureText("CHW").width;
+    ctx.fillText("CHW", textX - 60, centerY);
+
+    // Draw "360" light
+    ctx.font = "300 42px system-ui, -apple-system, sans-serif";
+    ctx.fillStyle = variant === "light" ? "#6B8A8A" : "rgba(255,255,255,0.7)";
+    ctx.fillText("360", textX - 60 + chwWidth, centerY);
+
+    // Trigger download
+    const link = document.createElement("a");
+    link.download = `chw360-logo-${variant}.png`;
+    link.href = canvas.toDataURL("image/png");
+    link.click();
+  }, [variant]);
+
+  return (
+    <button
+      onClick={download}
+      className="inline-flex items-center gap-1 rounded-md px-2 py-1 text-[11px] text-gray-400 transition-colors hover:bg-white/10 hover:text-white"
+      aria-label={label}
+    >
+      <Download className="h-3 w-3" />
+      Download
+    </button>
+  );
+}
 
 const serif = "var(--font-libre-baskerville)";
 
@@ -31,6 +113,8 @@ const icons = [
 ];
 
 export default function BrandAssetsPage() {
+  useEffect(() => { document.title = "Brand Assets — CHW360"; }, []);
+
   return (
     <div className="space-y-12">
       <div>
@@ -53,8 +137,9 @@ export default function BrandAssetsPage() {
                   </span>
                 </div>
               </div>
-              <div className="bg-white/10 p-4">
+              <div className="flex items-center justify-between bg-white/10 p-4">
                 <p className="text-sm text-gray-400">On Light Background</p>
+                <CanvasDownloadButton variant="light" label="Download logo on light background" />
               </div>
             </CardContent>
           </Card>
@@ -70,8 +155,9 @@ export default function BrandAssetsPage() {
                   </span>
                 </div>
               </div>
-              <div className="bg-white/10 p-4">
+              <div className="flex items-center justify-between bg-white/10 p-4">
                 <p className="text-sm text-gray-400">On Dark Background</p>
+                <CanvasDownloadButton variant="dark" label="Download logo on dark background" />
               </div>
             </CardContent>
           </Card>
@@ -87,7 +173,10 @@ export default function BrandAssetsPage() {
                 <div>
                   <p className="mb-2 font-medium text-white">Logo Icon</p>
                   <p className="text-sm text-gray-400">5-petal pinwheel design representing community, diversity, and health</p>
-                  <p className="mt-2 font-mono text-xs text-gray-500">File: /chw/logo.png</p>
+                  <div className="mt-2 flex items-center gap-2">
+                    <p className="font-mono text-xs text-gray-500">File: /chw/logo.png</p>
+                    <DownloadButton href="/chw/logo.png" label="Download logo icon" />
+                  </div>
                 </div>
               </div>
             </CardContent>
@@ -157,9 +246,12 @@ export default function BrandAssetsPage() {
                 <div className="relative h-40 bg-white/5">
                   <Image src={image.src} alt={image.name} fill className="object-cover" />
                 </div>
-                <div className="bg-white/10 p-3">
-                  <p className="text-sm text-white">{image.name}</p>
-                  <p className="mt-1 font-mono text-xs text-gray-500">{image.src}</p>
+                <div className="flex items-center justify-between bg-white/10 p-3">
+                  <div>
+                    <p className="text-sm text-white">{image.name}</p>
+                    <p className="mt-0.5 font-mono text-xs text-gray-500">{image.src}</p>
+                  </div>
+                  <DownloadButton href={image.src} label={`Download ${image.name}`} />
                 </div>
               </CardContent>
             </Card>
@@ -179,9 +271,12 @@ export default function BrandAssetsPage() {
                     <Image src={icon.src} alt={icon.name} fill className="object-contain" />
                   </div>
                 </div>
-                <div className="bg-white/10 p-4">
-                  <p className="font-medium text-white">{icon.name}</p>
-                  <p className="mt-1 font-mono text-xs text-gray-500">{icon.src}</p>
+                <div className="flex items-center justify-between bg-white/10 p-4">
+                  <div>
+                    <p className="font-medium text-white">{icon.name}</p>
+                    <p className="mt-0.5 font-mono text-xs text-gray-500">{icon.src}</p>
+                  </div>
+                  <DownloadButton href={icon.src} label={`Download ${icon.name}`} />
                 </div>
               </CardContent>
             </Card>

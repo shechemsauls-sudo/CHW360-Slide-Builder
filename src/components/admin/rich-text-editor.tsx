@@ -132,21 +132,36 @@ export const RichTextEditor = forwardRef<RichTextEditorRef, RichTextEditorProps>
             <Heading2 className="h-4 w-4" />
           </ToolbarButton>
           <ToolbarButton
-            onClick={() => editor?.chain().focus().toggleBulletList().run()}
+            onClick={() => {
+              if (!editor) return;
+              const chain = editor.chain().focus();
+              if (editor.isActive("heading")) chain.setParagraph();
+              chain.toggleBulletList().run();
+            }}
             active={editor?.isActive("bulletList")}
             title="Bullet list"
           >
             <List className="h-4 w-4" />
           </ToolbarButton>
           <ToolbarButton
-            onClick={() => editor?.chain().focus().toggleOrderedList().run()}
+            onClick={() => {
+              if (!editor) return;
+              const chain = editor.chain().focus();
+              if (editor.isActive("heading")) chain.setParagraph();
+              chain.toggleOrderedList().run();
+            }}
             active={editor?.isActive("orderedList")}
             title="Numbered list"
           >
             <ListOrdered className="h-4 w-4" />
           </ToolbarButton>
           <ToolbarButton
-            onClick={() => editor?.chain().focus().toggleBlockquote().run()}
+            onClick={() => {
+              if (!editor) return;
+              const chain = editor.chain().focus();
+              if (editor.isActive("heading")) chain.setParagraph();
+              chain.toggleBlockquote().run();
+            }}
             active={editor?.isActive("blockquote")}
             title="Quote"
           >

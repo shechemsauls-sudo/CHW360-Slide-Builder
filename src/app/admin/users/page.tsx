@@ -1,13 +1,15 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { api } from "~/trpc/react";
 import { Button } from "~/components/ui/button";
 import { Input } from "~/components/ui/input";
-import { Loader2, UserPlus, Mail, Shield, User, Trash2 } from "lucide-react";
+import { Loader2, UserPlus, Mail, Shield, User, Trash2, Users } from "lucide-react";
 import { toast } from "sonner";
 
 export default function UsersPage() {
+  useEffect(() => { document.title = "Users — CHW360"; }, []);
+
   const [showInvite, setShowInvite] = useState(false);
   const [inviteEmail, setInviteEmail] = useState("");
   const [inviteRole, setInviteRole] = useState<"user" | "admin">("user");
@@ -64,7 +66,13 @@ export default function UsersPage() {
           </p>
         </div>
         <Button
-          onClick={() => setShowInvite(!showInvite)}
+          onClick={() => {
+            if (showInvite) {
+              setInviteEmail("");
+              setInviteRole("user");
+            }
+            setShowInvite(!showInvite);
+          }}
           className="rounded-full bg-[#C9725B] text-sm font-medium text-white hover:bg-[#B5624D]"
         >
           <UserPlus className="mr-2 h-4 w-4" />
@@ -124,8 +132,9 @@ export default function UsersPage() {
           <Loader2 className="h-6 w-6 animate-spin text-[#5B8A8A]" />
         </div>
       ) : !users?.length ? (
-        <div className="py-12 text-center text-sm text-gray-400">
-          No users found. Invite your first user above.
+        <div className="py-12 text-center">
+          <Users className="mx-auto mb-3 h-8 w-8 text-gray-600" />
+          <p className="text-sm text-gray-400">No users found. Invite your first user above.</p>
         </div>
       ) : (
         <div className="overflow-x-auto rounded-lg border border-white/10">
@@ -159,7 +168,7 @@ export default function UsersPage() {
                     </span>
                   </td>
                   <td className="px-4 py-3 text-xs text-gray-500">
-                    {new Date(user.createdAt).toLocaleDateString()}
+                    {new Date(user.createdAt).toLocaleDateString("en-US", { month: "short", day: "numeric" })}
                   </td>
                   <td className="px-4 py-3">
                     <div className="flex gap-2">

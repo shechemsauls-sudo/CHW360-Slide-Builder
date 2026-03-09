@@ -1,7 +1,12 @@
+import type { Metadata } from "next";
 import { redirect } from "next/navigation";
 import { createClient } from "~/lib/supabase/server";
 import { Card, CardContent, CardHeader, CardTitle } from "~/components/ui/card";
 import { PasswordResetCard } from "./password-reset-card";
+
+export const metadata: Metadata = {
+  title: "Settings — CHW360",
+};
 
 export default async function AdminSettingsPage() {
   const supabase = await createClient();

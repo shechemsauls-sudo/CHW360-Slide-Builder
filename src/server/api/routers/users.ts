@@ -159,7 +159,10 @@ export const usersRouter = createTRPCRouter({
         });
       }
 
-      // Delete from Supabase Auth
+      // Delete profile first (cascades to decks, provider_preferences via FK)
+      await ctx.db.delete(profiles).where(eq(profiles.id, input.profileId));
+
+      // Then delete from Supabase Auth
       const { error: authError } = await supabaseAdmin.auth.admin.deleteUser(
         profile.authId,
       );
@@ -170,9 +173,6 @@ export const usersRouter = createTRPCRouter({
           message: authError.message,
         });
       }
-
-      // Delete profile (cascades to decks, provider_preferences)
-      await ctx.db.delete(profiles).where(eq(profiles.id, input.profileId));
 
       return { success: true };
     }),

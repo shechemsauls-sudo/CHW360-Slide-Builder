@@ -31,6 +31,7 @@ export default async function AdminLayout({
   }
 
   if (!profile) {
+    await supabase.auth.signOut();
     redirect("/?error=access_denied");
   }
 

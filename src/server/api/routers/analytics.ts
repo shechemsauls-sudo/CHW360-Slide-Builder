@@ -7,6 +7,33 @@ import {
 } from "~/server/api/trpc";
 import { pageViews } from "~/server/db/schema";
 
+// Simple in-memory rate limiter for analytics events
+const RATE_LIMIT_WINDOW_MS = 60_000; // 1 minute
+const RATE_LIMIT_MAX = 10; // max events per IP+page per window
+const rateLimitMap = new Map<string, { count: number; resetAt: number }>();
+
+// Cleanup stale entries every 5 minutes
+setInterval(() => {
+  const now = Date.now();
+  for (const [key, entry] of rateLimitMap) {
+    if (now > entry.resetAt) rateLimitMap.delete(key);
+  }
+}, 5 * 60_000).unref();
+
+function isRateLimited(ip: string, page: string): boolean {
+  const key = `${ip}:${page}`;
+  const now = Date.now();
+  const entry = rateLimitMap.get(key);
+
+  if (!entry || now > entry.resetAt) {
+    rateLimitMap.set(key, { count: 1, resetAt: now + RATE_LIMIT_WINDOW_MS });
+    return false;
+  }
+
+  entry.count++;
+  return entry.count > RATE_LIMIT_MAX;
+}
+
 export const analyticsRouter = createTRPCRouter({
   trackEvent: publicProcedure
     .input(
@@ -18,6 +45,13 @@ export const analyticsRouter = createTRPCRouter({
       })
     )
     .mutation(async ({ ctx, input }) => {
+      // Rate limit: silently drop excessive events from same IP+page
+      const ip =
+        ctx.headers.get("x-forwarded-for")?.split(",")[0]?.trim() ?? "unknown";
+      if (isRateLimited(ip, input.page)) {
+        return { success: true };
+      }
+
       await ctx.db.insert(pageViews).values({
         page: input.page,
         event: input.event,
@@ -31,12 +65,14 @@ export const analyticsRouter = createTRPCRouter({
     .input(
       z.object({
         page: z.string().optional(),
+        days: z.number().min(1).max(365).default(30),
       }).optional()
     )
     .query(async ({ ctx, input }) => {
+      const days = input?.days ?? 30;
       const now = new Date();
       const todayStart = new Date(now.getFullYear(), now.getMonth(), now.getDate());
-      const thirtyDaysAgo = new Date(now.getTime() - 30 * 24 * 60 * 60 * 1000);
+      const startDate = new Date(now.getTime() - days * 24 * 60 * 60 * 1000);
 
       const baseConditions = [eq(pageViews.event, "view")];
       if (input?.page) baseConditions.push(eq(pageViews.page, input.page));
@@ -51,15 +87,24 @@ export const analyticsRouter = createTRPCRouter({
         .from(pageViews)
         .where(and(...baseConditions, gte(pageViews.createdAt, todayStart)));
 
-      const viewsPerDay = await ctx.db
+      const rawViews = await ctx.db
         .select({
           date: sql<string>`date(${pageViews.createdAt})`.as("date"),
           count: count(),
         })
         .from(pageViews)
-        .where(and(...baseConditions, gte(pageViews.createdAt, thirtyDaysAgo)))
+        .where(and(...baseConditions, gte(pageViews.createdAt, startDate)))
         .groupBy(sql`date(${pageViews.createdAt})`)
         .orderBy(sql`date(${pageViews.createdAt})`);
+
+      // Fill in missing days with zero counts
+      const viewsMap = new Map(rawViews.map((r) => [r.date, r.count]));
+      const viewsPerDay: { date: string; count: number }[] = [];
+      for (let i = 0; i < days; i++) {
+        const d = new Date(startDate.getTime() + (i + 1) * 24 * 60 * 60 * 1000);
+        const key = d.toISOString().slice(0, 10);
+        viewsPerDay.push({ date: key, count: viewsMap.get(key) ?? 0 });
+      }
 
       return {
         totalViews: totalViews?.count ?? 0,

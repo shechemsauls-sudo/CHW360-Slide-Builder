@@ -1,5 +1,5 @@
 import { z } from "zod";
-import { desc, eq, and, count } from "drizzle-orm";
+import { desc, eq, and, count, inArray, sql } from "drizzle-orm";
 import { TRPCError } from "@trpc/server";
 import {
   createTRPCRouter,
@@ -134,6 +134,39 @@ export const contactRouter = createTRPCRouter({
         .set({ isRead: input.isRead })
         .where(eq(contactSubmissions.id, input.id));
       return { success: true };
+    }),
+
+  bulkMarkRead: adminProcedure
+    .input(
+      z.object({
+        ids: z.array(z.string().uuid()).min(1).max(100),
+        isRead: z.boolean(),
+      })
+    )
+    .mutation(async ({ ctx, input }) => {
+      await ctx.db
+        .update(contactSubmissions)
+        .set({ isRead: input.isRead })
+        .where(inArray(contactSubmissions.id, input.ids));
+      return { success: true, count: input.ids.length };
+    }),
+
+  delete: adminProcedure
+    .input(z.object({ id: z.string().uuid() }))
+    .mutation(async ({ ctx, input }) => {
+      await ctx.db
+        .delete(contactSubmissions)
+        .where(eq(contactSubmissions.id, input.id));
+      return { success: true };
+    }),
+
+  bulkDelete: adminProcedure
+    .input(z.object({ ids: z.array(z.string().uuid()).min(1).max(100) }))
+    .mutation(async ({ ctx, input }) => {
+      const result = await ctx.db
+        .delete(contactSubmissions)
+        .where(inArray(contactSubmissions.id, input.ids));
+      return { success: true, count: input.ids.length };
     }),
 
   stats: adminProcedure.query(async ({ ctx }) => {
