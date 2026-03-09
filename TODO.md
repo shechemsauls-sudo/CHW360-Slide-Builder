@@ -23,16 +23,7 @@ _(none)_
 - [ ] PPTX/PDF export (Phase 2e)
 - [ ] Public share links (Phase 2e)
 - [ ] Client-facing turnkey LMS-style interface (future phase)
-- [ ] Admin: export submissions as CSV
 
 ## Tech Debt (code quality)
-- [ ] Add Turnstile spam protection to contact form (package installed, not wired)
-- [ ] Enable leaked password protection in Supabase Auth dashboard
 - [ ] Clean up broken Vercel Supabase integration vars (POSTGRES_URL etc. are empty strings)
-
-## Brand Polish (slide builder UI drift)
-- [ ] Replace hardcoded hex colors with shared brand tokens where possible
-
-## Matthew Action Items (non-code)
-- [x] ~~Send handoff document with API key instructions to Shechem~~ → `docs/api-key-setup-guide.pdf`
-- [x] ~~Send Shechem logo files: teal background, plain background, LinkedIn banner~~
+- [ ] Set Turnstile keys in Vercel to activate spam protection (code is wired)
