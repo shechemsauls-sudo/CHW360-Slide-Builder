@@ -6,8 +6,9 @@
 - [ ] Client-facing turnkey LMS-style interface (future phase)
 
 ## Enhancements
-- [ ] Prompt tuning pass — review block mandate (50% may be too aggressive for short decks), citation toggle, image percentage control
-- [ ] Fix tone default mismatch — new deck page defaults "training", saved preferences default "professional"
+- [ ] Test 2-pass generation pipeline with fresh deck — verify block diversity, citations, bookends, image coverage
+- [ ] Parallelize image generation in batches (production reliability)
+- [ ] Image gen progress visibility — poll for newly arrived images in UI
 
 ## Tech Debt
 - [ ] Clean up broken Vercel Supabase integration vars (POSTGRES_URL etc.)

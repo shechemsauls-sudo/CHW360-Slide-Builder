@@ -17,20 +17,20 @@ Scale: 9 modules × ~4 parts each ≈ 2,250 slides total.
 - **Slide Builder Production (6 sprints)** — Bold markdown, image style, APA citations, provider cleanup, deck groups, YouTube recs, bulk upload, AI review, 3 image providers (Stability/Replicate/Leonardo), presenter ESC fix, image drag/reposition
 
 ### Up Next
-> Generation tuning pass — reviewing prompt architecture, settings, and output quality.
+> Test the 2-pass generation pipeline with fresh decks; iterate on output quality.
 
-- **Prompt tuning** — Dial in fidelity/tone/block/citation prompts for optimal output
+- **Generation testing** — Verify 2-pass pipeline produces diverse blocks, proper citations, and structural bookends
 - **Phase 2e** — PPTX/PDF export, public share links
 - **Future** — Client-facing turnkey LMS-style interface
 
 ### Recent Changes
 | Date | Change |
 |------|--------|
-| 2026-03-09 | Bug fixes (bulk group assignment, dropdown styling, ContentFitter oscillation, image-full overflow), background image gen, CHW-targeted YouTube search, generation settings review doc |
+| 2026-03-09 | 2-pass generation overhaul: server-side QA audit, 25 block types, structural slide protocol, CHW Slate fix, BlockSelector UI, image resilience |
+| 2026-03-09 | Bug fixes (bulk group assignment, dropdown styling, ContentFitter oscillation, image-full overflow), background image gen, CHW-targeted YouTube search |
 | 2026-03-08 | Sprints 5-6 + final polish: deck groups, YouTube, bulk upload, review, 3 image providers, presenter fix, focal point |
 | 2026-03-08 | Sprints 1-4: markdown blocks, image style, citations, provider cleanup, settings UI |
 | 2026-03-08 | Admin hub overhaul: CRM notes, submissions inbox, production audit, UX polish |
-| 2026-03-08 | Turnstile, CSV export, brand tokens, API keys, Supabase keep-alive |
 
 ### Image Style Prompt (from Shechem)
 Warm natural lighting, clean minimal design, smooth edges, soft color palette, Texas-inspired places/landmarks/objects, human-centered composition, calm and supportive atmosphere, community-focused scenes (schools, churches, clinics, parks, school gym, school cafeteria, rec centers, hospitals), inclusive everyday environments, clear visual storytelling, friendly contemporary style. Diverse individuals (Hispanic, Black, Asian, young adults, older adults, Middle Eastern) and community groups.
@@ -49,4 +49,4 @@ Add evidence-based citations (2020–2025, APA 7th edition) to presentations. 1�
 - Reference slides: Communication Skills Parts 1–4 (PPTX, Gamma) → `test-content/reference-slides/` — quality benchmark, ours must exceed these
 
 ---
-*Last updated: 2026-03-09 (session 5)*
+*Last updated: 2026-03-09 (session 6)*
