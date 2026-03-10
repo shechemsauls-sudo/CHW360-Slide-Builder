@@ -87,7 +87,7 @@ async function generateImagesForDeck(
         ? getMultiEngineConfig(i, configuredIds)
         : getCustomMixConfig(i, engineIds);
 
-      const prompt = enhanceImagePrompt(slide.imagePrompt!);
+      const prompt = enhanceImagePrompt(slide.imagePrompt!, i);
       const imgProvider = getImageProvider(config.providerId);
       const buffer = await imgProvider.generateImage(prompt);
 

@@ -15,6 +15,7 @@ export const stabilityProvider: ImageProvider = {
     body.append("prompt", prompt);
     body.append("output_format", "png");
     body.append("aspect_ratio", "16:9");
+    body.append("negative_prompt", "low quality, blurry, text, watermark, clipart, cartoon, abstract, dark, moody, clinical, staged, artificial, religious symbols, crosses");
 
     const res = await fetch(
       "https://api.stability.ai/v2beta/stable-image/generate/sd3",

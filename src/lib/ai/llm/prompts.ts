@@ -465,15 +465,23 @@ If the source content does NOT contain slide markers, generate up to ${slideCoun
 CRITICAL: All imagePrompt values MUST be photorealistic and embody this visual style:
 ${IMAGE_STYLE_DIRECTIVE}
 
-Additional rules:
-- Always specify "warm natural lighting" and "brightly lit"
-- Always include diversity in people (Hispanic, Black, Asian, Middle Eastern, all ages)
-- Settings should feel like Texas community spaces
+### Composition by Slide Type
+- **title slides:** Cinematic wide shot, dramatic hero composition, emotional impact, strong sense of place. This is the deck's first impression.
+- **section slides:** Cinematic divider. Reset viewer attention with bold visual composition. Clear subject with contextual depth.
+- **closing slides:** Return to cinematic weight. Hopeful, forward-looking, collaborative energy.
+- **content/bullets/activity slides:** Functional support image. Relevant to content, medium composition weight. Subject clearly relates to the slide topic.
+
+### Prompt Quality Rules
+- Write 2-3 sentence prompts with SPECIFIC composition guidance (camera angle, subject placement, background context)
+- Describe the SCENE and MOOD, not just the subject. Bad: "A nurse talking." Good: "Medium shot of a nurse leaning in to listen to an elderly patient in a bright clinic waiting room, morning light through windows, warm concerned expression, community health posters on wall."
+- Vary subjects, settings, and framing across the deck — avoid repetitive compositions
+- Include diversity in people (Hispanic, Black, Asian, Middle Eastern, White — all ages)
+- Settings should feel like Texas community spaces (schools, clinics, parks, community centers)
 - Images must feel calm, supportive, and optimistic — never dark, dramatic, or clinical
-- 1-2 sentence prompts only. No text in images.
-- **NEVER request clipart, stock watermarks, or abstract styles**: Only photorealistic images.
-- **NEVER split or collage images**: Each imagePrompt must describe a single cohesive scene. No diptychs, side-by-side, or split compositions.
-- **NO religious imagery**: Do not include crosses, saints, halos, prayer scenes, religious statues, stained glass, or any religious iconography. Use secular community settings only.
+- No text in images
+- **NEVER request clipart, stock watermarks, or abstract styles**: Only photorealistic images
+- **NEVER split or collage images**: Each imagePrompt must describe a single cohesive scene. No diptychs, side-by-side, or split compositions
+- **NO religious imagery**: Do not include crosses, saints, halos, prayer scenes, religious statues, stained glass, or any religious iconography. Use secular community settings only
 - Write structured speaker notes for every slide using this markdown format:
 
 **Talking Points**

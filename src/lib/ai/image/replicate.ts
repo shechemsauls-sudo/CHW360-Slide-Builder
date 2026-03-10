@@ -24,7 +24,7 @@ export const replicateProvider: ImageProvider = {
           prompt,
           aspect_ratio: "16:9",
           output_format: "png",
-          output_quality: 90,
+          output_quality: 100,
         },
       }),
     });

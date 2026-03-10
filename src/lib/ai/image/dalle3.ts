@@ -19,7 +19,8 @@ export const dalle3Provider: ImageProvider = {
       n: 1,
       size: "1792x1024",
       response_format: "b64_json",
-      quality: "standard",
+      quality: "hd",
+      style: "natural",
     });
 
     const b64 = response.data?.[0]?.b64_json;

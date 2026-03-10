@@ -67,7 +67,7 @@ function isDenseContent(body: string): boolean {
 function ContentFitter({ children, className }: { children: ReactNode; className?: string }) {
   const outerRef = useRef<HTMLDivElement>(null);
   const innerRef = useRef<HTMLDivElement>(null);
-  const [shrink, setShrink] = useState(1);
+  const [scale, setScale] = useState(1);
   const stableRef = useRef(1);
 
   const measure = useCallback(() => {
@@ -92,22 +92,33 @@ function ContentFitter({ children, className }: { children: ReactNode; className
     inner.style.width = prevWidth;
     inner.style.transformOrigin = prevOrigin;
 
+    let target: number;
     if (needed > available) {
+      // Content overflows — scale DOWN to fit
       const raw = available / needed;
-      // Snap to 0.05 increments to reduce sub-pixel artifacts, floor for safety
       const snapped = Math.floor(raw * 20) / 20;
-      const clamped = Math.max(0.4, snapped);
-      // Only update if meaningfully different (avoid flicker from micro-changes)
-      if (Math.abs(clamped - stableRef.current) > 0.02) {
-        stableRef.current = clamped;
-        setShrink(clamped);
+      target = Math.max(0.4, snapped);
+    } else if (needed > 0) {
+      // Content fits — gently scale up ONLY if there's significant spare room.
+      // This fills dead space on sparse slides without overflowing dense ones.
+      const ratio = available / needed;
+      if (ratio > 1.3) {
+        // Lots of spare room (content uses <77% of space) — scale up to fill ~85%
+        const upscale = Math.min(ratio * 0.85, 1.2);
+        target = upscale;
+      } else {
+        // Content already fills most of the space — just center it, don't scale
+        target = 1;
       }
-    } else if (stableRef.current < 1) {
-      // Content fits — but only reset to 1 if we're sure (add 5% buffer)
-      if (needed <= available * 0.95) {
-        stableRef.current = 1;
-        setShrink(1);
-      }
+    } else {
+      target = 1;
+    }
+
+    // Snap to 0.05 increments, only update if meaningfully different
+    const snapped = Math.round(target * 20) / 20;
+    if (Math.abs(snapped - stableRef.current) > 0.02) {
+      stableRef.current = snapped;
+      setScale(snapped);
     }
   }, []);
 
@@ -129,11 +140,11 @@ function ContentFitter({ children, className }: { children: ReactNode; className
       <div
         ref={innerRef}
         style={
-          shrink < 1
+          scale !== 1
             ? {
-                transform: `scale(${shrink})`,
+                transform: `scale(${scale})`,
                 transformOrigin: "top left",
-                width: `${100 / shrink}%`,
+                width: `${100 / scale}%`,
               }
             : { minHeight: "100%", display: "flex", flexDirection: "column", justifyContent: "center" }
         }
