@@ -13,7 +13,7 @@ export async function uploadSlideImage(
 
   const { error } = await supabaseAdmin.storage
     .from(BUCKET)
-    .upload(path, buffer, { contentType, upsert: true });
+    .upload(path, buffer, { contentType, upsert: true, cacheControl: "3600" });
 
   if (error) throw new Error(`Storage upload failed: ${error.message}`);
 

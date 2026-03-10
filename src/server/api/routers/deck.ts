@@ -8,25 +8,46 @@ import { getImageProvider, getAvailableImageProviders } from "~/lib/ai/image";
 import { detectFidelity } from "~/lib/ai/fidelity";
 import { parseContent, detectFormat } from "~/lib/parsers";
 import { VISUAL_BLOCK_TYPES } from "~/lib/ai/types";
-import type { SlideData, VisualBlockType } from "~/lib/ai/types";
+import type { SlideData, VisualBlockType, Violation, DeckStats } from "~/lib/ai/types";
 import type { db as dbInstance } from "~/server/db";
 import {
   uploadSlideImage,
+  deleteSlideImage,
   deleteDeckImages,
 } from "~/lib/storage/upload-image";
 import { sendDeckReadyEmail } from "~/lib/resend";
-import { IMAGE_STYLE_DIRECTIVE, enhanceImagePrompt } from "~/lib/ai/image/style-prompt";
+import {
+  IMAGE_STYLE_DIRECTIVE,
+  enhanceImagePrompt,
+  parseImageProviderPref,
+  getMultiEngineConfig,
+  getCustomMixConfig,
+} from "~/lib/ai/image/style-prompt";
+import {
+  buildPass1Prompt,
+  buildQAFixPrompt,
+  buildReferencesPrompt,
+} from "~/lib/ai/llm/prompts";
 import { searchYouTube } from "~/lib/youtube";
 
-/** Post-process: tag any References slides the LLM missed tagging, strip imagePrompt */
+/** Post-process: tag References slides, strip their images, and ensure they're always last */
 function tagReferenceSlides(slides: SlideData[]): SlideData[] {
-  return slides.map((slide) => {
+  // Tag any slides the LLM missed marking as references
+  const tagged = slides.map((slide) => {
     const isRef =
       slide.type === "references" ||
-      (slide.title.toLowerCase().includes("reference") && slide.type !== "title");
+      (/\breferences?\b|\bbibliography\b|\bcitations?\b|\bworks\s+cited\b/i.test(slide.title) && slide.type !== "title");
     if (!isRef) return slide;
-    return { ...slide, type: "references", imagePrompt: null, imageUrl: null, layout: "full" };
+    return { ...slide, type: "references", imagePrompt: null, imageUrl: null, layout: "full" } as SlideData;
   });
+
+  // Move all references slides to the very end (after closing)
+  const nonRef = tagged.filter((s) => s.type !== "references");
+  const refs = tagged.filter((s) => s.type === "references");
+  const reordered = [...nonRef, ...refs];
+
+  // Re-number order sequentially
+  return reordered.map((s, i) => ({ ...s, order: i + 1 }));
 }
 
 async function getProfileId(db: typeof dbInstance, authUserId: string) {
@@ -38,6 +59,469 @@ async function getProfileId(db: typeof dbInstance, authUserId: string) {
     throw new TRPCError({ code: "NOT_FOUND", message: "Profile not found" });
   }
   return profile.id;
+}
+
+/** Background helper: generate images for all slides that have prompts but no images */
+async function generateImagesForDeck(
+  db: typeof dbInstance,
+  deckId: string,
+  slides: SlideData[],
+  imageProvider: string,
+) {
+  const needsImages = slides.filter((s) => s.imagePrompt && !s.imageUrl);
+  if (needsImages.length === 0) return;
+
+  const { mode, engineIds } = parseImageProviderPref(imageProvider);
+  const availableProviders = getAvailableImageProviders();
+  const configuredIds = availableProviders.filter((p) => p.configured).map((p) => p.id);
+
+  console.log(`[deck ${deckId}] Starting image gen for ${needsImages.length} slides (mode: ${mode}, engines: ${configuredIds.join(",")})`);
+
+  let generated = 0;
+  let failed = 0;
+  let consecutiveFailures = 0;
+  for (let i = 0; i < needsImages.length; i++) {
+    const slide = needsImages[i]!;
+    try {
+      const config = mode === "multi"
+        ? getMultiEngineConfig(i, configuredIds)
+        : getCustomMixConfig(i, engineIds);
+
+      const prompt = enhanceImagePrompt(slide.imagePrompt!);
+      const imgProvider = getImageProvider(config.providerId);
+      const buffer = await imgProvider.generateImage(prompt);
+
+      // Determine content type based on provider
+      const contentType = config.providerId === "gpt-image-1" ? "image/webp" as const : "image/png" as const;
+      const storedUrl = await uploadSlideImage(deckId, slide.id, buffer, contentType);
+
+      // Update slide in deck
+      const deck = await db.query.decks.findFirst({
+        where: eq(decks.id, deckId),
+        columns: { slides: true },
+      });
+      if (deck?.slides) {
+        const allSlides = deck.slides as SlideData[];
+        const updatedSlides = allSlides.map((s) =>
+          s.id === slide.id ? { ...s, imageUrl: storedUrl } : s
+        );
+        await db.update(decks).set({ slides: updatedSlides, updatedAt: new Date() }).where(eq(decks.id, deckId));
+      }
+      generated++;
+      consecutiveFailures = 0;
+
+      // Brief delay between requests to avoid rate limits (500ms)
+      if (i < needsImages.length - 1) {
+        await new Promise((r) => setTimeout(r, 500));
+      }
+    } catch (error) {
+      failed++;
+      consecutiveFailures++;
+      console.error(`[deck ${deckId}] Image gen failed for slide ${slide.id} (${i + 1}/${needsImages.length}):`, error instanceof Error ? error.message : error);
+
+      // If 3+ consecutive failures, add a longer backoff (likely rate-limited)
+      if (consecutiveFailures >= 3) {
+        console.warn(`[deck ${deckId}] ${consecutiveFailures} consecutive failures — backing off 5s`);
+        await new Promise((r) => setTimeout(r, 5000));
+      }
+
+      // If 5+ consecutive failures, bail out (provider is probably down)
+      if (consecutiveFailures >= 5) {
+        console.error(`[deck ${deckId}] Stopping image gen after ${consecutiveFailures} consecutive failures`);
+        break;
+      }
+    }
+  }
+  console.log(`[deck ${deckId}] Image gen complete: ${generated} generated, ${failed} failed, ${needsImages.length - generated - failed} skipped`);
+}
+
+/** Helper: retry a single LLM pass once on failure */
+async function retryOnce<T>(fn: () => Promise<T>, label: string, deckId: string): Promise<T> {
+  try {
+    return await fn();
+  } catch (firstErr) {
+    console.warn(`[deck ${deckId}] ${label} failed, retrying...`, firstErr instanceof Error ? firstErr.message : firstErr);
+    await new Promise((r) => setTimeout(r, 2000));
+    return await fn();
+  }
+}
+
+// ── Server-Side QA Audit ──────────────────────────────────
+
+const BOOKEND_TYPES = new Set(["title", "section", "closing"]);
+const CONTENT_TYPES = new Set(["content", "bullets", "comparison", "activity", "quote", "image"]);
+const IMAGE_ELIGIBLE_LAYOUTS = new Set(["split-left", "split-right", "image-full", "image-top"]);
+const IMAGE_REQUIRED_LAYOUTS = new Set(["image-full", "image-top"]);
+const NO_IMAGE_LAYOUTS = new Set(["full", "two-column"]);
+const CITATION_PATTERN = /\([A-Z][a-z]+(?:\s(?:&|and|et al\.?)\s[A-Z][a-z]+)*,\s*\d{4}[a-z]?\)/;
+
+/** Extract the dominant block type from a slide body (first :::block-type found) */
+function getDominantBlock(body: string): string | null {
+  const match = body.match(/^\s*:::([\w-]+)/m);
+  return match?.[1] ?? null;
+}
+
+/** Count all unique block types used in a slide body */
+function getBlockTypes(body: string): string[] {
+  const types: string[] = [];
+  for (const match of body.matchAll(/^\s*:::([\w-]+)/gm)) {
+    if (match[1] && match[1] !== "") types.push(match[1]);
+  }
+  // Filter out closing ::: markers
+  return types.filter((t) => t !== "");
+}
+
+/** Pure TypeScript audit — no LLM calls. Returns violations and deck-wide stats. */
+function auditDeckQuality(slides: SlideData[]): { violations: Violation[]; stats: DeckStats } {
+  const violations: Violation[] = [];
+
+  // Compute stats
+  const blockTypeFrequency: Record<string, number> = {};
+  let slidesWithImages = 0;
+  let slidesWithSpeakerNotes = 0;
+  let slidesWithCitations = 0;
+  let hasReferencesSlide = false;
+  let contentSlideCount = 0;
+
+  for (const slide of slides) {
+    if (slide.type === "references") {
+      hasReferencesSlide = true;
+      continue;
+    }
+    if (CONTENT_TYPES.has(slide.type)) contentSlideCount++;
+    if (slide.imagePrompt) slidesWithImages++;
+    if (slide.speakerNotes?.trim()) slidesWithSpeakerNotes++;
+    if (CITATION_PATTERN.test(slide.body)) slidesWithCitations++;
+
+    for (const blockType of getBlockTypes(slide.body)) {
+      blockTypeFrequency[blockType] = (blockTypeFrequency[blockType] ?? 0) + 1;
+    }
+  }
+
+  const uniqueBlockTypes = Object.keys(blockTypeFrequency).length;
+  const imageCoveragePercent = contentSlideCount > 0
+    ? (slidesWithImages / contentSlideCount) * 100
+    : 0;
+
+  const stats: DeckStats = {
+    totalSlides: slides.length,
+    contentSlides: contentSlideCount,
+    uniqueBlockTypes,
+    blockTypeFrequency,
+    imageCoveragePercent,
+    slidesWithImages,
+    slidesWithSpeakerNotes,
+    slidesWithCitations,
+    hasReferencesSlide,
+  };
+
+  // Check 1: Block variety
+  if (uniqueBlockTypes < 10 && contentSlideCount >= 10) {
+    // Find overused block types — strict limit of 3 for common types, 4 for others
+    const STRICT_LIMIT_TYPES = new Set(["numbered-steps", "checklist", "info-box"]);
+    const overused = Object.entries(blockTypeFrequency)
+      .filter(([type, cnt]) => cnt >= (STRICT_LIMIT_TYPES.has(type) ? 3 : 4))
+      .sort(([, a], [, b]) => b - a);
+    if (overused.length > 0) {
+      for (let i = 0; i < slides.length; i++) {
+        const slide = slides[i]!;
+        const dominant = getDominantBlock(slide.body);
+        if (dominant && overused.some(([type]) => type === dominant)) {
+          violations.push({
+            type: "low-block-variety",
+            slideIndex: i,
+            slideId: slide.id,
+            message: `Swap :::${dominant} to an underused block type. Deck only has ${uniqueBlockTypes} unique types (need 10+). Overused: ${overused.map(([t, c]) => `${t}(${c})`).join(", ")}`,
+          });
+        }
+      }
+    }
+  }
+
+  // Check 2: Consecutive same block type
+  for (let i = 1; i < slides.length; i++) {
+    const prev = getDominantBlock(slides[i - 1]!.body);
+    const curr = getDominantBlock(slides[i]!.body);
+    if (prev && curr && prev === curr) {
+      violations.push({
+        type: "consecutive-same-block",
+        slideIndex: i,
+        slideId: slides[i]!.id,
+        message: `This slide and the previous both use :::${curr}. Swap this one to a different block type.`,
+      });
+    }
+  }
+
+  // Check 3: Bookend protocol (title/section/closing must be image-full with imagePrompt)
+  for (let i = 0; i < slides.length; i++) {
+    const slide = slides[i]!;
+    if (BOOKEND_TYPES.has(slide.type)) {
+      if (slide.layout !== "image-full" || !slide.imagePrompt) {
+        violations.push({
+          type: "bookend-missing-image-full",
+          slideIndex: i,
+          slideId: slide.id,
+          message: `${slide.type} slide must use layout "image-full" with an imagePrompt. Currently: layout="${slide.layout}", imagePrompt=${slide.imagePrompt ? "set" : "null"}. Change layout to "image-full" and add a cinematic imagePrompt.`,
+        });
+      }
+    }
+  }
+
+  // Check 4: Image rule violations
+  for (let i = 0; i < slides.length; i++) {
+    const slide = slides[i]!;
+    if (NO_IMAGE_LAYOUTS.has(slide.layout) && slide.imagePrompt) {
+      violations.push({
+        type: "image-on-non-eligible",
+        slideIndex: i,
+        slideId: slide.id,
+        message: `Layout "${slide.layout}" does not support images. Set imagePrompt to null, or change layout to split-right/image-top.`,
+      });
+    }
+    if (IMAGE_REQUIRED_LAYOUTS.has(slide.layout) && !slide.imagePrompt) {
+      violations.push({
+        type: "missing-image-on-eligible",
+        slideIndex: i,
+        slideId: slide.id,
+        message: `Layout "${slide.layout}" requires an imagePrompt but has none. Add a photorealistic imagePrompt.`,
+      });
+    }
+  }
+
+  // Check 5: Image coverage
+  if (contentSlideCount >= 10) {
+    if (imageCoveragePercent < 30) {
+      // Find content slides without images that could benefit
+      const candidates = slides
+        .map((s, i) => ({ s, i }))
+        .filter(({ s }) => CONTENT_TYPES.has(s.type) && !s.imagePrompt && s.layout === "full")
+        .slice(0, 5); // Suggest up to 5
+      for (const { s, i } of candidates) {
+        violations.push({
+          type: "image-coverage-low",
+          slideIndex: i,
+          slideId: s.id,
+          message: `Image coverage is ${imageCoveragePercent.toFixed(0)}% (target 35-45%). Change this slide's layout to "split-right" and add an imagePrompt.`,
+        });
+      }
+    }
+  }
+
+  // Check 6: Missing speaker notes
+  for (let i = 0; i < slides.length; i++) {
+    const slide = slides[i]!;
+    if (slide.type !== "references" && !slide.speakerNotes?.trim()) {
+      violations.push({
+        type: "missing-speaker-notes",
+        slideIndex: i,
+        slideId: slide.id,
+        message: `Missing speaker notes. Add structured notes with **Talking Points** (2-5 bullet points).`,
+      });
+    }
+  }
+
+  // Check 7: Missing citations on content slides (skip activity, pre-test, review, etc.)
+  const CITATION_SKIP_TYPES = new Set(["activity", "quote"]);
+  const CITATION_SKIP_TITLE = /pre.?test|post.?test|placeholder|role.?play|practice|review|scenario|reflection|discussion|qr\s*code|resource/i;
+  for (let i = 0; i < slides.length; i++) {
+    const slide = slides[i]!;
+    if (
+      CONTENT_TYPES.has(slide.type) &&
+      !CITATION_SKIP_TYPES.has(slide.type) &&
+      !CITATION_SKIP_TITLE.test(slide.title) &&
+      !CITATION_PATTERN.test(slide.body)
+    ) {
+      violations.push({
+        type: "missing-citations",
+        slideIndex: i,
+        slideId: slide.id,
+        message: `No in-text citation found. Add 1-2 (Author, Year) citations where claims need evidence. Place citations in markdown text, not inside :::block content.`,
+      });
+    }
+  }
+
+  // Check 8: Missing References slide
+  if (!hasReferencesSlide) {
+    violations.push({
+      type: "missing-references",
+      slideIndex: -1,
+      slideId: "none",
+      message: "No References slide found. Will generate one separately.",
+    });
+  }
+
+  return { violations, stats };
+}
+
+/** Group violations by slideIndex */
+function groupViolationsBySlide(violations: Violation[]): Record<number, Violation[]> {
+  const map: Record<number, Violation[]> = {};
+  for (const v of violations) {
+    if (v.slideIndex < 0) continue; // Skip deck-level violations like missing-references
+    (map[v.slideIndex] ??= []).push(v);
+  }
+  return map;
+}
+
+/** Split slide indices into chunks of N */
+function chunkIndices(indices: number[], chunkSize: number): number[][] {
+  const chunks: number[][] = [];
+  for (let i = 0; i < indices.length; i += chunkSize) {
+    chunks.push(indices.slice(i, i + chunkSize));
+  }
+  return chunks;
+}
+
+/** Background helper: run full deck generation (2-pass: generate + QA audit) without blocking the request */
+async function generateDeckInBackground(
+  db: typeof dbInstance,
+  deckId: string,
+  opts: {
+    content: string;
+    sourceFormat: string;
+    title: string;
+    description?: string;
+    slideCount?: number;
+    llmProvider: string;
+    imageProvider: string;
+    fidelity?: string;
+    selectedBlocks?: VisualBlockType[];
+    customInstructions?: string;
+    tone?: string;
+    userEmail?: string | null;
+  }
+) {
+  try {
+    const parsedContent =
+      opts.sourceFormat === "markdown"
+        ? await parseContent(opts.content, "markdown")
+        : opts.content;
+
+    const provider = getLLMProvider(opts.llmProvider);
+    const generateInput = {
+      content: parsedContent,
+      title: opts.title,
+      description: opts.description,
+      slideCount: opts.slideCount,
+      fidelity: opts.fidelity as "verbatim" | "balanced" | "creative" | undefined,
+      selectedBlocks: opts.selectedBlocks,
+      customInstructions: opts.customInstructions,
+      tone: opts.tone as "professional" | "conversational" | "academic" | "training" | undefined,
+    };
+
+    let totalTokens = 0;
+
+    // ── Pass 1: Full Generation (single comprehensive LLM call) ──
+    console.log(`[deck ${deckId}] Pass 1: Full generation`);
+    const pass1Prompt = buildPass1Prompt(generateInput);
+    const pass1Result = await retryOnce(() => provider.generateRaw(pass1Prompt), "Pass 1", deckId);
+    totalTokens += pass1Result.tokensUsed;
+    let slides = pass1Result.slides;
+    console.log(`[deck ${deckId}] Pass 1 complete: ${slides.length} slides, ${pass1Result.tokensUsed} tokens`);
+
+    // ── Pass 2: Server-Side Audit + Targeted LLM Fixes ──
+    console.log(`[deck ${deckId}] Pass 2: QA audit`);
+    const { violations, stats } = auditDeckQuality(slides);
+    const slideViolations = violations.filter((v) => v.slideIndex >= 0);
+    console.log(`[deck ${deckId}] Audit: ${violations.length} violations across ${new Set(slideViolations.map((v) => v.slideIndex)).size} slides (${stats.uniqueBlockTypes} block types, ${stats.imageCoveragePercent.toFixed(0)}% image coverage)`);
+
+    let qaFixCount = 0;
+    if (slideViolations.length > 0) {
+      const grouped = groupViolationsBySlide(slideViolations);
+      const allIndices = Object.keys(grouped).map(Number).sort((a, b) => a - b);
+      const chunks = chunkIndices(allIndices, 3);
+
+      console.log(`[deck ${deckId}] Sending ${chunks.length} QA fix chunk(s) (${allIndices.length} slides)`);
+
+      const fixResults = await Promise.allSettled(
+        chunks.map(async (chunkIdx) => {
+          const chunkSlides = chunkIdx.map((i) => slides[i]!);
+          const chunkViolations = chunkIdx.flatMap((i) => grouped[i] ?? []);
+          const fixPrompt = buildQAFixPrompt(chunkSlides, chunkViolations, stats);
+          return provider.generateRaw(fixPrompt);
+        })
+      );
+
+      for (const result of fixResults) {
+        if (result.status === "fulfilled") {
+          totalTokens += result.value.tokensUsed;
+          for (const fixedSlide of result.value.slides) {
+            const idx = slides.findIndex((s) => s.id === fixedSlide.id);
+            if (idx !== -1) {
+              slides[idx] = fixedSlide;
+              qaFixCount++;
+            }
+          }
+        } else {
+          console.warn(`[deck ${deckId}] QA fix chunk failed:`, result.reason instanceof Error ? result.reason.message : result.reason);
+        }
+      }
+      console.log(`[deck ${deckId}] QA fixes applied: ${qaFixCount} slides updated`);
+    }
+
+    // Generate References slides if missing
+    if (!stats.hasReferencesSlide) {
+      console.log(`[deck ${deckId}] Generating References slides`);
+      try {
+        const refsPrompt = buildReferencesPrompt(slides);
+        const refsResult = await provider.generateRaw(refsPrompt);
+        totalTokens += refsResult.tokensUsed;
+        const refSlides = refsResult.slides.filter((s) => s.type === "references");
+        if (refSlides.length > 0) {
+          slides = [...slides, ...refSlides];
+          console.log(`[deck ${deckId}] Added ${refSlides.length} References slide(s)`);
+        }
+      } catch (err) {
+        console.warn(`[deck ${deckId}] References generation failed, skipping:`, err instanceof Error ? err.message : err);
+      }
+    }
+
+    const processedSlides = tagReferenceSlides(slides);
+    const contentSlideCount = processedSlides.filter((s) => s.type !== "references").length;
+
+    await db
+      .update(decks)
+      .set({
+        slides: processedSlides,
+        slideCount: contentSlideCount,
+        status: "ready",
+        generationLog: {
+          model: pass1Result.model,
+          tokensUsed: totalTokens,
+          pass1Slides: pass1Result.slides.length,
+          violationsFound: violations.length,
+          violationsFixed: qaFixCount,
+          generatedAt: new Date().toISOString(),
+        },
+        updatedAt: new Date(),
+      })
+      .where(eq(decks.id, deckId));
+
+    // Auto-generate images for slides with prompts
+    if (opts.imageProvider !== "disabled") {
+      await generateImagesForDeck(db, deckId, processedSlides, opts.imageProvider);
+    }
+
+    if (opts.userEmail) {
+      sendDeckReadyEmail(opts.userEmail, opts.title, deckId, "ready").catch(() => {});
+    }
+  } catch (error) {
+    await db
+      .update(decks)
+      .set({
+        status: "error",
+        generationLog: {
+          error: error instanceof Error ? error.message : "Unknown error",
+          failedAt: new Date().toISOString(),
+        },
+        updatedAt: new Date(),
+      })
+      .where(eq(decks.id, deckId));
+
+    if (opts.userEmail) {
+      sendDeckReadyEmail(opts.userEmail, opts.title, deckId, "error", error instanceof Error ? error.message : undefined).catch(() => {});
+    }
+  }
 }
 
 const slideDataSchema = z.object({
@@ -150,7 +634,7 @@ export const deckRouter = createTRPCRouter({
       z.object({
         title: z.string().min(1).max(255),
         description: z.string().optional(),
-        themeId: z.string().default("chw-teal"),
+        themeId: z.string().default("chw-cream"),
       }),
     )
     .mutation(async ({ ctx, input }) => {
@@ -175,12 +659,12 @@ export const deckRouter = createTRPCRouter({
         content: z.string().min(1),
         sourceFormat: z.enum(["markdown", "plaintext", "pdf", "docx"]).default("plaintext"),
         llmProvider: z.enum(["openai", "anthropic", "xai"]).default("anthropic"),
-        imageProvider: z.enum(["dalle3", "gpt-image-1", "stability", "replicate", "leonardo", "disabled"]).default("gpt-image-1"),
-        themeId: z.string().default("chw-teal"),
-        slideCount: z.number().min(5).max(120).optional(),
+        imageProvider: z.enum(["dalle3", "gpt-image-1", "stability", "replicate", "leonardo", "multi", "disabled"]).default("multi"),
+        themeId: z.string().default("chw-cream"),
+        slideCount: z.number().min(5).max(200).optional(),
         fidelity: z.enum(["verbatim", "balanced", "creative"]).optional(),
         selectedBlocks: z.array(z.enum(VISUAL_BLOCK_TYPES)).optional(),
-        customInstructions: z.string().max(500).optional(),
+        customInstructions: z.string().max(1000).optional(),
         tone: z.enum(["professional", "conversational", "academic", "training"]).optional(),
       }),
     )
@@ -205,80 +689,23 @@ export const deckRouter = createTRPCRouter({
 
       if (!deck) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR" });
 
-      try {
-        // Content is always text by this point — PDF/DOCX are pre-parsed by parseFile.
-        // Only markdown needs further processing (strip HTML tags).
-        const parsedContent =
-          input.sourceFormat === "markdown"
-            ? await parseContent(input.content, "markdown")
-            : input.content;
+      // Fire-and-forget: generate slides + images in background
+      void generateDeckInBackground(ctx.db, deck.id, {
+        content: input.content,
+        sourceFormat: input.sourceFormat,
+        title: input.title,
+        description: input.description,
+        slideCount: input.slideCount,
+        llmProvider: input.llmProvider,
+        imageProvider: input.imageProvider,
+        fidelity: input.fidelity,
+        selectedBlocks: input.selectedBlocks as VisualBlockType[] | undefined,
+        customInstructions: input.customInstructions,
+        tone: input.tone,
+        userEmail: ctx.user.email,
+      });
 
-        // Generate slides via LLM
-        const provider = getLLMProvider(input.llmProvider);
-        const result = await provider.generateSlides({
-          content: parsedContent,
-          title: input.title,
-          description: input.description,
-          slideCount: input.slideCount,
-          fidelity: input.fidelity,
-          selectedBlocks: input.selectedBlocks as VisualBlockType[] | undefined,
-          customInstructions: input.customInstructions,
-          tone: input.tone,
-        });
-
-        // Post-process: tag References slides, strip their images
-        const processedSlides = tagReferenceSlides(result.slides);
-        const contentSlideCount = processedSlides.filter((s) => s.type !== "references").length;
-
-        // Update deck with generated slides
-        const [updated] = await ctx.db
-          .update(decks)
-          .set({
-            slides: processedSlides,
-            slideCount: contentSlideCount,
-            status: "ready",
-            generationLog: {
-              model: result.model,
-              tokensUsed: result.tokensUsed,
-              generatedAt: new Date().toISOString(),
-            },
-            updatedAt: new Date(),
-          })
-          .where(eq(decks.id, deck.id))
-          .returning();
-
-        // Email notification (non-blocking)
-        const userEmail = ctx.user.email;
-        if (userEmail) {
-          sendDeckReadyEmail(userEmail, input.title, deck.id, "ready").catch(() => {});
-        }
-
-        return updated;
-      } catch (error) {
-        // Mark deck as error
-        await ctx.db
-          .update(decks)
-          .set({
-            status: "error",
-            generationLog: {
-              error: error instanceof Error ? error.message : "Unknown error",
-              failedAt: new Date().toISOString(),
-            },
-            updatedAt: new Date(),
-          })
-          .where(eq(decks.id, deck.id));
-
-        // Email notification (non-blocking)
-        const userEmail = ctx.user.email;
-        if (userEmail) {
-          sendDeckReadyEmail(userEmail, input.title, deck.id, "error", error instanceof Error ? error.message : undefined).catch(() => {});
-        }
-
-        throw new TRPCError({
-          code: "INTERNAL_SERVER_ERROR",
-          message: error instanceof Error ? error.message : "Generation failed",
-        });
-      }
+      return deck;
     }),
 
   update: protectedProcedure
@@ -354,8 +781,9 @@ export const deckRouter = createTRPCRouter({
       }
 
       const currentSlides = (deck.slides ?? []) as SlideData[];
+      const deletedSlide = currentSlides.find((s) => s.id === input.slideId);
       const filtered = currentSlides.filter((s) => s.id !== input.slideId);
-      if (filtered.length === currentSlides.length) {
+      if (!deletedSlide) {
         throw new TRPCError({ code: "NOT_FOUND", message: "Slide not found" });
       }
 
@@ -367,6 +795,11 @@ export const deckRouter = createTRPCRouter({
         .set({ slides: reordered, slideCount: reordered.length, updatedAt: new Date() })
         .where(eq(decks.id, input.deckId))
         .returning();
+
+      // Clean up storage image (fire-and-forget)
+      if (deletedSlide.imageUrl) {
+        deleteSlideImage(input.deckId, input.slideId).catch(() => {});
+      }
 
       return updated;
     }),
@@ -488,28 +921,56 @@ export const deckRouter = createTRPCRouter({
         throw new TRPCError({ code: "BAD_REQUEST", message: "No image prompt available" });
       }
 
-      // Generate image with brand style prefix
-      const provider = getImageProvider(input.imageProvider);
-      const buffer = await provider.generateImage(enhanceImagePrompt(prompt));
-
-      // Upload to storage
-      const contentType = input.imageProvider === "gpt-image-1" ? "image/webp" : "image/png";
-      const imageUrl = await uploadSlideImage(input.deckId, input.slideId, buffer, contentType);
-
-      // Update slide with image URL and prompt
+      // Mark slide as generating and return immediately
       currentSlides[slideIndex] = {
         ...slide,
-        imageUrl,
         imagePrompt: prompt,
+        imageGenerating: true,
       };
-
-      const [updated] = await ctx.db
+      await ctx.db
         .update(decks)
         .set({ slides: currentSlides, updatedAt: new Date() })
-        .where(eq(decks.id, input.deckId))
-        .returning();
+        .where(eq(decks.id, input.deckId));
 
-      return updated;
+      // Fire-and-forget: generate image in background
+      void (async () => {
+        try {
+          const provider = getImageProvider(input.imageProvider);
+          const buffer = await provider.generateImage(enhanceImagePrompt(prompt));
+
+          const contentType = input.imageProvider === "gpt-image-1" ? "image/webp" : "image/png";
+          const imageUrl = await uploadSlideImage(input.deckId, input.slideId, buffer, contentType);
+
+          // Re-read deck to avoid stale data
+          const freshDeck = await ctx.db.query.decks.findFirst({
+            where: eq(decks.id, input.deckId),
+            columns: { slides: true },
+          });
+          if (freshDeck?.slides) {
+            const freshSlides = freshDeck.slides as SlideData[];
+            const updatedSlides = freshSlides.map((s) =>
+              s.id === input.slideId ? { ...s, imageUrl, imagePrompt: prompt, imageGenerating: undefined } : s
+            );
+            await ctx.db.update(decks).set({ slides: updatedSlides, updatedAt: new Date() }).where(eq(decks.id, input.deckId));
+          }
+        } catch (error) {
+          console.error(`[slide image gen] Failed for slide ${input.slideId}:`, error);
+          // Clear generating flag on failure
+          const freshDeck = await ctx.db.query.decks.findFirst({
+            where: eq(decks.id, input.deckId),
+            columns: { slides: true },
+          });
+          if (freshDeck?.slides) {
+            const freshSlides = freshDeck.slides as SlideData[];
+            const updatedSlides = freshSlides.map((s) =>
+              s.id === input.slideId ? { ...s, imageGenerating: undefined, imageError: error instanceof Error ? error.message : "Image generation failed" } : s
+            );
+            await ctx.db.update(decks).set({ slides: updatedSlides, updatedAt: new Date() }).where(eq(decks.id, input.deckId));
+          }
+        }
+      })();
+
+      return deck;
     }),
 
   generateImages: protectedProcedure
@@ -555,7 +1016,7 @@ export const deckRouter = createTRPCRouter({
       }
 
       const slide = currentSlides[slideIndex]!;
-      const llmId = input.llmProvider ?? deck.llmProvider ?? "openai";
+      const llmId = input.llmProvider ?? deck.llmProvider ?? "anthropic";
       const provider = getLLMProvider(llmId);
 
       // Use a lightweight prompt to generate an image description from slide content
@@ -612,7 +1073,7 @@ Respond with ONLY the image prompt, no explanation.`;
       const prevSlide = slideIndex > 0 ? currentSlides[slideIndex - 1] : undefined;
       const nextSlide = slideIndex < currentSlides.length - 1 ? currentSlides[slideIndex + 1] : undefined;
 
-      const llmId = input.llmProvider ?? deck.llmProvider ?? "openai";
+      const llmId = input.llmProvider ?? deck.llmProvider ?? "anthropic";
       const provider = getLLMProvider(llmId);
       const regenerated = await provider.regenerateSlide({
         slide,
@@ -624,12 +1085,13 @@ Respond with ONLY the image prompt, no explanation.`;
         },
       });
 
-      // Preserve existing imageUrl from the original slide
+      // Preserve existing image data from the original slide
       currentSlides[slideIndex] = {
         ...regenerated,
         id: slide.id,
         order: slide.order,
         imageUrl: slide.imageUrl,
+        ...(slide.imageFocalPoint ? { imageFocalPoint: slide.imageFocalPoint } : {}),
       };
 
       const [updated] = await ctx.db
@@ -647,10 +1109,10 @@ Respond with ONLY the image prompt, no explanation.`;
         id: z.string().uuid(),
         fidelity: z.enum(["verbatim", "balanced", "creative"]).optional(),
         llmProvider: z.enum(["openai", "anthropic", "xai"]).optional(),
-        imageProvider: z.enum(["dalle3", "gpt-image-1", "stability", "replicate", "leonardo", "disabled"]).optional(),
-        slideCount: z.number().min(5).max(120).optional(),
+        imageProvider: z.enum(["dalle3", "gpt-image-1", "stability", "replicate", "leonardo", "multi", "disabled"]).optional(),
+        slideCount: z.number().min(5).max(200).optional(),
         selectedBlocks: z.array(z.enum(VISUAL_BLOCK_TYPES)).optional(),
-        customInstructions: z.string().max(500).optional(),
+        customInstructions: z.string().max(1000).optional(),
         tone: z.enum(["professional", "conversational", "academic", "training"]).optional(),
       }),
     )
@@ -666,85 +1128,60 @@ Respond with ONLY the image prompt, no explanation.`;
         throw new TRPCError({ code: "BAD_REQUEST", message: "No source content to regenerate from" });
       }
 
-      // Mark as generating
+      const llmId = input.llmProvider ?? deck.llmProvider ?? "anthropic";
+      const imageProviderId = input.imageProvider ?? deck.imageProvider ?? "multi";
+
+      // Mark as generating and update provider choices
       await ctx.db
         .update(decks)
-        .set({ status: "generating", updatedAt: new Date() })
+        .set({ status: "generating", llmProvider: llmId, imageProvider: imageProviderId, updatedAt: new Date() })
         .where(eq(decks.id, deck.id));
 
-      try {
-        const parsedContent =
-          deck.sourceFormat === "markdown"
-            ? await parseContent(deck.sourceContent, "markdown")
-            : deck.sourceContent;
+      // Fire-and-forget: 3-pass generation in background
+      void generateDeckInBackground(ctx.db, deck.id, {
+        content: deck.sourceContent,
+        sourceFormat: deck.sourceFormat ?? "plaintext",
+        title: deck.title,
+        description: deck.description ?? undefined,
+        slideCount: input.slideCount ?? deck.slideCount ?? 70,
+        llmProvider: llmId,
+        imageProvider: imageProviderId,
+        fidelity: input.fidelity,
+        selectedBlocks: input.selectedBlocks as VisualBlockType[] | undefined,
+        customInstructions: input.customInstructions,
+        tone: input.tone,
+        userEmail: ctx.user.email,
+      });
 
-        const llmId = input.llmProvider ?? deck.llmProvider ?? "openai";
-        const provider = getLLMProvider(llmId);
-        const result = await provider.generateSlides({
-          content: parsedContent,
-          title: deck.title,
-          description: deck.description ?? undefined,
-          slideCount: input.slideCount ?? deck.slideCount ?? 20,
-          fidelity: input.fidelity,
-          selectedBlocks: input.selectedBlocks as VisualBlockType[] | undefined,
-          customInstructions: input.customInstructions,
-          tone: input.tone,
-        });
+      // Return the deck immediately (status: generating)
+      const [updated] = await ctx.db
+        .select()
+        .from(decks)
+        .where(eq(decks.id, deck.id));
 
-        // Post-process: tag References slides
-        const processedSlides = tagReferenceSlides(result.slides);
-        const contentSlideCount = processedSlides.filter((s) => s.type !== "references").length;
+      return updated;
+    }),
 
-        const [updated] = await ctx.db
-          .update(decks)
-          .set({
-            slides: processedSlides,
-            slideCount: contentSlideCount,
-            llmProvider: llmId,
-            imageProvider: input.imageProvider ?? deck.imageProvider ?? "gpt-image-1",
-            status: "ready",
-            generationLog: {
-              model: result.model,
-              tokensUsed: result.tokensUsed,
-              generatedAt: new Date().toISOString(),
-              fidelity: input.fidelity ?? "balanced",
-            },
-            updatedAt: new Date(),
-          })
-          .where(eq(decks.id, deck.id))
-          .returning();
+  batchGenerateImages: protectedProcedure
+    .input(z.object({
+      deckId: z.string().uuid(),
+      imageProvider: z.string().default("multi"),
+    }))
+    .mutation(async ({ ctx, input }) => {
+      const profileId = await getProfileId(ctx.db, ctx.user.id);
+      const deck = await ctx.db.query.decks.findFirst({
+        where: and(eq(decks.id, input.deckId), eq(decks.profileId, profileId)),
+      });
+      if (!deck) throw new TRPCError({ code: "NOT_FOUND", message: "Deck not found" });
 
-        // Email notification (non-blocking)
-        const userEmail = ctx.user.email;
-        if (userEmail) {
-          sendDeckReadyEmail(userEmail, deck.title, deck.id, "ready").catch(() => {});
-        }
+      const slides = (deck.slides ?? []) as SlideData[];
+      const needsImages = slides.filter((s) => s.imagePrompt && !s.imageUrl);
+      if (needsImages.length === 0) return { started: 0 };
 
-        return updated;
-      } catch (error) {
-        await ctx.db
-          .update(decks)
-          .set({
-            status: "error",
-            generationLog: {
-              error: error instanceof Error ? error.message : "Unknown error",
-              failedAt: new Date().toISOString(),
-            },
-            updatedAt: new Date(),
-          })
-          .where(eq(decks.id, deck.id));
+      // Fire-and-forget: generate images in background
+      void generateImagesForDeck(ctx.db, input.deckId, slides, input.imageProvider);
 
-        // Email notification (non-blocking)
-        const userEmail = ctx.user.email;
-        if (userEmail) {
-          sendDeckReadyEmail(userEmail, deck.title, deck.id, "error", error instanceof Error ? error.message : undefined).catch(() => {});
-        }
-
-        throw new TRPCError({
-          code: "INTERNAL_SERVER_ERROR",
-          message: error instanceof Error ? error.message : "Regeneration failed",
-        });
-      }
+      return { started: needsImages.length };
     }),
 
   delete: protectedProcedure
@@ -765,6 +1202,40 @@ Respond with ONLY the image prompt, no explanation.`;
       });
 
       return { success: true };
+    }),
+
+  duplicateDeck: protectedProcedure
+    .input(z.object({ id: z.string().uuid() }))
+    .mutation(async ({ ctx, input }) => {
+      const profileId = await getProfileId(ctx.db, ctx.user.id);
+      const original = await ctx.db.query.decks.findFirst({
+        where: and(eq(decks.id, input.id), eq(decks.profileId, profileId)),
+      });
+      if (!original) throw new TRPCError({ code: "NOT_FOUND", message: "Deck not found" });
+
+      const [copy] = await ctx.db
+        .insert(decks)
+        .values({
+          profileId,
+          title: `${original.title} (Copy)`,
+          description: original.description,
+          sourceContent: original.sourceContent,
+          sourceFormat: original.sourceFormat,
+          themeId: original.themeId,
+          llmProvider: original.llmProvider,
+          imageProvider: original.imageProvider,
+          groupId: original.groupId,
+          slides: original.slides,
+          slideCount: original.slideCount,
+          status: "ready",
+          generationLog: {
+            duplicatedFrom: original.id,
+            duplicatedAt: new Date().toISOString(),
+          },
+        })
+        .returning();
+
+      return copy;
     }),
 
   parseFile: protectedProcedure
@@ -804,7 +1275,7 @@ Respond with ONLY the image prompt, no explanation.`;
     const prefs = await ctx.db.query.providerPreferences.findFirst({
       where: eq(providerPreferences.profileId, profileId),
     });
-    return prefs ?? { llmProvider: "anthropic", imageProvider: "gpt-image-1", fidelity: "balanced", customInstructions: "", tone: "professional" };
+    return prefs ?? { llmProvider: "anthropic", imageProvider: "multi", fidelity: "balanced", customInstructions: "", tone: "training" };
   }),
 
   setPreferences: protectedProcedure
@@ -813,7 +1284,7 @@ Respond with ONLY the image prompt, no explanation.`;
         llmProvider: z.string(),
         imageProvider: z.string(),
         fidelity: z.enum(["verbatim", "balanced", "creative"]).optional(),
-        customInstructions: z.string().max(500).optional(),
+        customInstructions: z.string().max(1000).optional(),
         tone: z.enum(["professional", "conversational", "academic", "training"]).optional(),
       }),
     )
@@ -972,10 +1443,17 @@ Respond with ONLY the image prompt, no explanation.`;
         .map((s) => `${s.title}: ${s.body.slice(0, 100)}`)
         .join("\n");
 
-      const llmId = input.llmProvider ?? deck.llmProvider ?? "openai";
+      const llmId = input.llmProvider ?? deck.llmProvider ?? "anthropic";
       const provider = getLLMProvider(llmId);
 
-      const queryPrompt = `Based on this training deck titled "${deck.title}", generate exactly 5 YouTube search queries to find relevant educational/training videos. Each query should target a different key topic from the deck.
+      const queryPrompt = `You are helping find YouTube training videos for Community Health Workers (CHWs). Based on this training deck titled "${deck.title}", generate exactly 5 YouTube search queries.
+
+Requirements for each query:
+- Target CHW, community health, public health, or health education content
+- Include terms like "community health worker", "CHW training", "public health", or "health education" where relevant
+- Each query should cover a different key topic from the deck
+- Prefer queries that would return professional training content, not general consumer health info
+- Keep queries concise (5-10 words) for best YouTube results
 
 Deck content:
 ${slideContent}
@@ -1044,7 +1522,7 @@ Respond with exactly 5 search queries, one per line. No numbering, no bullets, j
         throw new TRPCError({ code: "BAD_REQUEST", message: "Deck has no slides to review" });
       }
 
-      const llmId = input.llmProvider ?? deck.llmProvider ?? "openai";
+      const llmId = input.llmProvider ?? deck.llmProvider ?? "anthropic";
       const provider = getLLMProvider(llmId);
 
       // Build compact slide summary for review
@@ -1097,12 +1575,12 @@ Return ONLY valid JSON array. If no issues, return [].`;
         sourceFormat: z.enum(["markdown", "plaintext", "pdf", "docx"]).default("plaintext"),
       })).min(1).max(10),
       llmProvider: z.enum(["openai", "anthropic", "xai"]).default("anthropic"),
-      imageProvider: z.enum(["dalle3", "gpt-image-1", "stability", "replicate", "leonardo", "disabled"]).default("disabled"),
-      themeId: z.string().default("chw-teal"),
-      slideCount: z.number().min(5).max(120).optional(),
+      imageProvider: z.enum(["dalle3", "gpt-image-1", "stability", "replicate", "leonardo", "multi", "disabled"]).default("multi"),
+      themeId: z.string().default("chw-cream"),
+      slideCount: z.number().min(5).max(200).optional(),
       fidelity: z.enum(["verbatim", "balanced", "creative"]).optional(),
       tone: z.enum(["professional", "conversational", "academic", "training"]).optional(),
-      customInstructions: z.string().max(500).optional(),
+      customInstructions: z.string().max(1000).optional(),
       groupId: z.string().uuid().optional(),
     }))
     .mutation(async ({ ctx, input }) => {
@@ -1121,73 +1599,79 @@ Return ONLY valid JSON array. If no issues, return [].`;
             themeId: input.themeId,
             llmProvider: input.llmProvider,
             imageProvider: input.imageProvider,
-            groupId: input.groupId,
+            groupId: input.groupId ?? null,
             status: "generating",
           })
           .returning();
         if (deck) deckIds.push(deck.id);
       }
 
-      // Generate sequentially to avoid rate limits
-      const provider = getLLMProvider(input.llmProvider);
-
-      for (let i = 0; i < input.items.length; i++) {
-        const item = input.items[i]!;
-        const deckId = deckIds[i]!;
-
-        try {
-          const parsedContent =
-            item.sourceFormat === "markdown"
-              ? await parseContent(item.content, "markdown")
-              : item.content;
-
-          const result = await provider.generateSlides({
-            content: parsedContent,
+      // Fire-and-forget: generate all decks sequentially in background
+      void (async () => {
+        for (let i = 0; i < input.items.length; i++) {
+          const item = input.items[i]!;
+          const deckId = deckIds[i]!;
+          await generateDeckInBackground(ctx.db, deckId, {
+            content: item.content,
+            sourceFormat: item.sourceFormat,
             title: item.title,
             slideCount: input.slideCount,
+            llmProvider: input.llmProvider,
+            imageProvider: input.imageProvider,
             fidelity: input.fidelity,
             customInstructions: input.customInstructions,
             tone: input.tone,
+            userEmail: i === input.items.length - 1 ? ctx.user.email : null,
           });
-
-          const processedSlides = tagReferenceSlides(result.slides);
-          const contentSlideCount = processedSlides.filter((s) => s.type !== "references").length;
-
-          await ctx.db
-            .update(decks)
-            .set({
-              slides: processedSlides,
-              slideCount: contentSlideCount,
-              status: "ready",
-              generationLog: {
-                model: result.model,
-                tokensUsed: result.tokensUsed,
-                generatedAt: new Date().toISOString(),
-              },
-              updatedAt: new Date(),
-            })
-            .where(eq(decks.id, deckId));
-        } catch (error) {
-          await ctx.db
-            .update(decks)
-            .set({
-              status: "error",
-              generationLog: {
-                error: error instanceof Error ? error.message : "Unknown error",
-                failedAt: new Date().toISOString(),
-              },
-              updatedAt: new Date(),
-            })
-            .where(eq(decks.id, deckId));
         }
-      }
-
-      // Email notification
-      const userEmail = ctx.user.email;
-      if (userEmail) {
-        sendDeckReadyEmail(userEmail, `Bulk: ${input.items.length} decks`, deckIds[0]!, "ready").catch(() => {});
-      }
+      })();
 
       return { deckIds, count: deckIds.length };
+    }),
+
+  recoverStalledDecks: protectedProcedure
+    .mutation(async ({ ctx }) => {
+      const profileId = await getProfileId(ctx.db, ctx.user.id);
+      const thirtyMinAgo = new Date(Date.now() - 30 * 60 * 1000);
+
+      const stalled = await ctx.db
+        .update(decks)
+        .set({
+          status: "error",
+          generationLog: {
+            error: "Generation timed out. Please try again.",
+            failedAt: new Date().toISOString(),
+          },
+          updatedAt: new Date(),
+        })
+        .where(and(
+          eq(decks.profileId, profileId),
+          eq(decks.status, "generating"),
+          sql`${decks.updatedAt} < ${thirtyMinAgo.toISOString()}::timestamptz`,
+        ))
+        .returning({ id: decks.id });
+
+      return { recovered: stalled.length };
+    }),
+
+  bulkDeleteDecks: protectedProcedure
+    .input(z.object({ ids: z.array(z.string().uuid()).min(1).max(50) }))
+    .mutation(async ({ ctx, input }) => {
+      const profileId = await getProfileId(ctx.db, ctx.user.id);
+
+      // Clean up storage images for each deck
+      for (const id of input.ids) {
+        deleteDeckImages(id).catch(() => {});
+      }
+
+      const deleted = await ctx.db
+        .delete(decks)
+        .where(and(
+          inArray(decks.id, input.ids),
+          eq(decks.profileId, profileId),
+        ))
+        .returning({ id: decks.id });
+
+      return { count: deleted.length };
     }),
 });

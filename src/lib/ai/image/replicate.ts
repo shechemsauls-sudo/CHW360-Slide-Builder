@@ -53,6 +53,9 @@ export const replicateProvider: ImageProvider = {
       const pollRes = await fetch(result.urls.get, {
         headers: { Authorization: `Bearer ${apiToken}` },
       });
+      if (!pollRes.ok) {
+        throw new Error(`Replicate poll error (${pollRes.status}): ${await pollRes.text().catch(() => "Unknown error")}`);
+      }
       result = (await pollRes.json()) as typeof prediction;
     }
 

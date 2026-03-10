@@ -26,6 +26,14 @@ const BLOCKS: BlockMeta[] = [
   { id: "radar-chart", name: "Radar", description: "Multi-factor assessment" },
   { id: "progress-bars", name: "Progress", description: "Completion rate bars" },
   { id: "metric-row", name: "Metrics", description: "Dashboard KPI cards" },
+  { id: "cycle", name: "Cycle", description: "Circular process loop" },
+  { id: "card-grid", name: "Cards", description: "Multi-card layout" },
+  { id: "chevron-flow", name: "Chevron", description: "Stacked process arrows" },
+  { id: "accent-list", name: "Accent List", description: "Highlighted label/detail" },
+  { id: "pill-list", name: "Pills", description: "Rounded tag capsules" },
+  { id: "stat-bubbles", name: "Bubbles", description: "Circular stat badges" },
+  { id: "tag-cloud", name: "Tags", description: "Weighted keyword cloud" },
+  { id: "rounded-cards", name: "Rounded", description: "Soft rounded card grid" },
 ];
 
 interface BlockSelectorProps {
@@ -233,15 +241,24 @@ function BlockPreview({ type, active }: { type: VisualBlockType; active: boolean
 
     case "bar-chart":
       return (
-        <div className="flex items-end justify-center gap-1 px-2">
-          {[60, 85, 45, 70].map((h, i) => (
-            <div
+        <svg viewBox="0 0 36 24" className="h-7 w-9">
+          {[
+            { x: 2, h: 14 },
+            { x: 10, h: 20 },
+            { x: 18, h: 10 },
+            { x: 26, h: 16 },
+          ].map((bar, i) => (
+            <rect
               key={i}
-              className="w-2.5 rounded-t"
-              style={{ height: `${h}%`, backgroundColor: i === 1 ? accent : muted }}
+              x={bar.x}
+              y={24 - bar.h}
+              width="6"
+              height={bar.h}
+              rx="1"
+              fill={i === 1 ? accent : muted}
             />
           ))}
-        </div>
+        </svg>
       );
 
     case "pie-chart":
@@ -331,6 +348,116 @@ function BlockPreview({ type, active }: { type: VisualBlockType; active: boolean
             <div key={i} className="flex flex-1 flex-col items-center rounded px-1 py-1" style={{ backgroundColor: muted }}>
               <div className="text-[8px] font-bold leading-none" style={{ color: accent }}>42</div>
               <div className="mt-0.5 h-0.5 w-3 rounded-full" style={{ backgroundColor: `${textColor}` }} />
+            </div>
+          ))}
+        </div>
+      );
+
+    case "cycle":
+      return (
+        <svg viewBox="0 0 28 28" className="h-7 w-7">
+          <circle cx="14" cy="14" r="10" fill="none" stroke={muted} strokeWidth="1.5" strokeDasharray="4 3" />
+          {[0, 120, 240].map((deg, i) => {
+            const rad = (deg - 90) * Math.PI / 180;
+            return <circle key={i} cx={14 + 10 * Math.cos(rad)} cy={14 + 10 * Math.sin(rad)} r="2.5" fill={accent} />;
+          })}
+        </svg>
+      );
+
+    case "card-grid":
+      return (
+        <div className="grid grid-cols-2 gap-1 px-2">
+          {[0, 1, 2, 3].map((i) => (
+            <div key={i} className="rounded px-1 py-1" style={{ backgroundColor: muted }}>
+              <div className="h-0.5 w-4 rounded-full" style={{ backgroundColor: accent }} />
+              <div className="mt-0.5 h-0.5 w-full rounded-full" style={{ backgroundColor: `${textColor}` }} />
+            </div>
+          ))}
+        </div>
+      );
+
+    case "chevron-flow":
+      return (
+        <svg viewBox="0 0 40 24" className="h-7 w-10">
+          {[0, 1, 2].map((i) => {
+            const x = i * 12;
+            const fill = i === 0 ? accent : muted;
+            return (
+              <path
+                key={i}
+                d={`M${x},2 L${x + 9},2 L${x + 13},12 L${x + 9},22 L${x},22 L${x + 4},12 Z`}
+                fill={fill}
+              />
+            );
+          })}
+        </svg>
+      );
+
+    case "accent-list":
+      return (
+        <div className="flex flex-col gap-1 px-2">
+          {[0, 1, 2].map((i) => (
+            <div key={i} className="flex items-center gap-1">
+              <div className="h-1.5 w-1 rounded-full" style={{ backgroundColor: accent }} />
+              <div className="h-1 w-4 rounded-full" style={{ backgroundColor: accent }} />
+              <div className="h-1 flex-1 rounded-full" style={{ backgroundColor: muted }} />
+            </div>
+          ))}
+        </div>
+      );
+
+    case "pill-list":
+      return (
+        <div className="flex flex-wrap justify-center gap-1 px-1">
+          {[0, 1, 2, 3, 4].map((i) => (
+            <div
+              key={i}
+              className="h-2 rounded-full"
+              style={{ width: `${12 + (i % 3) * 4}px`, backgroundColor: i === 0 ? accent : muted }}
+            />
+          ))}
+        </div>
+      );
+
+    case "stat-bubbles":
+      return (
+        <div className="flex items-center justify-center gap-1.5 px-1">
+          {[0, 1, 2].map((i) => (
+            <div
+              key={i}
+              className="flex h-5 w-5 items-center justify-center rounded-full"
+              style={{ backgroundColor: i === 0 ? accent : muted }}
+            >
+              <span className="text-[5px] font-bold" style={{ color: "#fff" }}>8</span>
+            </div>
+          ))}
+        </div>
+      );
+
+    case "tag-cloud":
+      return (
+        <div className="flex flex-wrap justify-center gap-0.5 px-1">
+          {[8, 6, 10, 7, 5].map((w, i) => (
+            <div
+              key={i}
+              className="rounded-full"
+              style={{
+                width: `${w * 1.5}px`,
+                height: `${4 + (i % 2)}px`,
+                backgroundColor: i < 2 ? accent : muted,
+              }}
+            />
+          ))}
+        </div>
+      );
+
+    case "rounded-cards":
+      return (
+        <div className="grid grid-cols-2 gap-1 px-2">
+          {[0, 1].map((i) => (
+            <div key={i} className="rounded-lg px-1.5 py-1" style={{ backgroundColor: muted }}>
+              <div className="h-0.5 w-4 rounded-full" style={{ backgroundColor: accent }} />
+              <div className="mt-0.5 h-0.5 w-full rounded-full" style={{ backgroundColor: `${textColor}` }} />
             </div>
           ))}
         </div>

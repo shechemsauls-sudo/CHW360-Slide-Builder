@@ -32,3 +32,9 @@ export function getAvailableImageProviders() {
     configured: isProviderConfigured(meta.envVar),
   }));
 }
+
+export function getConfiguredImageProviderIds(): string[] {
+  return IMAGE_PROVIDERS
+    .filter((meta) => isProviderConfigured(meta.envVar))
+    .map((meta) => meta.id);
+}

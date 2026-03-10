@@ -2,16 +2,6 @@ import type { ProviderMeta } from "./types";
 
 export const LLM_PROVIDERS: ProviderMeta[] = [
   {
-    id: "openai",
-    name: "OpenAI GPT-4o",
-    description: "Fast, reliable structured output with JSON mode",
-    type: "llm",
-    envVar: "OPENAI_API_KEY",
-    pros: ["Reliable JSON output", "Fast generation", "Good at structured content"],
-    cons: ["Higher cost per token"],
-    costTier: "medium",
-  },
-  {
     id: "anthropic",
     name: "Claude Sonnet",
     description: "Excellent writing quality and nuanced content",
@@ -19,6 +9,16 @@ export const LLM_PROVIDERS: ProviderMeta[] = [
     envVar: "ANTHROPIC_API_KEY",
     pros: ["Superior writing quality", "Nuanced speaker notes", "Great at health content"],
     cons: ["No native JSON mode"],
+    costTier: "medium",
+  },
+  {
+    id: "openai",
+    name: "OpenAI GPT-4o",
+    description: "Fast, reliable structured output with JSON mode",
+    type: "llm",
+    envVar: "OPENAI_API_KEY",
+    pros: ["Reliable JSON output", "Fast generation", "Good at structured content"],
+    cons: ["Higher cost per token"],
     costTier: "medium",
   },
   {

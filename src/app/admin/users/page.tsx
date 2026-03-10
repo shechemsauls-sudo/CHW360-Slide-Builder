@@ -4,12 +4,14 @@ import { useState, useEffect } from "react";
 import { api } from "~/trpc/react";
 import { Button } from "~/components/ui/button";
 import { Input } from "~/components/ui/input";
-import { Loader2, UserPlus, Mail, Shield, User, Trash2, Users } from "lucide-react";
+import { Loader2, UserPlus, Mail, Shield, User, Trash2, Users, CheckSquare, X } from "lucide-react";
 import { toast } from "sonner";
 
 export default function UsersPage() {
   useEffect(() => { document.title = "Users — CHW360"; }, []);
 
+  const [selectMode, setSelectMode] = useState(false);
+  const [selectedUsers, setSelectedUsers] = useState<Set<string>>(new Set());
   const [showInvite, setShowInvite] = useState(false);
   const [inviteEmail, setInviteEmail] = useState("");
   const [inviteRole, setInviteRole] = useState<"user" | "admin">("user");
@@ -65,19 +67,33 @@ export default function UsersPage() {
             Manage user accounts and roles
           </p>
         </div>
-        <Button
-          onClick={() => {
-            if (showInvite) {
-              setInviteEmail("");
-              setInviteRole("user");
-            }
-            setShowInvite(!showInvite);
-          }}
-          className="rounded-full bg-[#C9725B] text-sm font-medium text-white hover:bg-[#B5624D]"
-        >
-          <UserPlus className="mr-2 h-4 w-4" />
-          Invite User
-        </Button>
+        <div className="flex items-center gap-2">
+          <Button
+            variant="ghost"
+            size="sm"
+            className={`text-xs ${selectMode ? "text-[#7AACAC]" : "text-gray-400 hover:text-white"}`}
+            onClick={() => {
+              if (selectMode) { setSelectedUsers(new Set()); }
+              setSelectMode(!selectMode);
+            }}
+          >
+            <CheckSquare className="mr-1.5 h-4 w-4" />
+            {selectMode ? "Cancel" : "Select"}
+          </Button>
+          <Button
+            onClick={() => {
+              if (showInvite) {
+                setInviteEmail("");
+                setInviteRole("user");
+              }
+              setShowInvite(!showInvite);
+            }}
+            className="rounded-full bg-[#C9725B] text-sm font-medium text-white hover:bg-[#B5624D]"
+          >
+            <UserPlus className="mr-2 h-4 w-4" />
+            Invite User
+          </Button>
+        </div>
       </div>
 
       {showInvite && (
@@ -137,10 +153,37 @@ export default function UsersPage() {
           <p className="text-sm text-gray-400">No users found. Invite your first user above.</p>
         </div>
       ) : (
+        <>
+        {selectedUsers.size > 0 && (
+          <div className="flex items-center gap-2 rounded-md bg-[#2D5A5A]/15 px-3 py-2 text-sm">
+            <span className="font-medium text-[#5B8A8A]">{selectedUsers.size} selected</span>
+            <div className="flex-1" />
+            <button className="text-gray-500 hover:text-white" onClick={() => { setSelectedUsers(new Set()); setSelectMode(false); }}>
+              <X className="h-3.5 w-3.5" />
+            </button>
+          </div>
+        )}
         <div className="overflow-x-auto rounded-lg border border-white/10">
           <table className="w-full text-left text-sm">
             <thead>
               <tr className="bg-white/5">
+                {selectMode && (
+                  <th className="w-10 px-4 py-3">
+                    <input
+                      type="checkbox"
+                      checked={users!.length > 0 && users!.every((u) => selectedUsers.has(u.id))}
+                      onChange={() => {
+                        if (users!.every((u) => selectedUsers.has(u.id))) {
+                          setSelectedUsers(new Set());
+                        } else {
+                          setSelectedUsers(new Set(users!.map((u) => u.id)));
+                        }
+                      }}
+                      className="h-3.5 w-3.5 cursor-pointer rounded accent-[#2D5A5A]"
+                      aria-label="Select all users"
+                    />
+                  </th>
+                )}
                 <th className="px-4 py-3 font-medium text-gray-400">Email</th>
                 <th className="px-4 py-3 font-medium text-gray-400">Name</th>
                 <th className="px-4 py-3 font-medium text-gray-400">Role</th>
@@ -151,6 +194,24 @@ export default function UsersPage() {
             <tbody>
               {users.map((user) => (
                 <tr key={user.id} className="border-t border-white/10">
+                  {selectMode && (
+                    <td className="w-10 px-4 py-3">
+                      <input
+                        type="checkbox"
+                        checked={selectedUsers.has(user.id)}
+                        onChange={() => {
+                          setSelectedUsers((prev) => {
+                            const next = new Set(prev);
+                            if (next.has(user.id)) next.delete(user.id);
+                            else next.add(user.id);
+                            return next;
+                          });
+                        }}
+                        className="h-3.5 w-3.5 cursor-pointer rounded accent-[#2D5A5A]"
+                        aria-label={`Select ${user.email}`}
+                      />
+                    </td>
+                  )}
                   <td className="px-4 py-3 text-gray-300">{user.email}</td>
                   <td className="px-4 py-3 text-gray-300">
                     {user.displayName ?? "\u2014"}
@@ -228,6 +289,7 @@ export default function UsersPage() {
             </tbody>
           </table>
         </div>
+        </>
       )}
     </div>
   );

@@ -85,12 +85,23 @@ export function MetricRow({ arg, content, theme }: DataBlockProps) {
     .map((line) => line.trim())
     .filter(Boolean)
     .map((line) => {
+      // Try pipe separator first (explicit format)
       const pipeIdx = line.indexOf("|");
-      if (pipeIdx === -1) return { value: line, label: "" };
-      return {
-        value: line.slice(0, pipeIdx).trim(),
-        label: line.slice(pipeIdx + 1).trim(),
-      };
+      if (pipeIdx !== -1) {
+        return {
+          value: line.slice(0, pipeIdx).trim(),
+          label: line.slice(pipeIdx + 1).trim(),
+        };
+      }
+      // Try colon separator (e.g. "Total Visits: 1,234")
+      const colonIdx = line.indexOf(":");
+      if (colonIdx !== -1) {
+        return {
+          value: line.slice(colonIdx + 1).trim(),
+          label: line.slice(0, colonIdx).trim(),
+        };
+      }
+      return { value: line, label: "" };
     });
 
   return (

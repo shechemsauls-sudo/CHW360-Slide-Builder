@@ -40,7 +40,7 @@ export const decks = createTable("decks", {
   description: text("description"),
   sourceContent: text("source_content"),
   sourceFormat: text("source_format"),
-  themeId: text("theme_id").notNull().default("chw-teal"),
+  themeId: text("theme_id").notNull().default("chw-cream"),
   llmProvider: text("llm_provider"),
   imageProvider: text("image_provider"),
   slides: jsonb("slides").notNull().default([]),
@@ -59,10 +59,10 @@ export const providerPreferences = createTable("provider_preferences", {
     .unique()
     .references(() => profiles.id, { onDelete: "cascade" }),
   llmProvider: text("llm_provider").default("anthropic"),
-  imageProvider: text("image_provider").default("gpt-image-1"),
+  imageProvider: text("image_provider").default("multi"),
   fidelity: text("fidelity").default("balanced"),
   customInstructions: text("custom_instructions").default(""),
-  tone: text("tone").default("professional"),
+  tone: text("tone").default("training"),
   createdAt: timestamp("created_at", { withTimezone: true }).defaultNow().notNull(),
   updatedAt: timestamp("updated_at", { withTimezone: true }).defaultNow().notNull(),
 });

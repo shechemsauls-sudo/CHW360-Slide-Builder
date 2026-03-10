@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useEffect } from "react";
-import { Inbox, Mail, MailOpen, MailCheck, ChevronDown, ChevronUp, ChevronLeft, ChevronRight, FileText, X, Trash2, Download } from "lucide-react";
+import { Inbox, Mail, MailOpen, MailCheck, ChevronDown, ChevronUp, ChevronLeft, ChevronRight, FileText, X, Trash2, Download, CheckSquare } from "lucide-react";
 import { Badge } from "~/components/ui/badge";
 import { Button } from "~/components/ui/button";
 import { api } from "~/trpc/react";
@@ -36,6 +36,7 @@ export default function SubmissionsPage() {
   const [filter, setFilter] = useState<Filter>("all");
   const [source, setSource] = useState<string | undefined>(undefined);
   const [expandedId, setExpandedId] = useState<string | null>(null);
+  const [selectMode, setSelectMode] = useState(false);
   const [selected, setSelected] = useState<Set<string>>(new Set());
   const [confirmDelete, setConfirmDelete] = useState<string | "bulk" | null>(null);
   const [pageSize, setPageSize] = useState(25);
@@ -45,7 +46,7 @@ export default function SubmissionsPage() {
 
   const { data: sourcesData } = api.contact.sources.useQuery();
 
-  const { data, isFetching, isPlaceholderData } = api.contact.list.useQuery(
+  const { data, isPlaceholderData } = api.contact.list.useQuery(
     {
       filter,
       source,
@@ -78,7 +79,7 @@ export default function SubmissionsPage() {
       const date = new Date().toISOString().slice(0, 10);
       downloadCsv(`submissions-${date}.csv`, csv);
       toast.success(`Exported ${rows.length} submissions`);
-    } catch (err) {
+    } catch {
       toast.error("Failed to export submissions");
     } finally {
       setIsExporting(false);
@@ -161,6 +162,18 @@ export default function SubmissionsPage() {
           >
             <Download className="mr-1.5 h-4 w-4" />
             {isExporting ? "Exporting…" : "Export CSV"}
+          </Button>
+          <Button
+            variant="ghost"
+            size="sm"
+            className={`text-xs ${selectMode ? "text-[#7AACAC]" : "text-gray-400 hover:bg-white/5 hover:text-white"}`}
+            onClick={() => {
+              if (selectMode) { setSelected(new Set()); }
+              setSelectMode(!selectMode);
+            }}
+          >
+            <CheckSquare className="mr-1.5 h-4 w-4" />
+            {selectMode ? "Cancel" : "Select"}
           </Button>
         </div>
         <div className="flex items-center gap-3">
@@ -247,7 +260,7 @@ export default function SubmissionsPage() {
           <div className="flex-1" />
           <button
             className="text-gray-500 hover:text-white"
-            onClick={() => setSelected(new Set())}
+            onClick={() => { setSelected(new Set()); setSelectMode(false); }}
             aria-label="Clear selection"
           >
             <X className="h-3.5 w-3.5" />
@@ -321,18 +334,20 @@ export default function SubmissionsPage() {
       ) : (
         <div className={`overflow-hidden rounded-lg border border-white/5 transition-opacity ${isPlaceholderData ? "opacity-60" : ""}`}>
           {/* Select all */}
-          <div className="flex items-center gap-3 border-b border-white/5 bg-white/[0.02] px-3 py-1.5">
-            <input
-              type="checkbox"
-              checked={allSelected}
-              onChange={toggleSelectAll}
-              className="h-3.5 w-3.5 cursor-pointer rounded accent-[#2D5A5A]"
-              aria-label="Select all submissions"
-            />
-            <span className="text-[11px] text-gray-500">
-              {allSelected ? "Deselect all" : "Select all"}
-            </span>
-          </div>
+          {selectMode && (
+            <div className="flex items-center gap-3 border-b border-white/5 bg-white/[0.02] px-3 py-1.5">
+              <input
+                type="checkbox"
+                checked={allSelected}
+                onChange={toggleSelectAll}
+                className="h-3.5 w-3.5 cursor-pointer rounded accent-[#2D5A5A]"
+                aria-label="Select all submissions"
+              />
+              <span className="text-[11px] text-gray-500">
+                {allSelected ? "Deselect all" : "Select all"}
+              </span>
+            </div>
+          )}
 
           {/* Pagination footer */}
           <div className="flex items-center justify-between border-b border-white/5 bg-white/[0.02] px-3 py-1.5">
@@ -387,14 +402,16 @@ export default function SubmissionsPage() {
               >
                 {/* Row */}
                 <div className="flex items-center gap-3 px-3 py-2.5">
-                  <input
-                    type="checkbox"
-                    checked={isSelected}
-                    onChange={() => toggleSelect(sub.id)}
-                    onClick={(e) => e.stopPropagation()}
-                    className="h-3.5 w-3.5 cursor-pointer rounded accent-[#2D5A5A]"
-                    aria-label={`Select submission from ${sub.name}`}
-                  />
+                  {selectMode && (
+                    <input
+                      type="checkbox"
+                      checked={isSelected}
+                      onChange={() => toggleSelect(sub.id)}
+                      onClick={(e) => e.stopPropagation()}
+                      className="h-3.5 w-3.5 cursor-pointer rounded accent-[#2D5A5A]"
+                      aria-label={`Select submission from ${sub.name}`}
+                    />
+                  )}
                   <button
                     type="button"
                     className="flex min-w-0 flex-1 cursor-pointer items-center gap-3 text-left"

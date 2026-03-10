@@ -29,7 +29,8 @@ interface YouTubeSearchResponse {
 
 /**
  * Search YouTube for videos matching a query.
- * Returns up to `maxResults` items. Filters to educational/training content.
+ * Returns up to `maxResults` items. Filters to educational/training/health content
+ * relevant to Community Health Workers.
  */
 export async function searchYouTube(
   query: string,
@@ -46,6 +47,7 @@ export async function searchYouTube(
     relevanceLanguage: "en",
     safeSearch: "strict",
     videoDuration: "medium",
+    videoCategory: "27", // YouTube category 27 = Education
     key: apiKey,
   });
 

@@ -32,6 +32,8 @@
     "class-variance-authority": "^0.7.1",
     "clsx": "^2.1.1",
     "drizzle-orm": "^0.38.2",
+    "html2canvas-pro": "^2.0.2",
+    "jspdf": "^4.2.0",
     "lucide-react": "^0.468.0",
     "mammoth": "^1.11.0",
     "marked": "^17.0.2",

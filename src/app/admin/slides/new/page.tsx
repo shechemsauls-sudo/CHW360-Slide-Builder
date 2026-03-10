@@ -2,7 +2,7 @@
 
 import { useEffect, useState, useCallback } from "react";
 import { useRouter } from "next/navigation";
-import { ArrowLeft, Sparkles, SlidersHorizontal, MessageSquareText } from "lucide-react";
+import { ArrowLeft, Sparkles, SlidersHorizontal, MessageSquareText, ChevronDown, ChevronRight, Settings } from "lucide-react";
 import Link from "next/link";
 import { Button } from "~/components/ui/button";
 import { Input } from "~/components/ui/input";
@@ -22,16 +22,16 @@ const FIDELITY_OPTIONS: {
   description: string;
 }[] = [
   {
-    value: "verbatim",
-    label: "Verbatim",
-    description:
-      "Preserve source text exactly. AI only assigns slide types, layouts, and speaker notes.",
-  },
-  {
     value: "balanced",
     label: "Balanced",
     description:
       "Preserve key content and structure. AI may improve formatting and add transitions.",
+  },
+  {
+    value: "verbatim",
+    label: "Verbatim",
+    description:
+      "Preserve source text exactly. AI only assigns slide types, layouts, and speaker notes.",
   },
   {
     value: "creative",
@@ -47,22 +47,22 @@ export default function NewDeckPage() {
   const [description, setDescription] = useState("");
   const [content, setContent] = useState("");
   const [sourceFormat, setSourceFormat] = useState<"plaintext" | "markdown" | "pdf" | "docx">("plaintext");
-  const [slideCount, setSlideCount] = useState(20);
+  const [slideCount, setSlideCount] = useState(70);
   const [llmProvider, setLlmProvider] = useState("anthropic");
-  const [imageProvider, setImageProvider] = useState("gpt-image-1");
-  const [themeId, setThemeId] = useState("chw-teal");
+  const [imageProvider, setImageProvider] = useState("multi");
+  const [showAdvanced, setShowAdvanced] = useState(false);
+  const [themeId, setThemeId] = useState("chw-cream");
   const [fidelity, setFidelity] = useState<FidelityLevel>("balanced");
   const [detectedFidelity, setDetectedFidelity] = useState<FidelityLevel | null>(null);
   const [userOverrodeFidelity, setUserOverrodeFidelity] = useState(false);
   const [uploadedFile, setUploadedFile] = useState<{ name: string; format: string } | null>(null);
   const [selectedBlocks, setSelectedBlocks] = useState<VisualBlockType[]>([]);
-  const [tone, setTone] = useState<ToneOption>("professional");
+  const [tone, setTone] = useState<ToneOption>("training");
   const [customInstructions, setCustomInstructions] = useState("");
   const [genStatus, setGenStatus] = useState<"idle" | "generating" | "error">("idle");
   const [genError, setGenError] = useState("");
 
   const { data: providers } = api.deck.providers.useQuery();
-  const { data: prefs } = api.deck.getPreferences.useQuery();
 
   const detectFidelityMut = api.deck.detectFidelity.useMutation({
     onSuccess: (data) => {
@@ -72,14 +72,6 @@ export default function NewDeckPage() {
       }
     },
   });
-
-  useEffect(() => {
-    if (prefs?.llmProvider) setLlmProvider(prefs.llmProvider);
-    if (prefs?.imageProvider) setImageProvider(prefs.imageProvider);
-    if (prefs?.fidelity) setFidelity(prefs.fidelity as FidelityLevel);
-    if (prefs?.tone) setTone(prefs.tone as ToneOption);
-    if (prefs?.customInstructions) setCustomInstructions(prefs.customInstructions);
-  }, [prefs]);
 
   // Auto-detect fidelity when content changes (debounced)
   useEffect(() => {
@@ -107,8 +99,7 @@ export default function NewDeckPage() {
   const generate = api.deck.generate.useMutation({
     onSuccess: (deck) => {
       if (deck) {
-        setGenStatus("idle");
-        toast.success("Deck generated!");
+        toast.success("Deck creation started!");
         router.push(`/admin/slides/${deck.id}?new=1`);
       }
     },
@@ -154,7 +145,7 @@ export default function NewDeckPage() {
       sourceFormat,
       slideCount,
       llmProvider: llmProvider as "openai" | "anthropic" | "xai",
-      imageProvider: imageProvider as "dalle3" | "gpt-image-1" | "stability" | "replicate" | "leonardo" | "disabled",
+      imageProvider: imageProvider as "dalle3" | "gpt-image-1" | "stability" | "replicate" | "leonardo" | "multi" | "disabled",
       themeId,
       fidelity,
       selectedBlocks: selectedBlocks.length > 0 ? selectedBlocks : undefined,
@@ -267,14 +258,14 @@ export default function NewDeckPage() {
 
               <div className="space-y-3">
                 <label htmlFor="new-slide-count" className="text-sm font-medium text-gray-300">
-                  Slide Count
+                  Max Slides
                 </label>
                 <div className="flex items-center gap-4">
                   <input
                     id="new-slide-count"
                     type="range"
                     min={5}
-                    max={120}
+                    max={200}
                     value={slideCount}
                     onChange={(e) => setSlideCount(Number(e.target.value))}
                     className="h-1.5 flex-1 cursor-pointer appearance-none rounded-full bg-white/10 accent-[#2D5A5A]"
@@ -298,10 +289,10 @@ export default function NewDeckPage() {
                 </div>
                 <div className="grid grid-cols-2 gap-2 sm:grid-cols-4">
                   {([
+                    { value: "training" as const, label: "Training", desc: "Step-by-step, pedagogical" },
+                    { value: "academic" as const, label: "Academic", desc: "Formal, citations-style" },
                     { value: "professional" as const, label: "Professional", desc: "Formal, evidence-based" },
                     { value: "conversational" as const, label: "Conversational", desc: "Warm, direct" },
-                    { value: "academic" as const, label: "Academic", desc: "Formal, citations-style" },
-                    { value: "training" as const, label: "Training", desc: "Step-by-step, pedagogical" },
                   ]).map((opt) => (
                     <button
                       key={opt.value}
@@ -329,7 +320,7 @@ export default function NewDeckPage() {
                   id="new-custom-instructions"
                   value={customInstructions}
                   onChange={(e) => {
-                    if (e.target.value.length <= 500) setCustomInstructions(e.target.value);
+                    if (e.target.value.length <= 1000) setCustomInstructions(e.target.value);
                   }}
                   placeholder="e.g., Use simple language for low-literacy audiences. Include malaria prevention messaging."
                   rows={2}
@@ -337,15 +328,29 @@ export default function NewDeckPage() {
                 />
                 <div className="flex justify-between text-xs text-gray-400">
                   <span>Extra guidance for the AI when generating slides</span>
-                  <span>{customInstructions.length}/500</span>
+                  <span>{customInstructions.length}/1000</span>
                 </div>
               </div>
             </CardContent>
           </Card>
 
-          {providers && (
-            <Card className="border-0 bg-white/5">
-              <CardContent className="space-y-6 p-6">
+          {/* Advanced Settings — collapsed by default */}
+          <div className="rounded-xl border border-white/5 bg-white/[0.02]">
+            <button
+              type="button"
+              onClick={() => setShowAdvanced(!showAdvanced)}
+              className="flex w-full items-center gap-2 px-6 py-4 text-left text-sm font-medium text-gray-400 transition-colors hover:text-white"
+            >
+              <Settings className="h-4 w-4" />
+              Advanced Settings
+              {showAdvanced ? (
+                <ChevronDown className="ml-auto h-4 w-4" />
+              ) : (
+                <ChevronRight className="ml-auto h-4 w-4" />
+              )}
+            </button>
+            {showAdvanced && providers && (
+              <div className="space-y-6 border-t border-white/5 px-6 pb-6 pt-4">
                 <ProviderSelector
                   label="AI Text Provider"
                   providers={providers.llm.filter((p) => p.configured)}
@@ -356,6 +361,15 @@ export default function NewDeckPage() {
                 <ProviderSelector
                   label="Image Generation"
                   providers={[
+                    {
+                      id: "multi",
+                      name: "Auto Mix",
+                      description: "Rotate across engines with mixed realistic & abstract styles",
+                      pros: ["Visual variety", "Best of each engine", "Alternating styles"],
+                      cons: [],
+                      costTier: "medium",
+                      configured: true,
+                    },
                     {
                       id: "disabled",
                       name: "No Images",
@@ -381,9 +395,9 @@ export default function NewDeckPage() {
                     Visual blocks are disabled in verbatim mode
                   </p>
                 )}
-              </CardContent>
-            </Card>
-          )}
+              </div>
+            )}
+          </div>
 
           <Card className="border-0 bg-white/5">
             <CardContent className="p-6">

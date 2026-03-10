@@ -1,5 +1,6 @@
 "use client";
 
+import { useId } from "react";
 import {
   BarChart,
   Bar,
@@ -186,6 +187,7 @@ export function LineChartBlock({ arg, content, theme, layout }: ChartBlockProps)
 }
 
 export function AreaChartBlock({ arg, content, theme, layout }: ChartBlockProps) {
+  const uid = useId();
   const parsed = parseChartData(arg ?? "", content);
   const data = toRechartsData(parsed);
   const colors = getChartColorPalette(theme, parsed.seriesNames.length);
@@ -199,7 +201,7 @@ export function AreaChartBlock({ arg, content, theme, layout }: ChartBlockProps)
         <AreaChart data={data} margin={{ top: 5, right: 10, left: -10, bottom: 5 }}>
           <defs>
             {parsed.seriesNames.map((name, i) => (
-              <linearGradient key={name} id={`area-grad-${i}`} x1="0" y1="0" x2="0" y2="1">
+              <linearGradient key={name} id={`area-grad-${uid}-${i}`} x1="0" y1="0" x2="0" y2="1">
                 <stop offset="5%" stopColor={colors[i]} stopOpacity={0.4} />
                 <stop offset="95%" stopColor={colors[i]} stopOpacity={0.05} />
               </linearGradient>
@@ -225,7 +227,7 @@ export function AreaChartBlock({ arg, content, theme, layout }: ChartBlockProps)
               dataKey={name}
               stroke={colors[i]}
               strokeWidth={2}
-              fill={`url(#area-grad-${i})`}
+              fill={`url(#area-grad-${uid}-${i})`}
             />
           ))}
         </AreaChart>
@@ -242,17 +244,19 @@ export function RadarChartBlock({ arg, content, theme, layout }: ChartBlockProps
   const tooltipStyle = ChartTooltipStyle({ theme });
 
   return (
-    <div className="mx-auto my-5 max-w-[65%]">
+    <div className="mx-auto my-3 max-w-[80%]">
       <ChartTitle title={parsed.title} theme={theme} />
       <ResponsiveContainer width="100%" height={height}>
-        <RadarChart data={data} cx="50%" cy="50%" outerRadius="70%">
+        <RadarChart data={data} cx="50%" cy="50%" outerRadius="75%">
           <PolarGrid stroke={`${theme.colors.textMuted}25`} />
           <PolarAngleAxis
             dataKey="label"
-            tick={{ fill: theme.colors.textMuted, fontSize: 10 }}
+            tick={{ fill: theme.colors.textMuted, fontSize: 11 }}
+            tickLine={false}
           />
           <PolarRadiusAxis
-            tick={{ fill: theme.colors.textMuted, fontSize: 9 }}
+            angle={90}
+            tick={false}
             axisLine={false}
           />
           <Tooltip {...tooltipStyle} />

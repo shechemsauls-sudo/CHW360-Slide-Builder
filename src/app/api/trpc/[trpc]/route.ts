@@ -3,6 +3,9 @@ import { type NextRequest } from "next/server";
 import { appRouter } from "~/server/api/root";
 import { createTRPCContext } from "~/server/api/trpc";
 
+// Allow long-running mutations (LLM deck generation can take 60s+)
+export const maxDuration = 300;
+
 const handler = (req: NextRequest) =>
   fetchRequestHandler({
     endpoint: "/api/trpc",

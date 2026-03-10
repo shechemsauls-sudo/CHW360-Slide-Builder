@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { useParams, useRouter, useSearchParams } from "next/navigation";
 import Link from "next/link";
 import {
@@ -24,15 +24,18 @@ import {
   List,
   Info,
   X,
+  Copy,
 } from "lucide-react";
 import { Button } from "~/components/ui/button";
 import { Card, CardContent } from "~/components/ui/card";
 import { SlideList } from "~/components/slides/slide-list";
 import { MarkdownRenderer } from "~/components/slides/markdown-renderer";
 import { SlideRenderer } from "~/components/slides/slide-renderer";
+import { GenerationStatus } from "~/components/slides/generation-status";
 import { SlideEditPanel } from "~/components/slides/slide-edit-panel";
 import { SlideImageControls } from "~/components/slides/slide-image-controls";
 import { DeckSettingsPanel } from "~/components/slides/deck-settings-panel";
+import { DeckExportButton } from "~/components/slides/deck-export";
 import { VideoRecsPanel } from "~/components/slides/video-recs-panel";
 import { ReviewPanel } from "~/components/slides/review-panel";
 import { getTheme } from "~/lib/themes";
@@ -48,7 +51,23 @@ export default function DeckViewPage() {
   const deckId = params.deckId as string;
 
   const utils = api.useUtils();
-  const { data: deck, isLoading } = api.deck.getById.useQuery({ id: deckId });
+  const [isGeneratingImagesBg, setIsGeneratingImagesBg] = useState(false);
+  const { data: deck, isLoading } = api.deck.getById.useQuery(
+    { id: deckId },
+    {
+      refetchInterval: (query) => {
+        const d = query.state.data;
+        if (!d) return false;
+        if (d.status === "generating") return 3000;
+        // Poll while any slide has background image generation in progress
+        const slides = (d.slides ?? []) as SlideData[];
+        if (slides.some((s) => s.imageGenerating)) return 3000;
+        // Poll while batch image gen is running in background
+        if (isGeneratingImagesBg) return 4000;
+        return false;
+      },
+    },
+  );
   const [activeSlideId, setActiveSlideId] = useState<string | null>(null);
   const [showSource, setShowSource] = useState(false);
   const [showRegenConfirm, setShowRegenConfirm] = useState(false);
@@ -56,22 +75,39 @@ export default function DeckViewPage() {
   const [editPanelOpen, setEditPanelOpen] = useState(false);
   const [isGeneratingImages, setIsGeneratingImages] = useState(false);
   const [imageGenProgress, setImageGenProgress] = useState({ done: 0, total: 0 });
-  const [showImageGenDialog, setShowImageGenDialog] = useState(false);
   const [showSlideList, setShowSlideList] = useState(false);
   const [showShortcuts, setShowShortcuts] = useState(false);
 
   const { data: prefs } = api.deck.getPreferences.useQuery();
 
-  // Auto-show image generation dialog for newly created decks
+  // Track previous deck status to detect generation completion
+  const [prevStatus, setPrevStatus] = useState<string | null>(null);
+  const autoImageTriggered = useRef(false);
+
+  // Auto-start image generation when deck transitions to "ready"
   useEffect(() => {
-    if (searchParams.get("new") !== "1" || !deck || isLoading) return;
-    const slides = (deck.slides ?? []) as SlideData[];
-    const needsImages = slides.filter((s) => s.imagePrompt && !s.imageUrl).length;
-    if (needsImages > 0) {
-      setShowImageGenDialog(true);
+    if (!deck || isLoading) return;
+
+    const currentStatus = deck.status;
+
+    // Detect transition: generating → ready, or fresh page load with ?new=1
+    const justFinished = prevStatus === "generating" && currentStatus === "ready";
+    const isNewDeck = searchParams.get("new") === "1";
+
+    if ((justFinished || isNewDeck) && !autoImageTriggered.current && !isGeneratingImages) {
+      const slides = (deck.slides ?? []) as SlideData[];
+      const needsImages = slides.filter((s) => s.imagePrompt && !s.imageUrl).length;
+      if (needsImages > 0) {
+        autoImageTriggered.current = true;
+        void handleBatchGenerateImages();
+      }
+      // Clean the URL param
+      if (isNewDeck) {
+        router.replace(`/admin/slides/${deckId}`, { scroll: false });
+      }
     }
-    // Clean the URL param
-    router.replace(`/admin/slides/${deckId}`, { scroll: false });
+
+    setPrevStatus(currentStatus);
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [deck, isLoading]);
 
@@ -79,6 +115,16 @@ export default function DeckViewPage() {
     onSuccess: () => {
       toast.success("Deck deleted");
       router.push("/admin/slides");
+    },
+    onError: (err) => toast.error(err.message),
+  });
+
+  const duplicateDeck = api.deck.duplicateDeck.useMutation({
+    onSuccess: (copy) => {
+      if (copy) {
+        toast.success("Deck duplicated!");
+        router.push(`/admin/slides/${copy.id}`);
+      }
     },
     onError: (err) => toast.error(err.message),
   });
@@ -94,6 +140,7 @@ export default function DeckViewPage() {
     onSuccess: () => {
       toast.success("Deck regenerated!");
       setShowRegenConfirm(false);
+      autoImageTriggered.current = false; // Allow auto-image-gen for the new slides
       void utils.deck.getById.invalidate({ id: deckId });
     },
     onError: (err) => toast.error(err.message),
@@ -167,53 +214,45 @@ export default function DeckViewPage() {
     regenerateDeck.mutate({
       id: deckId,
       fidelity: (prefs?.fidelity as "verbatim" | "balanced" | "creative") ?? "balanced",
-      slideCount: deck.slideCount ?? 20,
-      llmProvider: (prefs?.llmProvider ?? deck?.llmProvider ?? "openai") as "openai" | "anthropic" | "xai",
-      tone: (prefs?.tone as "professional" | "conversational" | "academic" | "training") ?? "professional",
+      slideCount: (deck.slideCount && deck.slideCount >= 5) ? deck.slideCount : 70,
+      llmProvider: (prefs?.llmProvider ?? deck?.llmProvider ?? "anthropic") as "openai" | "anthropic" | "xai",
+      tone: (prefs?.tone as "professional" | "conversational" | "academic" | "training") ?? "training",
       customInstructions: prefs?.customInstructions || undefined,
     });
   };
 
+  const batchGenerateImages = api.deck.batchGenerateImages.useMutation({
+    onSuccess: (data) => {
+      if (data.started === 0) {
+        toast.info("All slides with image prompts already have images");
+      } else {
+        toast.success(`Generating ${data.started} images in the background — you can navigate away safely`);
+        setIsGeneratingImages(true);
+        setIsGeneratingImagesBg(true);
+      }
+    },
+    onError: (err) => toast.error(err.message),
+  });
+
+  // Detect when background image gen finishes (all prompts have URLs)
+  useEffect(() => {
+    if (!isGeneratingImagesBg || !deck) return;
+    const slides = (deck.slides ?? []) as SlideData[];
+    const stillNeeded = slides.filter((s) => s.imagePrompt && !s.imageUrl).length;
+    if (stillNeeded === 0) {
+      setIsGeneratingImagesBg(false);
+      setIsGeneratingImages(false);
+      toast.success("All images generated");
+    }
+  }, [deck, isGeneratingImagesBg]);
+
   const handleBatchGenerateImages = useCallback(async () => {
     if (!deck) return;
-    const slides = (deck.slides ?? []) as SlideData[];
-    const needsImages = slides.filter((s) => s.imagePrompt && !s.imageUrl);
-
-    if (needsImages.length === 0) {
-      toast.info("All slides with image prompts already have images");
-      return;
-    }
-
-    setIsGeneratingImages(true);
-    setImageGenProgress({ done: 0, total: needsImages.length });
-
-    // Use saved image provider preference (default to gpt-image-1)
-    const savedProvider = prefs?.imageProvider;
-    const validProviders = ["dalle3", "gpt-image-1", "stability", "replicate", "leonardo"] as const;
-    type ImgProvider = (typeof validProviders)[number];
-    const provider: ImgProvider = validProviders.includes(savedProvider as ImgProvider)
-      ? (savedProvider as ImgProvider)
-      : "gpt-image-1";
-
-    for (let i = 0; i < needsImages.length; i++) {
-      const slide = needsImages[i]!;
-      try {
-        await generateSlideImage.mutateAsync({
-          deckId,
-          slideId: slide.id,
-          imageProvider: provider,
-        });
-        setImageGenProgress({ done: i + 1, total: needsImages.length });
-        // Refresh deck data to show newly generated image
-        await utils.deck.getById.invalidate({ id: deckId });
-      } catch {
-        toast.error(`Failed to generate image for slide ${slide.order}`);
-      }
-    }
-
-    setIsGeneratingImages(false);
-    toast.success(`Generated ${needsImages.length} images`);
-  }, [deck, deckId, generateSlideImage, utils.deck.getById, prefs?.imageProvider]);
+    batchGenerateImages.mutate({
+      deckId,
+      imageProvider: prefs?.imageProvider ?? "multi",
+    });
+  }, [deck, deckId, batchGenerateImages, prefs?.imageProvider]);
 
   const handleSlideUpdated = useCallback(() => {
     void utils.deck.getById.invalidate({ id: deckId });
@@ -244,6 +283,76 @@ export default function DeckViewPage() {
         <Card className="border-0 bg-white/5">
           <CardContent className="flex flex-col items-center justify-center py-20">
             <p className="text-gray-400">Deck not found</p>
+          </CardContent>
+        </Card>
+      </div>
+    );
+  }
+
+  // Show generating state when deck is still being built
+  if (deck.status === "generating") {
+    return (
+      <div className="space-y-6">
+        <div className="flex items-start gap-3">
+          <Link href="/admin/slides">
+            <Button variant="ghost" size="icon" className="mt-0.5 h-8 w-8 text-gray-400 hover:text-white" aria-label="Back to decks">
+              <ArrowLeft className="h-4 w-4" />
+            </Button>
+          </Link>
+          <div>
+            <h1 className="text-2xl font-bold text-white">{deck.title}</h1>
+            {deck.description && (
+              <p className="mt-1 text-sm text-gray-400">{deck.description}</p>
+            )}
+          </div>
+        </div>
+        <Card className="border-0 bg-white/5">
+          <CardContent className="p-6">
+            <GenerationStatus status="generating" provider={deck.llmProvider ?? undefined} />
+          </CardContent>
+        </Card>
+      </div>
+    );
+  }
+
+  // Show error state with retry
+  if (deck.status === "error") {
+    const errorLog = deck.generationLog as { error?: string } | null;
+    return (
+      <div className="space-y-6">
+        <div className="flex items-start gap-3">
+          <Link href="/admin/slides">
+            <Button variant="ghost" size="icon" className="mt-0.5 h-8 w-8 text-gray-400 hover:text-white" aria-label="Back to decks">
+              <ArrowLeft className="h-4 w-4" />
+            </Button>
+          </Link>
+          <div>
+            <h1 className="text-2xl font-bold text-white">{deck.title}</h1>
+          </div>
+        </div>
+        <Card className="border-0 bg-white/5">
+          <CardContent className="p-6">
+            <GenerationStatus status="error" error={errorLog?.error ?? "Generation failed"} />
+            <div className="mt-6 flex items-center justify-center gap-3">
+              <Button
+                className="gap-1.5"
+                style={{ backgroundColor: "#C9725B" }}
+                onClick={handleRegenerate}
+                disabled={regenerateDeck.isPending}
+              >
+                {regenerateDeck.isPending ? (
+                  <Loader2 className="h-4 w-4 animate-spin" />
+                ) : (
+                  <RefreshCw className="h-4 w-4" />
+                )}
+                Try Again
+              </Button>
+              <Link href="/admin/slides">
+                <Button variant="ghost" className="text-gray-400 hover:text-white">
+                  Back to Decks
+                </Button>
+              </Link>
+            </div>
           </CardContent>
         </Card>
       </div>
@@ -326,6 +435,12 @@ export default function DeckViewPage() {
                   Present
                 </Button>
               </Link>
+
+              <DeckExportButton
+                title={deck.title}
+                slides={slides}
+                themeId={deck.themeId}
+              />
             </>
           )}
 
@@ -366,6 +481,22 @@ export default function DeckViewPage() {
           >
             <Settings className="h-4 w-4" />
             <span className="hidden sm:inline">Settings</span>
+          </Button>
+
+          <Button
+            variant="ghost"
+            size="sm"
+            className="gap-1.5 text-xs text-gray-400 hover:text-white"
+            onClick={() => duplicateDeck.mutate({ id: deckId })}
+            disabled={duplicateDeck.isPending}
+            title="Duplicate deck"
+          >
+            {duplicateDeck.isPending ? (
+              <Loader2 className="h-3.5 w-3.5 animate-spin" />
+            ) : (
+              <Copy className="h-3.5 w-3.5" />
+            )}
+            <span className="hidden sm:inline">Duplicate</span>
           </Button>
 
           <Button
@@ -461,43 +592,6 @@ export default function DeckViewPage() {
         </Card>
       )}
 
-      {/* Auto image generation dialog */}
-      {showImageGenDialog && !isGeneratingImages && (
-        <Card className="border-0 border-l-2 border-l-[#5B8A8A] bg-[#2D5A5A]/10">
-          <CardContent className="flex items-center gap-4 p-5">
-            <ImageIcon className="h-8 w-8 shrink-0 text-[#5B8A8A]" />
-            <div className="flex-1">
-              <p className="text-sm font-medium text-white">
-                {slidesNeedingImages} slide{slidesNeedingImages !== 1 ? "s" : ""} ha{slidesNeedingImages !== 1 ? "ve" : "s"} image prompts
-              </p>
-              <p className="text-xs text-gray-400">
-                Generate AI images now to make your slides visually rich
-              </p>
-            </div>
-            <div className="flex gap-2">
-              <Button
-                size="sm"
-                className="gap-1.5 bg-[#C9725B] hover:bg-[#b5634e]"
-                onClick={() => {
-                  setShowImageGenDialog(false);
-                  void handleBatchGenerateImages();
-                }}
-              >
-                <ImageIcon className="h-3.5 w-3.5" />
-                Generate All
-              </Button>
-              <Button
-                variant="ghost"
-                size="sm"
-                className="text-gray-400 hover:text-white"
-                onClick={() => setShowImageGenDialog(false)}
-              >
-                Skip
-              </Button>
-            </div>
-          </CardContent>
-        </Card>
-      )}
 
       {/* Source Document Panel */}
       {deck.sourceContent && (
@@ -631,12 +725,33 @@ export default function DeckViewPage() {
                 </div>
 
                 {/* Slide content preview */}
-                <SlideRenderer
-                  slide={activeSlide}
-                  theme={getTheme(deck.themeId)}
-                  className="mb-6"
-                  footerText={`\u00A9 CHW360 | ${deck.title} | Educational Use Only`}
-                />
+                <div className="group/slide relative mb-6">
+                  <SlideRenderer
+                    slide={activeSlide}
+                    theme={getTheme(deck.themeId)}
+                    footerText={`\u00A9 CHW360 | ${deck.title} | Educational Use Only`}
+                  />
+                  {/* Quick-access reposition button on image slides */}
+                  {activeSlide.imageUrl && ["split-left", "split-right", "image-full", "image-top"].includes(activeSlide.layout) && (
+                    <button
+                      type="button"
+                      onClick={() => {
+                        // Scroll to the focal point editor in image controls below
+                        const el = document.getElementById("focal-point-section");
+                        if (el) {
+                          el.scrollIntoView({ behavior: "smooth", block: "center" });
+                          // Trigger the reposition editor open
+                          const btn = el.querySelector<HTMLButtonElement>("button");
+                          if (btn) setTimeout(() => btn.click(), 400);
+                        }
+                      }}
+                      className="absolute bottom-3 right-3 flex items-center gap-1.5 rounded-lg bg-black/60 px-3 py-1.5 text-xs font-medium text-white opacity-0 backdrop-blur-sm transition-opacity group-hover/slide:opacity-100 hover:bg-black/80"
+                    >
+                      <svg xmlns="http://www.w3.org/2000/svg" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><polyline points="5 9 2 12 5 15"/><polyline points="9 5 12 2 15 5"/><polyline points="15 19 12 22 9 19"/><polyline points="19 9 22 12 19 15"/><line x1="2" y1="12" x2="22" y2="12"/><line x1="12" y1="2" x2="12" y2="22"/></svg>
+                      Reposition Image
+                    </button>
+                  )}
+                </div>
 
                 {/* Speaker notes */}
                 {activeSlide.speakerNotes && (

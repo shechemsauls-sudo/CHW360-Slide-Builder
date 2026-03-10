@@ -109,6 +109,12 @@ export const openaiProvider: LLMProvider = {
     return { slides, tokensUsed, model: "gpt-4o" };
   },
 
+  async generateRaw(prompt: string): Promise<GenerationResult> {
+    const client = getClient();
+    const { slides, tokensUsed } = await parseWithRetry(client, prompt);
+    return { slides, tokensUsed, model: "gpt-4o" };
+  },
+
   async regenerateSlide(input: RegenerateInput): Promise<SlideData> {
     const client = getClient();
     const prompt = buildRegeneratePrompt(input);

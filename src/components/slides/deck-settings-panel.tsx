@@ -29,6 +29,16 @@ const TONE_OPTIONS: {
   description: string;
 }[] = [
   {
+    value: "training",
+    label: "Training",
+    description: "Step-by-step instruction with comprehension checks and activities.",
+  },
+  {
+    value: "academic",
+    label: "Academic",
+    description: "Formal with citations-style references. Technical terminology preserved.",
+  },
+  {
     value: "professional",
     label: "Professional",
     description: "Formal, clear, evidence-based. For clinical or policy audiences.",
@@ -38,16 +48,6 @@ const TONE_OPTIONS: {
     label: "Conversational",
     description: "Warm, direct, uses \"you\" and \"we\". Best for community settings.",
   },
-  {
-    value: "academic",
-    label: "Academic",
-    description: "Formal with citations-style references. Technical terminology preserved.",
-  },
-  {
-    value: "training",
-    label: "Training",
-    description: "Step-by-step instruction with comprehension checks and activities.",
-  },
 ];
 
 const FIDELITY_OPTIONS: {
@@ -56,14 +56,14 @@ const FIDELITY_OPTIONS: {
   description: string;
 }[] = [
   {
-    value: "verbatim",
-    label: "Verbatim",
-    description: "Preserve source text exactly. AI only assigns slide types and layouts.",
-  },
-  {
     value: "balanced",
     label: "Balanced",
     description: "Preserve key content. AI may improve formatting and add transitions.",
+  },
+  {
+    value: "verbatim",
+    label: "Verbatim",
+    description: "Preserve source text exactly. AI only assigns slide types and layouts.",
   },
   {
     value: "creative",
@@ -96,18 +96,18 @@ export function DeckSettingsPanel({
   const utils = api.useUtils();
 
   const [llmProvider, setLlmProvider] = useState("anthropic");
-  const [imageProvider, setImageProvider] = useState("gpt-image-1");
+  const [imageProvider, setImageProvider] = useState("multi");
   const [fidelity, setFidelity] = useState<FidelityLevel>("balanced");
-  const [tone, setTone] = useState<ToneOption>("professional");
+  const [tone, setTone] = useState<ToneOption>("training");
   const [customInstructions, setCustomInstructions] = useState("");
   const [isDirty, setIsDirty] = useState(false);
 
   useEffect(() => {
     if (prefs) {
       setLlmProvider(prefs.llmProvider ?? "anthropic");
-      setImageProvider(prefs.imageProvider ?? "gpt-image-1");
+      if (prefs.imageProvider) setImageProvider(prefs.imageProvider);
       setFidelity((prefs.fidelity as FidelityLevel) ?? "balanced");
-      setTone((prefs.tone as ToneOption) ?? "professional");
+      setTone((prefs.tone as ToneOption) ?? "training");
       setCustomInstructions(prefs.customInstructions ?? "");
       setIsDirty(false);
     }
@@ -234,6 +234,25 @@ export function DeckSettingsPanel({
               <div className="space-y-2">
                 <label className="text-xs font-medium text-gray-400">Image Provider</label>
                 <div className="grid grid-cols-2 gap-2">
+                  {/* Auto Mix + No Images first */}
+                  {[
+                    { id: "multi", name: "Auto Mix", description: "Rotate across engines with mixed realistic & abstract styles" },
+                    { id: "disabled", name: "No Images", description: "Generate slides without AI images" },
+                  ].map((p) => (
+                    <button
+                      key={p.id}
+                      type="button"
+                      onClick={() => { setImageProvider(p.id); markDirty(); }}
+                      className={`rounded-lg border p-2.5 text-left transition-all ${
+                        imageProvider === p.id
+                          ? "border-[#5B8A8A] bg-[#2D5A5A]/15"
+                          : "border-white/10 bg-white/5 hover:border-white/20"
+                      }`}
+                    >
+                      <div className="text-xs font-medium text-white">{p.name}</div>
+                      <p className="mt-0.5 text-[10px] text-gray-400">{p.description}</p>
+                    </button>
+                  ))}
                   {(providers?.image ?? []).filter((p) => p.configured).map((p) => (
                     <button
                       key={p.id}
@@ -318,7 +337,7 @@ export function DeckSettingsPanel({
                   id="settings-custom-instructions"
                   value={customInstructions}
                   onChange={(e) => {
-                    if (e.target.value.length <= 500) {
+                    if (e.target.value.length <= 1000) {
                       setCustomInstructions(e.target.value);
                       markDirty();
                     }
@@ -329,7 +348,7 @@ export function DeckSettingsPanel({
                 />
                 <div className="flex justify-between text-[10px] text-gray-400">
                   <span>Applied to generation and regeneration</span>
-                  <span>{customInstructions.length}/500</span>
+                  <span>{customInstructions.length}/1000</span>
                 </div>
               </div>
             </div>

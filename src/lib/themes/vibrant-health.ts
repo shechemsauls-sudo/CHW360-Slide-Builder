@@ -1,8 +1,8 @@
 import type { SlideTheme } from "./types";
 
 export const vibrantHealth: SlideTheme = {
-  id: "vibrant-health",
-  name: "Vibrant Health",
+  id: "chw-green",
+  name: "CHW Green",
   description: "Deep emerald to forest gradient, bright green accent, organic warmth",
   colors: {
     primary: "#10b981",
@@ -13,7 +13,7 @@ export const vibrantHealth: SlideTheme = {
     textMuted: "rgba(255,255,255,0.7)",
     accent: "#10b981",
   },
-  palette: ["#10b981", "#f59e0b", "#3b82f6", "#ef4444"],
+  palette: ["#10b981", "#C9725B", "#B89B6A", "#5B8A8A", "#8C6E5D"],
   gradient: {
     background: "linear-gradient(145deg, #064e3b 0%, #052e21 60%, #0a3d2e 100%)",
     accent: "linear-gradient(90deg, #10b981 0%, #34d399 100%)",

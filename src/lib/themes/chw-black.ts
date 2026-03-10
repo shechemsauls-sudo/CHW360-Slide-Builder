@@ -13,7 +13,7 @@ export const chwBlack: SlideTheme = {
     textMuted: "rgba(255,255,255,0.70)",
     accent: "#C9725B",
   },
-  palette: ["#5B8A8A", "#C9725B", "#D4A84C", "#8A9D7D"],
+  palette: ["#5B8A8A", "#C9725B", "#C4A876", "#8A9D7D", "#A0806C"],
   gradient: {
     background: "linear-gradient(135deg, #000000 0%, #0A1515 100%)",
     accent: "linear-gradient(90deg, #C9725B 0%, #D4896E 100%)",

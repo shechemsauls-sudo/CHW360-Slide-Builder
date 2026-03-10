@@ -202,4 +202,4 @@ Future   → Phase 3: Templates, Collaboration, Version History
 ```
 
 ---
-*Last updated: 2026-02-16*
+*Last updated: 2026-03-09*

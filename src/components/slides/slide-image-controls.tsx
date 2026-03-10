@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useCallback } from "react";
+import { useState, useCallback, useEffect } from "react";
 import {
   Image as ImageIcon,
   Loader2,
@@ -19,6 +19,14 @@ import { api } from "~/trpc/react";
 import { toast } from "sonner";
 import { ImageFocalPointEditor } from "~/components/slides/image-focal-point";
 import type { SlideData } from "~/lib/ai/types";
+
+const IMAGE_ENGINES = [
+  { id: "gpt-image-1", label: "GPT Image" },
+  { id: "replicate", label: "FLUX" },
+  { id: "dalle3", label: "DALL-E 3" },
+  { id: "stability", label: "Stability" },
+  { id: "leonardo", label: "Leonardo" },
+] as const;
 
 const IMAGE_LAYOUTS = [
   { id: "split-left", label: "Left", icon: PanelLeft },
@@ -43,6 +51,17 @@ export function SlideImageControls({
   const [customPrompt, setCustomPrompt] = useState(slide.imagePrompt ?? "");
   const [writingPrompt, setWritingPrompt] = useState(false);
   const [newPrompt, setNewPrompt] = useState("");
+  const [selectedEngine, setSelectedEngine] = useState("gpt-image-1");
+  const [lastError, setLastError] = useState<string | null>(null);
+
+  // Reset state when switching slides
+  useEffect(() => {
+    setEditingPrompt(false);
+    setWritingPrompt(false);
+    setCustomPrompt(slide.imagePrompt ?? "");
+    setNewPrompt("");
+    setLastError(null);
+  }, [slide.id, slide.imagePrompt]);
 
   // Always read latest slide from query cache to avoid stale-data overwrites
   const getLatestSlide = useCallback((): SlideData => {
@@ -57,10 +76,14 @@ export function SlideImageControls({
 
   const generateImage = api.deck.generateSlideImage.useMutation({
     onSuccess: () => {
-      toast.success("Image generated");
+      toast.success("Image generating in background...");
+      setLastError(null);
       onUpdated();
     },
-    onError: (err) => toast.error(err.message),
+    onError: (err) => {
+      toast.error(err.message);
+      setLastError(err.message);
+    },
   });
 
   const generateImagePrompt = api.deck.generateImagePrompt.useMutation({
@@ -79,9 +102,11 @@ export function SlideImageControls({
   });
 
   const handleGenerate = (prompt?: string) => {
+    setLastError(null);
     generateImage.mutate({
       deckId,
       slideId: slide.id,
+      imageProvider: selectedEngine as "dalle3" | "gpt-image-1" | "stability" | "replicate" | "leonardo",
       ...(prompt ? { imagePrompt: prompt } : {}),
     });
     setEditingPrompt(false);
@@ -117,11 +142,13 @@ export function SlideImageControls({
     });
   };
 
-  const isGenerating = generateImage.isPending;
+  const isMutating = generateImage.isPending;
+  const isGenerating = isMutating || !!slide.imageGenerating;
   const isGeneratingPrompt = generateImagePrompt.isPending;
   const hasPrompt = !!slide.imagePrompt;
   const hasImage = !!slide.imageUrl;
   const isImageLayout = IMAGE_LAYOUTS.some((l) => l.id === slide.layout);
+  const bgError = slide.imageError;
 
   return (
     <div className="mt-3 rounded-lg border border-white/10 bg-white/[0.03] p-4">
@@ -158,20 +185,25 @@ export function SlideImageControls({
               </Button>
             </>
           ) : hasPrompt ? (
-            <Button
-              variant="ghost"
-              size="sm"
-              className="h-8 gap-1 px-2 text-xs text-gray-400 hover:text-[#5B8A8A]"
-              onClick={() => handleGenerate()}
-              disabled={isGenerating}
-            >
-              {isGenerating ? (
-                <Loader2 className="h-3 w-3 animate-spin" />
-              ) : (
-                <ImageIcon className="h-3 w-3" />
+            <div className="flex flex-col items-end">
+              <Button
+                variant="ghost"
+                size="sm"
+                className="h-8 gap-1 px-2 text-xs text-gray-400 hover:text-[#5B8A8A]"
+                onClick={() => handleGenerate()}
+                disabled={isGenerating}
+              >
+                {isGenerating ? (
+                  <Loader2 className="h-3 w-3 animate-spin" />
+                ) : (
+                  <ImageIcon className="h-3 w-3" />
+                )}
+                Generate
+              </Button>
+              {lastError && (
+                <p className="mt-1 text-[11px] text-red-400">{lastError}</p>
               )}
-              Generate
-            </Button>
+            </div>
           ) : null}
           {hasPrompt && (
             <Button
@@ -189,6 +221,31 @@ export function SlideImageControls({
           )}
         </div>
       </div>
+
+      {/* Engine picker */}
+      {hasPrompt && (
+        <div className="mb-2">
+          <label className="mb-1 block text-[10px] font-medium uppercase tracking-wider text-gray-500">
+            Engine
+          </label>
+          <div className="flex flex-wrap gap-1">
+            {IMAGE_ENGINES.map((eng) => (
+              <button
+                key={eng.id}
+                type="button"
+                onClick={() => setSelectedEngine(eng.id)}
+                className={`rounded-md border px-2 py-1 text-[10px] transition-all ${
+                  selectedEngine === eng.id
+                    ? "border-[#5B8A8A] bg-[#2D5A5A]/15 text-white"
+                    : "border-white/10 bg-white/5 text-gray-400 hover:border-white/20 hover:text-white"
+                }`}
+              >
+                {eng.label}
+              </button>
+            ))}
+          </div>
+        </div>
+      )}
 
       {/* State 1: No prompt — offer to write one or auto-generate */}
       {!hasPrompt && !writingPrompt && (
@@ -307,6 +364,21 @@ export function SlideImageControls({
         </p>
       )}
 
+      {/* Background generating indicator */}
+      {slide.imageGenerating && !hasImage && (
+        <div className="mt-3 flex items-center gap-2 rounded-lg border border-[#2D5A5A]/30 bg-[#2D5A5A]/10 px-3 py-2.5">
+          <Loader2 className="h-4 w-4 animate-spin text-[#7AACAC]" />
+          <span className="text-xs text-[#7AACAC]">Generating image in background...</span>
+        </div>
+      )}
+
+      {/* Background error */}
+      {bgError && !slide.imageGenerating && (
+        <div className="mt-2 rounded-lg border border-red-500/20 bg-red-500/5 px-3 py-2">
+          <p className="text-xs text-red-400">{bgError}</p>
+        </div>
+      )}
+
       {/* Image preview */}
       {hasImage && (
         <div className="mt-3">
@@ -321,7 +393,7 @@ export function SlideImageControls({
 
       {/* Focal point / reposition */}
       {hasImage && isImageLayout && (
-        <div className="mt-3 border-t border-white/5 pt-3">
+        <div id="focal-point-section" className="mt-3 border-t border-white/5 pt-3">
           <ImageFocalPointEditor
             imageUrl={slide.imageUrl!}
             focalPoint={slide.imageFocalPoint}
@@ -334,7 +406,8 @@ export function SlideImageControls({
             }}
             onReset={() => {
               const latest = getLatestSlide();
-              const { imageFocalPoint: _, ...rest } = latest;
+              // eslint-disable-next-line @typescript-eslint/no-unused-vars
+              const { imageFocalPoint: _fp, ...rest } = latest;
               updateSlide.mutate({
                 deckId,
                 slide: rest as SlideData,

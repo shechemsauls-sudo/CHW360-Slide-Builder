@@ -17,6 +17,10 @@ import {
   CardGrid,
   ChevronFlow,
   AccentList,
+  PillList,
+  StatBubbles,
+  TagCloud,
+  RoundedCards,
 } from "./text-blocks";
 import {
   BarChartBlock,
@@ -52,7 +56,7 @@ interface ParsedBlock {
  */
 export function BlockRenderer({ content, theme, layout, dense }: BlockRendererProps) {
   const blocks = parseBlocks(content);
-  const spacing = dense ? "my-2" : "my-4";
+  const spacing = dense ? "my-1.5" : "my-3";
 
   return (
     <>
@@ -184,6 +188,14 @@ function renderBlock(
       return <ChevronFlow content={content} theme={theme} />;
     case "accent-list":
       return <AccentList content={content} theme={theme} />;
+    case "pill-list":
+      return <PillList content={content} theme={theme} />;
+    case "stat-bubbles":
+      return <StatBubbles content={content} theme={theme} />;
+    case "tag-cloud":
+      return <TagCloud content={content} theme={theme} />;
+    case "rounded-cards":
+      return <RoundedCards content={content} theme={theme} />;
 
     // ── Chart blocks (Recharts) ──
     case "bar-chart":

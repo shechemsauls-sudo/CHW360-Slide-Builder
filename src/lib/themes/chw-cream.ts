@@ -13,7 +13,7 @@ export const chwCream: SlideTheme = {
     textMuted: "#4A5568",
     accent: "#C9725B",
   },
-  palette: ["#2D5A5A", "#C9725B", "#C9A84C", "#7D8D6D"],
+  palette: ["#2D5A5A", "#C9725B", "#B89B6A", "#6E7F5E", "#8C6E5D"],
   gradient: {
     background: "linear-gradient(135deg, #FAF7F4 0%, #F5EDE6 100%)",
     accent: "linear-gradient(90deg, #C9725B 0%, #D4896E 100%)",

@@ -18,7 +18,9 @@ export interface SlideData {
   imageUrl: string | null;
   imagePrompt: string | null;
   imageFocalPoint?: { x: number; y: number }; // 0-100 percentages for object-position
-  layout: "full" | "split-left" | "split-right" | "centered" | "two-column" | "image-full" | "image-top";
+  imageGenerating?: boolean; // true while background image gen is in progress
+  imageError?: string; // set if background image gen failed
+  layout: "full" | "split-left" | "split-right" | "centered" | "two-column" | "image-full" | "image-top"; // "centered" is legacy — mapped to "full" at render time
 }
 
 export type FidelityLevel = "verbatim" | "balanced" | "creative";
@@ -45,6 +47,10 @@ export const VISUAL_BLOCK_TYPES = [
   "radar-chart",
   "progress-bars",
   "metric-row",
+  "pill-list",
+  "stat-bubbles",
+  "tag-cloud",
+  "rounded-cards",
 ] as const;
 
 export type VisualBlockType = (typeof VISUAL_BLOCK_TYPES)[number];
@@ -84,8 +90,43 @@ export interface LLMProvider {
   id: string;
   generateSlides(input: GenerateInput): Promise<GenerationResult>;
   regenerateSlide(input: RegenerateInput): Promise<SlideData>;
+  /** Pre-built prompt → structured slide JSON (used by 3-pass pipeline) */
+  generateRaw(prompt: string): Promise<GenerationResult>;
   /** Simple text-in/text-out chat for lightweight tasks (image prompt generation, etc.) */
   chat(prompt: string): Promise<string>;
+}
+
+// ── QA Audit Types ──────────────────────────────────────
+
+export type ViolationType =
+  | "low-block-variety"
+  | "consecutive-same-block"
+  | "image-coverage-low"
+  | "image-coverage-high"
+  | "bookend-missing-image-full"
+  | "image-on-non-eligible"
+  | "missing-image-on-eligible"
+  | "missing-speaker-notes"
+  | "missing-citations"
+  | "missing-references";
+
+export interface Violation {
+  type: ViolationType;
+  slideIndex: number;
+  slideId: string;
+  message: string;
+}
+
+export interface DeckStats {
+  totalSlides: number;
+  contentSlides: number;
+  uniqueBlockTypes: number;
+  blockTypeFrequency: Record<string, number>;
+  imageCoveragePercent: number;
+  slidesWithImages: number;
+  slidesWithSpeakerNotes: number;
+  slidesWithCitations: number;
+  hasReferencesSlide: boolean;
 }
 
 export interface ImageProvider {

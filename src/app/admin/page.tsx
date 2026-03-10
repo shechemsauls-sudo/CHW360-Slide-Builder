@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect, useMemo } from "react";
+import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import { Inbox, Eye, TrendingUp, Mail } from "lucide-react";
 import { Badge } from "~/components/ui/badge";
@@ -71,7 +71,7 @@ function LineChart({ data }: { data: { date: string; count: number }[] }) {
       <path d={linePath} fill="none" stroke="#2D5A5A" strokeWidth={2} strokeLinecap="round" strokeLinejoin="round" />
 
       {/* Data points */}
-      {points.map((p, i) => (
+      {points.map((p) => (
         <g key={p.date}>
           <circle cx={p.x} cy={p.y} r={data.length <= 14 ? 3 : 0} fill="#2D5A5A" stroke="#1a1a2e" strokeWidth={1.5} />
           {/* Hover target */}

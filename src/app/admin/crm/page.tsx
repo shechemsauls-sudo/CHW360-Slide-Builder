@@ -19,6 +19,9 @@ import {
   ChevronLeft,
   ChevronRight,
   ArrowUpDown,
+  CheckSquare,
+  Download,
+  X,
 } from "lucide-react";
 import { Badge } from "~/components/ui/badge";
 import { Button } from "~/components/ui/button";
@@ -29,6 +32,27 @@ import {
   RichTextEditor,
   type RichTextEditorRef,
 } from "~/components/admin/rich-text-editor";
+
+function escapeCsvField(value: string | null | undefined): string {
+  if (value == null) return "";
+  const str = String(value);
+  if (str.includes(",") || str.includes('"') || str.includes("\n")) {
+    return `"${str.replace(/"/g, '""')}"`;
+  }
+  return str;
+}
+
+function downloadCsv(filename: string, csvContent: string) {
+  const blob = new Blob([csvContent], { type: "text/csv;charset=utf-8;" });
+  const url = URL.createObjectURL(blob);
+  const link = document.createElement("a");
+  link.href = url;
+  link.download = filename;
+  document.body.appendChild(link);
+  link.click();
+  document.body.removeChild(link);
+  URL.revokeObjectURL(url);
+}
 
 const PAGE_SIZES = [10, 25, 50, 100] as const;
 
@@ -51,6 +75,8 @@ const ORG_FILTER_OPTIONS = [
 export default function CRMPage() {
   useEffect(() => { document.title = "Contacts — CHW360"; }, []);
 
+  const [selectMode, setSelectMode] = useState(false);
+  const [selected, setSelected] = useState<Set<string>>(new Set());
   const [search, setSearch] = useState("");
   const [source, setSource] = useState<string | undefined>(undefined);
   const [expandedId, setExpandedId] = useState<string | null>(null);
@@ -116,6 +142,47 @@ export default function CRMPage() {
     onError: (err) => toast.error(err.message),
   });
 
+  const bulkDelete = api.crm.bulkDelete.useMutation({
+    onSuccess: (result) => {
+      void utils.crm.list.invalidate();
+      setSelected(new Set());
+      setSelectMode(false);
+      setConfirmBulkDelete(false);
+      toast.success(`Deleted ${result.count} contact${result.count !== 1 ? "s" : ""}`);
+    },
+    onError: (err) => toast.error(err.message),
+  });
+
+  const [confirmBulkDelete, setConfirmBulkDelete] = useState(false);
+  const [isExporting, setIsExporting] = useState(false);
+
+  const handleExportContacts = async () => {
+    setIsExporting(true);
+    try {
+      const rows = await utils.crm.exportCsv.fetch();
+      const headers = ["Name", "Email", "Phone", "Organization", "Source", "First Contact", "Last Contact"];
+      const csvRows = rows.map((r) =>
+        [
+          escapeCsvField(r.name),
+          escapeCsvField(r.email),
+          escapeCsvField(r.phone),
+          escapeCsvField(r.organization),
+          escapeCsvField(r.source),
+          r.firstContactAt ? new Date(r.firstContactAt).toISOString() : "",
+          r.lastContactAt ? new Date(r.lastContactAt).toISOString() : "",
+        ].join(",")
+      );
+      const csv = [headers.join(","), ...csvRows].join("\n");
+      const date = new Date().toISOString().slice(0, 10);
+      downloadCsv(`contacts-${date}.csv`, csv);
+      toast.success(`Exported ${rows.length} contacts`);
+    } catch {
+      toast.error("Failed to export contacts");
+    } finally {
+      setIsExporting(false);
+    }
+  };
+
   function handleSearch(value: string) {
     setSearch(value);
     setPage(0);
@@ -154,6 +221,23 @@ export default function CRMPage() {
 
   const totalPages = Math.ceil((data?.total ?? 0) / pageSize);
 
+  const items = data?.items ?? [];
+
+  const allContactsSelected = items.length > 0 && items.every((c) => selected.has(c.id));
+  const toggleSelectAll = () => {
+    if (allContactsSelected) setSelected(new Set());
+    else setSelected(new Set(items.map((c) => c.id)));
+  };
+
+  const toggleSelectContact = (id: string) => {
+    setSelected((prev) => {
+      const next = new Set(prev);
+      if (next.has(id)) next.delete(id);
+      else next.add(id);
+      return next;
+    });
+  };
+
   return (
     <div className="space-y-3">
       <style jsx global>{`
@@ -182,8 +266,34 @@ export default function CRMPage() {
       `}</style>
       {/* Header */}
       <div className="flex items-center justify-between">
-        <h1 className="text-2xl font-bold text-white">Contacts</h1>
-        <span className="text-sm text-gray-500">{(data?.total ?? 0).toLocaleString()} total</span>
+        <div className="flex items-center gap-2">
+          <h1 className="text-2xl font-bold text-white">Contacts</h1>
+          <Button
+            variant="ghost"
+            size="sm"
+            className={`text-xs ${selectMode ? "text-[#7AACAC]" : "text-gray-400 hover:bg-white/5 hover:text-white"}`}
+            onClick={() => {
+              if (selectMode) { setSelected(new Set()); }
+              setSelectMode(!selectMode);
+            }}
+          >
+            <CheckSquare className="mr-1.5 h-4 w-4" />
+            {selectMode ? "Cancel" : "Select"}
+          </Button>
+        </div>
+        <div className="flex items-center gap-3">
+          <Button
+            variant="ghost"
+            size="sm"
+            className="text-gray-400 hover:bg-white/5 hover:text-white disabled:cursor-not-allowed"
+            disabled={isExporting}
+            onClick={handleExportContacts}
+          >
+            <Download className="mr-1.5 h-4 w-4" />
+            {isExporting ? "Exporting..." : "Export CSV"}
+          </Button>
+          <span className="text-sm text-gray-500">{(data?.total ?? 0).toLocaleString()} total</span>
+        </div>
       </div>
 
       {/* Filters row: Source pills + Org filter + Search */}
@@ -317,6 +427,65 @@ export default function CRMPage() {
         )}
       </div>
 
+      {/* Selection bar */}
+      {selected.size > 0 && (
+        <div className="flex items-center gap-2 rounded-md bg-[#2D5A5A]/15 px-3 py-2 text-sm">
+          <span className="font-medium text-[#5B8A8A]">{selected.size} selected</span>
+          <div className="h-3.5 w-px bg-white/10" />
+          <Button
+            variant="ghost"
+            size="sm"
+            className="h-7 px-2 text-xs text-gray-300 hover:bg-white/5 hover:text-white disabled:cursor-not-allowed"
+            disabled={isExporting}
+            onClick={handleExportContacts}
+          >
+            <Download className="mr-1 h-3.5 w-3.5" />
+            {isExporting ? "Exporting..." : "Export CSV"}
+          </Button>
+          <div className="h-3.5 w-px bg-white/10" />
+          {confirmBulkDelete ? (
+            <>
+              <span className="text-xs text-red-400">Delete {selected.size}?</span>
+              <Button
+                variant="ghost"
+                size="sm"
+                className="h-7 px-2 text-xs text-red-400 hover:bg-red-500/10 hover:text-red-300 disabled:cursor-not-allowed"
+                disabled={bulkDelete.isPending}
+                onClick={() => bulkDelete.mutate({ ids: [...selected] })}
+              >
+                Confirm
+              </Button>
+              <Button
+                variant="ghost"
+                size="sm"
+                className="h-7 px-2 text-xs text-gray-500 hover:bg-white/5 hover:text-white"
+                onClick={() => setConfirmBulkDelete(false)}
+              >
+                Cancel
+              </Button>
+            </>
+          ) : (
+            <Button
+              variant="ghost"
+              size="sm"
+              className="h-7 px-2 text-xs text-red-400/60 hover:bg-red-500/10 hover:text-red-400"
+              onClick={() => setConfirmBulkDelete(true)}
+            >
+              <Trash2 className="mr-1 h-3.5 w-3.5" />
+              Delete
+            </Button>
+          )}
+          <div className="flex-1" />
+          <button
+            className="text-gray-500 hover:text-white"
+            onClick={() => { setSelected(new Set()); setSelectMode(false); setConfirmBulkDelete(false); }}
+            aria-label="Clear selection"
+          >
+            <X className="h-3.5 w-3.5" />
+          </button>
+        </div>
+      )}
+
       {/* Contact list */}
       {!data?.items || data.items.length === 0 ? (
         <div className="py-16 text-center">
@@ -325,6 +494,20 @@ export default function CRMPage() {
         </div>
       ) : (
         <div className={`overflow-hidden rounded-lg border border-white/5 transition-opacity ${isPlaceholderData ? "opacity-60" : ""}`}>
+          {selectMode && (
+            <div className="flex items-center gap-3 border-b border-white/5 bg-white/[0.02] px-3 py-1.5">
+              <input
+                type="checkbox"
+                checked={allContactsSelected}
+                onChange={toggleSelectAll}
+                className="h-3.5 w-3.5 cursor-pointer rounded accent-[#2D5A5A]"
+                aria-label="Select all contacts"
+              />
+              <span className="text-[11px] text-gray-500">
+                {allContactsSelected ? "Deselect all" : "Select all"}
+              </span>
+            </div>
+          )}
           {data.items.map((contact, i) => {
             const isExpanded = expandedId === contact.id;
             const detail = isExpanded ? contactDetail : null;
@@ -335,9 +518,20 @@ export default function CRMPage() {
                 className={i < data.items.length - 1 ? "border-b border-white/5" : ""}
               >
                 {/* Row */}
+                <div className="flex w-full items-center gap-3 px-3 py-2.5 hover:bg-white/[0.04]">
+                  {selectMode && (
+                    <input
+                      type="checkbox"
+                      checked={selected.has(contact.id)}
+                      onChange={() => toggleSelectContact(contact.id)}
+                      onClick={(e) => e.stopPropagation()}
+                      className="h-3.5 w-3.5 flex-shrink-0 cursor-pointer rounded accent-[#2D5A5A]"
+                      aria-label={`Select ${contact.name}`}
+                    />
+                  )}
                 <button
                   type="button"
-                  className="flex w-full cursor-pointer items-center gap-3 px-3 py-2.5 text-left hover:bg-white/[0.04]"
+                  className="flex min-w-0 flex-1 cursor-pointer items-center gap-3 text-left"
                   onClick={() => {
                     if (isExpanded) {
                       setExpandedId(null);
@@ -383,6 +577,7 @@ export default function CRMPage() {
                     <ChevronDown className="h-3.5 w-3.5 flex-shrink-0 text-gray-600" />
                   )}
                 </button>
+                </div>
 
                 {/* Expanded detail */}
                 {isExpanded && (

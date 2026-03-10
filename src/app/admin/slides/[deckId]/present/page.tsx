@@ -20,11 +20,12 @@ export default function PresentPage() {
   const [presenterMode, setPresenterMode] = useState(false);
   const isExiting = useRef(false);
   const wasFullscreen = useRef(false);
+  const suppressFullscreenExit = useRef(false);
   const audienceWindow = useRef<Window | null>(null);
 
   const slides = (deck?.slides ?? []) as SlideData[];
   const currentSlide = slides[currentIndex];
-  const theme = getTheme(deck?.themeId ?? "chw-teal");
+  const theme = getTheme(deck?.themeId ?? "chw-cream");
   const storageKey = `presenter-slide-${deckId}`;
 
   const goNext = useCallback(() => {
@@ -69,6 +70,8 @@ export default function PresentPage() {
       localStorage.removeItem(storageKey);
       setPresenterMode(false);
     } else {
+      // Suppress fullscreen exit handler — opening a popup drops fullscreen
+      suppressFullscreenExit.current = true;
       // Open audience window and sync current index
       localStorage.setItem(storageKey, String(currentIndex));
       const popup = window.open(
@@ -104,6 +107,11 @@ export default function PresentPage() {
   useEffect(() => {
     const handleFullscreenChange = () => {
       if (!document.fullscreenElement && wasFullscreen.current) {
+        if (suppressFullscreenExit.current) {
+          // Popup caused the fullscreen exit — suppress this one event only
+          suppressFullscreenExit.current = false;
+          return;
+        }
         exitPresent();
       }
     };

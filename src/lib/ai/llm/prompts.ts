@@ -1,4 +1,4 @@
-import type { FidelityLevel, GenerateInput, RegenerateInput, ToneOption, VisualBlockType } from "../types";
+import type { DeckStats, FidelityLevel, GenerateInput, RegenerateInput, SlideData, ToneOption, Violation, VisualBlockType } from "../types";
 import { IMAGE_STYLE_DIRECTIVE } from "../image/style-prompt";
 
 const FIDELITY_INSTRUCTIONS: Record<FidelityLevel, string> = {
@@ -24,7 +24,7 @@ Preserve the source content's meaning, structure, and key phrases. You may impro
 - Do NOT drop sections — include ALL content from the source
 - Speaker notes should expand on slide content with teaching context, not repeat the body
 - Prefer the source's exact phrasing when it is clear and effective
-- **Visual blocks ARE encouraged** — reformatting content into :::block directives (checklists, info-boxes, charts, etc.) is a formatting enhancement, NOT a rewrite. Use them freely on 30-40% of content slides.`,
+- **Visual blocks ARE encouraged** — reformatting content into :::block directives (checklists, info-boxes, charts, flow-diagrams, timelines, card-grids, etc.) is a formatting enhancement, NOT a rewrite. Use them naturally wherever they make the content clearer or more engaging.`,
 
   creative: `## Source Fidelity: CREATIVE
 
@@ -206,6 +206,57 @@ Being Prepared | Having what you need for meetings
 \`\`\``,
     hint: "Features, components, or categorized items with descriptions → `:::accent-list`",
   },
+  "pill-list": {
+    doc: `**:::pill-list**
+Flex-wrap container with rounded-full pill items in theme palette colors. Use for tags, categories, or compact list items. Format: one item per line, or "Label | Description" per line.
+\`\`\`
+:::pill-list
+Community Health
+Mental Wellness
+Nutrition
+Physical Activity
+:::
+\`\`\``,
+    hint: "Tags, categories, or compact list items → `:::pill-list`",
+  },
+  "stat-bubbles": {
+    doc: `**:::stat-bubbles**
+Circular badges with large value + label below. Use for 2-4 impactful metrics side-by-side. Format: Value | Label per line.
+\`\`\`
+:::stat-bubbles
+95% | Follow-up Rate
+2.4K | Households
+12 | Active CHWs
+:::
+\`\`\``,
+    hint: "Impactful metrics displayed as circular badges → `:::stat-bubbles`",
+  },
+  "tag-cloud": {
+    doc: `**:::tag-cloud**
+Flex-wrap tag pills with varying sizes based on weight. Use for topic emphasis or keyword clusters. Format: Term or Term | weight (1-3, where 3 is largest).
+\`\`\`
+:::tag-cloud
+Prevention | 3
+Education | 2
+Referral | 1
+Screening | 2
+Follow-up | 3
+:::
+\`\`\``,
+    hint: "Topic emphasis or keyword clusters → `:::tag-cloud`",
+  },
+  "rounded-cards": {
+    doc: `**:::rounded-cards**
+Soft rounded cards (rounded-3xl) with subtle gradients and shadows. Like card-grid but softer/rounder. Format: Title | Description per line.
+\`\`\`
+:::rounded-cards
+Assessment | Evaluate patient needs thoroughly
+Planning | Create actionable care plans
+Delivery | Execute interventions effectively
+:::
+\`\`\``,
+    hint: "Soft rounded cards for overview items → `:::rounded-cards`",
+  },
   "bar-chart": {
     doc: `**:::bar-chart Title | Series1, Series2**
 Bar chart comparing values across categories. Use \`|\` to separate title from optional series names. Each line: \`Label: value\` or \`Label: value1, value2\` for multi-series.
@@ -325,36 +376,51 @@ Match content patterns to the right block type:
 ${hints}
 
 ### Block Usage Guidelines
-- **Use visual blocks on 30-40% of content slides** — they make presentations more engaging and scannable
-- Use 1-3 blocks per slide maximum — don't overload
+- **Use visual blocks generously** — they make presentations feel professional and engaging
+- **Vary your block types** — don't over-rely on checklists and info-boxes. Mix in flow-diagrams, timelines, card-grids, comparison-tables, metric-rows, icon-grids, accent-lists, key-stats, quote-blocks, pill-lists, stat-bubbles, tag-clouds, rounded-cards, and others where they fit
+- Aim for 10+ different block types across the deck
+- Use 1-3 blocks per slide maximum — don't overload a single slide
 - Blocks work best on "content", "bullets", and "activity" slide types
 - You can mix regular markdown with blocks in the same slide body
 - Do NOT use blocks on "title" or "closing" slides
+- Use \`:::pill-list\` for compact tag-like items or categories
+- Use \`:::stat-bubbles\` for 2-4 large metrics in circular badges
+- Use \`:::tag-cloud\` for weighted keyword clusters or topic emphasis
+- Use \`:::rounded-cards\` for softer overview cards (alternative to card-grid)
 - Use \`:::card-grid\` for slide overviews, pillar summaries, and category breakdowns (3-4 items)
 - Use \`:::chevron-flow\` instead of \`:::flow-diagram\` when you have 3-5 process steps with descriptions
 - Use \`:::accent-list\` for categorized items where each has a title and description
+- Use \`:::timeline\` for any sequential phases, milestones, or week-by-week plans
+- Use \`:::cycle\` for recurring processes, feedback loops, or continuous improvement flows
+- Use \`:::comparison-table\` for any pros/cons, before/after, or side-by-side content
+- Use \`:::icon-grid\` for roles, features, categories, or pillar concepts
+- Use \`:::key-stat\` to highlight impactful single numbers or percentages
+- Use \`:::highlight-box\` for "remember this" or takeaway emphasis
+- Use \`:::quote-block\` for expert quotes, guidelines, or testimonials
 
 ### Chart & Data Block Guidelines
 - **Chart blocks are best when source content contains numerical data** — do NOT fabricate numbers
 - Use bar-chart for categorical comparisons, pie-chart for proportions, line/area-chart for trends, radar-chart for multi-factor assessments
 - Use progress-bars for completion rates and metric-row for KPI summaries
 - Keep chart data concise: 3-8 data points per chart for readability
-- One chart per slide is ideal — combine with a text block if needed for context${restriction}`;
+- One chart per slide is ideal — combine with a text block if needed for context
+- **Include at least 1-2 chart/data blocks per deck** even if you need to create reasonable illustrative data from the content${restriction}`;
 }
 
-/** Calculate a proportional image count range for the given slide count */
+/** Calculate a proportional image count range for the given slide count (~40%) */
 function getImageRange(slideCount: number): string {
-  const min = Math.max(5, Math.round(slideCount * 0.25));
-  const max = Math.min(Math.max(10, Math.round(slideCount * 0.35)), 30);
+  const min = Math.max(5, Math.round(slideCount * 0.35));
+  const max = Math.min(Math.max(10, Math.round(slideCount * 0.45)), 40);
   return `${min}-${max}`;
 }
 
-export function buildGeneratePrompt(input: GenerateInput): string {
-  const slideCount = input.slideCount ?? 20;
+// ── Pass 1: Full Generation (single comprehensive call from source content) ──
+
+export function buildPass1Prompt(input: GenerateInput): string {
+  const slideCount = input.slideCount ?? 70;
   const fidelity = input.fidelity ?? "balanced";
   const includeBlocks = fidelity !== "verbatim";
-
-  const tone = input.tone ?? "professional";
+  const tone = input.tone ?? "training";
   const customInstructions = input.customInstructions?.trim();
 
   return `You are an expert presentation designer specializing in community health worker (CHW) training materials.
@@ -372,29 +438,31 @@ Add evidence-based citations (2020–2025) using APA 7th edition format:
 - Density: 1–2 in-text citations per content slide where specific claims need evidence
 - Format: In-text (Author, Year) with full references on dedicated References slide(s) at the end
 - Sources: Peer-reviewed journals, major health orgs (APA, SAMHSA, NIMH, NAMI, CDC, WHO), systematic reviews/meta-analyses
-- Skip citations on: title/welcome slides, thank you/closing, test/assessment placeholders, practice scenarios, local resource slides, reflection/discussion prompts
+- **NEVER cite on these slide types**: title, closing, section, activity, references
+- **NEVER cite on these content topics**: pre-test/post-test placeholders, practice scenarios, role-play exercises, QR code slides, local resource listings, reflection/discussion prompts, review/summary slides
+- Citations belong ONLY on slides making factual health claims, statistics, or evidence-based recommendations
 - Weave citations naturally — don't disrupt flow, tone, or accessibility level
 
-IMPORTANT: The References slide(s) at the end are EXTRA — they do NOT count toward the target slide count of ${slideCount}. If the user requests ${slideCount} slides, generate ${slideCount} content slides PLUS References slide(s) after. References slides should have type "references", layout "full", and no imagePrompt.
+IMPORTANT: The References slide(s) at the end are EXTRA — they do NOT count toward the target slide count of ${slideCount}. Generate ${slideCount} content slides PLUS References slide(s) after. References slides should have type "references", layout "full", and no imagePrompt.
 
 ## Slide Count
 
-**IMPORTANT: If the source content already contains slide markers** (e.g., "Slide 1:", "Slide 2:", numbered slides, or clear slide-by-slide structure), you MUST follow that structure exactly — create one output slide per source slide. The user's slide count preference (${slideCount}) is secondary to the document's own structure.
+**IMPORTANT: If the source content already contains slide markers** (e.g., "Slide 1:", "Slide 2:", numbered slides, or clear slide-by-slide structure), you MUST follow that structure exactly — create one output slide per source slide.
 
-If the source content does NOT contain slide markers (it's just prose, notes, or unstructured text), generate up to ${slideCount} slides (this is a maximum — use fewer if the content doesn't warrant that many).
+If the source content does NOT contain slide markers, generate up to ${slideCount} slides (this is a maximum — use fewer if the content doesn't warrant that many).
 
 ## Requirements
 
-- First slide must be type "title" with the deck title
-- Last slide must be type "closing" with key takeaways
+- First slide must be type "title" with layout "image-full" and an imagePrompt
+- Last content slide must be type "closing" with layout "image-full" and an imagePrompt
+- All "section" slides must use layout "image-full" with an imagePrompt
 - Use a mix of slide types: section, content, bullets, comparison, activity, quote
 - Include "imagePrompt" on ${getImageRange(slideCount)} slides using ONLY image-eligible layouts (split-left, split-right, image-full, image-top)
-- Use image-full for at least 1-2 dramatic visual slides (title, section dividers, or closing)
 - Use image-top for content slides that benefit from a visual anchor
-- Set imagePrompt to null on full, centered, and two-column layouts
+- Set imagePrompt to null on full and two-column layouts
 
 ## Image Prompt Guidelines — Brand Style
-CRITICAL: All imagePrompt values MUST embody this visual style:
+CRITICAL: All imagePrompt values MUST be photorealistic and embody this visual style:
 ${IMAGE_STYLE_DIRECTIVE}
 
 Additional rules:
@@ -403,7 +471,9 @@ Additional rules:
 - Settings should feel like Texas community spaces
 - Images must feel calm, supportive, and optimistic — never dark, dramatic, or clinical
 - 1-2 sentence prompts only. No text in images.
-- **NEVER request clipart or stock watermarks**: Avoid "clipart", "stock photo", "watermark"
+- **NEVER request clipart, stock watermarks, or abstract styles**: Only photorealistic images.
+- **NEVER split or collage images**: Each imagePrompt must describe a single cohesive scene. No diptychs, side-by-side, or split compositions.
+- **NO religious imagery**: Do not include crosses, saints, halos, prayer scenes, religious statues, stained glass, or any religious iconography. Use secular community settings only.
 - Write structured speaker notes for every slide using this markdown format:
 
 **Talking Points**
@@ -426,7 +496,9 @@ Guidelines for speaker notes:
 - Body content should use Markdown formatting (bold, lists, etc.)
 - Keep slide titles concise (under 10 words)
 - Keep bullet points to 4-6 per slide maximum
-- **CRITICAL: You MUST use :::block directives on at least 30% of content/bullets/activity slides.** Do NOT create a deck of only plain text slides. Use checklists, info-boxes, numbered-steps, flow-diagrams, key-stats, charts, progress-bars, metric-rows, etc. to make slides visually rich. See the Visual Block Components section for syntax.
+- **CRITICAL: You MUST use :::block directives on at LEAST 50% of content/bullets/activity slides.** Use a WIDE VARIETY of block types (10+ different types per deck). The presentation must feel visually rich and professionally designed.
+- **BLOCK VARIETY RULES**: Do NOT over-rely on :::numbered-steps and :::checklist — use each NO MORE than 3 times per deck. Instead, spread usage across: accent-list, chevron-flow, card-grid, rounded-cards, pill-list, flow-diagram, timeline, icon-grid, comparison-table, stat-bubbles, tag-cloud, key-stat, highlight-box, quote-block, cycle, info-box. Every deck should use at least 10 different block types.
+- **NO consecutive repeats**: Never use the same block type on two slides in a row.
 
 ## Slide Types
 - **title**: Opening slide with deck title and subtitle in body
@@ -439,16 +511,26 @@ Guidelines for speaker notes:
 - **closing**: Summary and key takeaways
 - **references**: APA 7th edition reference list (appended after closing, EXTRA slides outside target count)
 
+## Structural Slide Protocol — Title, Section & Closing
+These "bookend" slides frame the deck and must feel cinematic and unified:
+- **title** slide: MUST use layout "image-full" with an imagePrompt. This is the deck's first impression — full-bleed hero image with frosted-glass title overlay.
+- **section** slides: MUST use layout "image-full" with an imagePrompt. Section dividers are visual breaths between content — they reset the viewer's attention with a dramatic image.
+- **closing** slide: MUST use layout "image-full" with an imagePrompt. End with the same cinematic weight as the opening.
+- **references** slides: MUST use layout "full" with imagePrompt null. Plain text, no images.
+- All other slide types (content, bullets, comparison, activity, quote) use any layout freely.
+
+This creates a consistent visual rhythm: cinematic bookends (title → section → section → closing) wrapping content slides.
+
 ## Layouts
-- **full**: Content fills the slide (NO imagePrompt)
-- **centered**: Content centered, good for quotes and section dividers (NO imagePrompt)
+- **full**: Content fills the slide, left-aligned (NO imagePrompt)
 - **split-left**: Image left, content right (supports imagePrompt)
 - **split-right**: Content left, image right (supports imagePrompt)
 - **two-column**: Side-by-side columns for comparisons (NO imagePrompt)
-- **image-full**: Full-bleed background image with dark gradient overlay + white text overlay at bottom. Great for title, section, and closing slides. (supports imagePrompt — REQUIRED)
-- **image-top**: Image spans full width at top (40% height), content below. Good for content slides that need a visual anchor. (supports imagePrompt — REQUIRED)
+- **image-full**: Full-bleed background image with overlay. REQUIRED for title, section, and closing slides. (supports imagePrompt — REQUIRED)
+- **image-top**: Image spans full width at top, content below. (supports imagePrompt — REQUIRED)
 
-**CRITICAL IMAGE RULE**: Only these 4 layouts support images: split-left, split-right, image-full, image-top. Set imagePrompt to null on all other layouts (full, centered, two-column). image-full and image-top MUST have an imagePrompt.
+**CRITICAL IMAGE RULE**: Only these 4 layouts support images: split-left, split-right, image-full, image-top. Set imagePrompt to null on all other layouts (full, two-column). image-full and image-top MUST have an imagePrompt.
+**TEXT ALIGNMENT**: All text must be left-aligned. Never center body text.
 
 ## Deck Info
 Title: ${input.title}
@@ -460,62 +542,110 @@ ${input.content}
 ## Output Format
 Return a JSON object with a "slides" array. Each slide has: id, order, type, title, body, speakerNotes, imageUrl, imagePrompt, layout.
 
-**IMPORTANT: The body field MUST contain :::block directives on content slides.** Use \\n for newlines in JSON strings. Here are complete example slides showing correct block usage:
+**IMPORTANT: The body field MUST contain :::block directives on content slides.** Use \\n for newlines in JSON strings.
 
-{
-  "slides": [
-    {
-      "id": "slide-1",
-      "order": 1,
-      "type": "title",
-      "title": "Training Program Overview",
-      "body": "Building healthier communities through skilled CHW practice",
-      "speakerNotes": "**Talking Points**\\n- Welcome to the Organizational Skills training. This is the first of four modules designed to strengthen your daily practice as a community health worker.\\n- Today we'll focus on practical, immediately applicable strategies that you can use starting tomorrow.\\n\\n**Presenter Tips**\\n- Ask participants to share one organizational challenge they currently face\\n- Allow 2-3 minutes for initial discussion before moving on\\n\\n**Transition**\\n\\"Let's start by looking at what we'll cover today.\\"",
-      "imageUrl": null,
-      "imagePrompt": null,
-      "layout": "centered"
-    },
-    {
-      "id": "slide-2",
-      "order": 2,
-      "type": "bullets",
-      "title": "Learning Objectives",
-      "body": ":::checklist\\nExplain why organizational skills are essential\\nIdentify core tasks performed by CHWs\\nRecognize how organization supports accountability\\nDescribe strategies for organizing time and information\\n:::",
-      "speakerNotes": "**Talking Points**\\n- By the end of this session, you'll be able to do each of these four things confidently.\\n- Notice that we're not just learning what to do — we're learning why it matters for the communities we serve.\\n\\n**Transition**\\n\\"Let's begin with understanding the core responsibilities that make organization so critical.\\"",
-      "imageUrl": null,
-      "imagePrompt": null,
-      "layout": "full"
-    },
-    {
-      "id": "slide-3",
-      "order": 3,
-      "type": "content",
-      "title": "Key Responsibilities",
-      "body": "CHWs manage multiple organizational tasks daily:\\n\\n:::numbered-steps\\nSchedule and track appointments\\nDocument client interactions\\nCoordinate referrals with partners\\nFollow up on pending cases\\n:::",
-      "speakerNotes": "**Talking Points**\\n- Each of these four tasks happens every single day in your work. Missing even one can affect a client's health outcome.\\n- Think about how scheduling and documentation connect — when you track appointments well, follow-ups become natural.\\n\\n**Presenter Tips**\\n- Ask: \\"Which of these four tasks do you find most challenging? Why?\\"\\n- Use responses to gauge the group's experience level",
-      "imageUrl": null,
-      "imagePrompt": "A CHW organizing files at a desk",
-      "layout": "split-right"
-    },
-    {
-      "id": "slide-4",
-      "order": 4,
-      "type": "content",
-      "title": "Program Impact",
-      "body": ":::metric-row\\n2,450 | Households Visited\\n95% | Follow-up Rate\\n12 | Active CHWs\\n:::\\n\\n:::info-box Key Insight\\nOrganized CHWs achieve 40% higher follow-up rates than their peers.\\n:::",
-      "speakerNotes": "**Talking Points**\\n- These numbers tell a powerful story. The 95% follow-up rate didn't happen by accident — it's the result of consistent organizational practices.\\n- When we compare organized CHWs to those without systems, the difference is dramatic: 40% higher follow-up rates.\\n\\n**Transition**\\n\\"Now let's look at the specific strategies that drive these results.\\"",
-      "imageUrl": null,
-      "imagePrompt": null,
-      "layout": "full"
+Follow this exact pattern. Use :::block-type on the FIRST line, content on subsequent lines, and ::: alone to close. Separate with \\n.`;
+}
+
+// ── Pass 2: Targeted QA Fix Prompts (small chunks of 2-3 slides) ──
+
+/** Backward compat alias */
+export const buildGeneratePrompt = buildPass1Prompt;
+
+/**
+ * Build a targeted QA fix prompt for a small chunk of slides.
+ * Only includes the violated slides + specific fix instructions.
+ */
+export function buildQAFixPrompt(
+  slides: SlideData[],
+  violations: Violation[],
+  stats: DeckStats,
+): string {
+  const needsBlockFix = violations.some((v) =>
+    v.type === "low-block-variety" || v.type === "consecutive-same-block"
+  );
+  const needsImageFix = violations.some((v) =>
+    v.type === "image-coverage-low" || v.type === "image-coverage-high" ||
+    v.type === "bookend-missing-image-full" || v.type === "image-on-non-eligible" ||
+    v.type === "missing-image-on-eligible"
+  );
+
+  const violationList = violations
+    .map((v) => `- **Slide "${slides.find((s) => s.id === v.slideId)?.title ?? v.slideId}"** (id: ${v.slideId}): ${v.message}`)
+    .join("\n");
+
+  return `You are a presentation QA reviewer. Fix ONLY the specific issues listed below. Do NOT change anything else — preserve all existing content, blocks, speaker notes, and formatting.
+
+## Slides to Fix
+${JSON.stringify({ slides }, null, 2)}
+
+## Deck-Wide Stats (for context)
+- Unique block types used: ${stats.uniqueBlockTypes} (target: 10+)
+- Block frequency: ${JSON.stringify(stats.blockTypeFrequency)}
+- Image coverage: ${stats.imageCoveragePercent.toFixed(0)}% (target: 35-45%)
+- Slides with citations: ${stats.slidesWithCitations}
+
+## Violations to Fix
+${violationList}
+
+${needsBlockFix ? `## Block Reference (for swaps)
+Underused block types you should swap TO: pill-list, stat-bubbles, tag-cloud, rounded-cards, chevron-flow, accent-list, cycle, card-grid, timeline, icon-grid, highlight-box, flow-diagram, comparison-table, key-stat, quote-block, numbered-steps, checklist, info-box.
+Choose types NOT already overused in the deck (see frequency above).` : ""}
+${needsImageFix ? `## Image Guidelines
+${IMAGE_STYLE_DIRECTIVE}
+- imagePrompt must be 1-2 sentences, photorealistic, warm natural lighting, diverse people, Texas community settings
+- image-full/image-top layouts REQUIRE imagePrompt
+- full/two-column layouts MUST have imagePrompt: null` : ""}
+
+## Output Format
+Return a JSON object with a "slides" array containing ONLY the fixed slides (same id, same structure). Do NOT include unchanged slides.
+
+Return ONLY the JSON object.`;
+}
+
+/**
+ * Build a prompt to generate References slides from citations found in the deck.
+ */
+export function buildReferencesPrompt(slides: SlideData[]): string {
+  // Extract all citation patterns from slide bodies
+  const citationPattern = /\(([A-Z][a-z]+(?:\s(?:&|and|et al\.?)\s[A-Z][a-z]+)*,\s*\d{4}[a-z]?)\)/g;
+  const citations = new Set<string>();
+  for (const slide of slides) {
+    for (const match of slide.body.matchAll(citationPattern)) {
+      citations.add(match[1]!);
     }
-  ]
+  }
+
+  return `You are an academic reference formatter. Generate 1-2 References slides with full APA 7th edition entries.
+
+## In-text citations found in the deck
+${[...citations].map((c) => `- (${c})`).join("\n") || "- No specific citations found — generate 5-8 relevant references for community health worker training content"}
+
+## Requirements
+- Generate plausible, realistic APA 7th edition references for each in-text citation
+- Sources should be from: CDC, WHO, SAMHSA, NIMH, NAMI, APA, peer-reviewed journals (2020-2025)
+- One reference per line in the body
+- If many references, split across 2 slides
+
+## Output Format
+Return a JSON object with a "slides" array. Each slide:
+- id: "references-1" (or "references-2")
+- order: 999 (will be reordered)
+- type: "references"
+- title: "References"
+- body: Full APA references, one per line
+- speakerNotes: "Full reference list available for distribution."
+- imageUrl: null
+- imagePrompt: null
+- layout: "full"
+
+Return ONLY the JSON object.`;
 }
 
-Follow this exact pattern. Use :::block-type on the FIRST line, content on subsequent lines, and ::: alone to close. Separate with \\n. You MUST include :::block directives in at least 30% of your content slides — do NOT output only plain text slides`;
-}
+// ── Regenerate (single slide) ──
 
 export function buildRegeneratePrompt(input: RegenerateInput): string {
-  const tone = input.tone ?? "professional";
+  const tone = input.tone ?? "training";
   const customInstructions = input.customInstructions?.trim();
 
   return `You are an expert presentation designer. Regenerate this single slide based on user feedback.

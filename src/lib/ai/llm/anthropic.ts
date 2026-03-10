@@ -21,7 +21,7 @@ const slideSchema = z.object({
   speakerNotes: z.string(),
   imageUrl: z.string().nullable().default(null),
   imagePrompt: z.string().nullable().default(null),
-  layout: z.enum(["full", "split-left", "split-right", "centered", "two-column", "image-full", "image-top"]).default("full"),
+  layout: z.enum(["full", "split-left", "split-right", "centered", "two-column", "image-full", "image-top"]).default("full"), // "centered" kept for backward compat parsing
 });
 
 const slidesResponseSchema = z.object({
@@ -110,6 +110,12 @@ export const anthropicProvider: LLMProvider = {
     const prompt = buildGeneratePrompt(input);
     const { slides, tokensUsed } = await parseWithRetry(client, prompt);
 
+    return { slides, tokensUsed, model: "claude-sonnet-4-5-20250929" };
+  },
+
+  async generateRaw(prompt: string): Promise<GenerationResult> {
+    const client = getClient();
+    const { slides, tokensUsed } = await parseWithRetry(client, prompt);
     return { slides, tokensUsed, model: "claude-sonnet-4-5-20250929" };
   },
 

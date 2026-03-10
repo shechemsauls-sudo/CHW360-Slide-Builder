@@ -9,16 +9,16 @@ import { toast } from "sonner";
 import type { FidelityLevel, ToneOption } from "~/lib/ai/types";
 
 const FIDELITY_OPTIONS: { value: FidelityLevel; label: string }[] = [
-  { value: "verbatim", label: "Verbatim" },
   { value: "balanced", label: "Balanced" },
+  { value: "verbatim", label: "Verbatim" },
   { value: "creative", label: "Creative" },
 ];
 
 const TONE_OPTIONS: { value: ToneOption; label: string }[] = [
+  { value: "training", label: "Training" },
+  { value: "academic", label: "Academic" },
   { value: "professional", label: "Professional" },
   { value: "conversational", label: "Conversational" },
-  { value: "academic", label: "Academic" },
-  { value: "training", label: "Training" },
 ];
 
 export function GenerationPreferencesCard() {
@@ -27,18 +27,28 @@ export function GenerationPreferencesCard() {
   const utils = api.useUtils();
 
   const [llmProvider, setLlmProvider] = useState("anthropic");
-  const [imageProvider, setImageProvider] = useState("gpt-image-1");
+  const [imageProvider, setImageProvider] = useState("multi");
+  const [customMixEngines, setCustomMixEngines] = useState<string[]>([]);
   const [fidelity, setFidelity] = useState<FidelityLevel>("balanced");
-  const [tone, setTone] = useState<ToneOption>("professional");
+  const [tone, setTone] = useState<ToneOption>("training");
   const [customInstructions, setCustomInstructions] = useState("");
   const [isDirty, setIsDirty] = useState(false);
+
+  const isCustomMix = imageProvider === "custom";
 
   useEffect(() => {
     if (prefs) {
       setLlmProvider(prefs.llmProvider ?? "anthropic");
-      setImageProvider(prefs.imageProvider ?? "gpt-image-1");
+      const savedImage = prefs.imageProvider ?? "multi";
+      if (savedImage.startsWith("custom:")) {
+        setImageProvider("custom");
+        setCustomMixEngines(savedImage.slice(7).split(",").filter(Boolean));
+      } else {
+        setImageProvider(savedImage);
+        setCustomMixEngines([]);
+      }
       setFidelity((prefs.fidelity as FidelityLevel) ?? "balanced");
-      setTone((prefs.tone as ToneOption) ?? "professional");
+      setTone((prefs.tone as ToneOption) ?? "training");
       setCustomInstructions(prefs.customInstructions ?? "");
       setIsDirty(false);
     }
@@ -54,7 +64,18 @@ export function GenerationPreferencesCard() {
   });
 
   const handleSave = () => {
-    setPreferences.mutate({ llmProvider, imageProvider, fidelity, tone, customInstructions });
+    const resolvedImageProvider = isCustomMix && customMixEngines.length > 0
+      ? `custom:${customMixEngines.join(",")}`
+      : isCustomMix ? "multi" // fallback if no engines selected
+      : imageProvider;
+    setPreferences.mutate({ llmProvider, imageProvider: resolvedImageProvider, fidelity, tone, customInstructions });
+  };
+
+  const toggleCustomEngine = (id: string) => {
+    setCustomMixEngines((prev) =>
+      prev.includes(id) ? prev.filter((e) => e !== id) : [...prev, id],
+    );
+    markDirty();
   };
 
   const markDirty = () => setIsDirty(true);
@@ -106,13 +127,43 @@ export function GenerationPreferencesCard() {
         <div className="space-y-2">
           <label className="text-sm font-medium" style={{ color: "#8AACAC" }}>Default Image Provider</label>
           <div className="grid grid-cols-2 gap-2 sm:grid-cols-3">
+            <button
+              type="button"
+              onClick={() => { setImageProvider("multi"); setCustomMixEngines([]); markDirty(); }}
+              className={`rounded-lg border p-2.5 text-left transition-all ${
+                imageProvider === "multi"
+                  ? "border-[#5B8A8A] bg-[#2D5A5A]/15"
+                  : "border-white/10 bg-white/5 hover:border-white/20"
+              }`}
+            >
+              <div className="text-xs font-medium text-white">Auto Mix</div>
+              <p className="mt-0.5 text-[10px] text-gray-500">Best engines per style</p>
+            </button>
+            <button
+              type="button"
+              onClick={() => {
+                setImageProvider("custom");
+                if (customMixEngines.length === 0) {
+                  setCustomMixEngines(configuredImage.map((p) => p.id));
+                }
+                markDirty();
+              }}
+              className={`rounded-lg border p-2.5 text-left transition-all ${
+                isCustomMix
+                  ? "border-[#C9725B] bg-[#C9725B]/15"
+                  : "border-white/10 bg-white/5 hover:border-white/20"
+              }`}
+            >
+              <div className="text-xs font-medium text-white">Custom Mix</div>
+              <p className="mt-0.5 text-[10px] text-gray-500">Pick your engines</p>
+            </button>
             {configuredImage.map((p) => (
               <button
                 key={p.id}
                 type="button"
-                onClick={() => { setImageProvider(p.id); markDirty(); }}
+                onClick={() => { setImageProvider(p.id); setCustomMixEngines([]); markDirty(); }}
                 className={`rounded-lg border p-2.5 text-left transition-all ${
-                  imageProvider === p.id
+                  !isCustomMix && imageProvider === p.id
                     ? "border-[#5B8A8A] bg-[#2D5A5A]/15"
                     : "border-white/10 bg-white/5 hover:border-white/20"
                 }`}
@@ -121,6 +172,50 @@ export function GenerationPreferencesCard() {
               </button>
             ))}
           </div>
+
+          {/* Custom Mix engine checkboxes */}
+          {isCustomMix && (
+            <div className="rounded-lg border border-[#C9725B]/20 bg-[#C9725B]/5 p-3">
+              <p className="mb-2 text-[10px] font-medium uppercase tracking-wider text-gray-400">
+                Select engines to rotate ({customMixEngines.length} selected)
+              </p>
+              <div className="grid grid-cols-2 gap-1.5 sm:grid-cols-3">
+                {configuredImage.map((p) => {
+                  const checked = customMixEngines.includes(p.id);
+                  return (
+                    <button
+                      key={p.id}
+                      type="button"
+                      onClick={() => toggleCustomEngine(p.id)}
+                      className={`flex items-center gap-2 rounded-md border px-2.5 py-2 text-left transition-all ${
+                        checked
+                          ? "border-[#C9725B]/50 bg-[#C9725B]/10"
+                          : "border-white/10 bg-white/5 hover:border-white/20"
+                      }`}
+                    >
+                      <div
+                        className={`flex h-4 w-4 shrink-0 items-center justify-center rounded border transition-all ${
+                          checked
+                            ? "border-[#C9725B] bg-[#C9725B]"
+                            : "border-white/30 bg-transparent"
+                        }`}
+                      >
+                        {checked && (
+                          <svg viewBox="0 0 12 12" className="h-2.5 w-2.5" fill="none" stroke="white" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                            <path d="M2.5 6L5 8.5L9.5 3.5" />
+                          </svg>
+                        )}
+                      </div>
+                      <span className="text-xs text-white">{p.name}</span>
+                    </button>
+                  );
+                })}
+              </div>
+              {customMixEngines.length < 2 && (
+                <p className="mt-2 text-[10px] text-[#C9725B]">Select at least 2 engines for a mix</p>
+              )}
+            </div>
+          )}
         </div>
 
         {/* Fidelity */}
@@ -174,7 +269,7 @@ export function GenerationPreferencesCard() {
             id="pref-instructions"
             value={customInstructions}
             onChange={(e) => {
-              if (e.target.value.length <= 500) {
+              if (e.target.value.length <= 1000) {
                 setCustomInstructions(e.target.value);
                 markDirty();
               }
@@ -185,7 +280,7 @@ export function GenerationPreferencesCard() {
           />
           <div className="flex justify-between text-xs text-gray-400">
             <span>Applied to all new generations</span>
-            <span>{customInstructions.length}/500</span>
+            <span>{customInstructions.length}/1000</span>
           </div>
         </div>
 

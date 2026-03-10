@@ -1,5 +1,5 @@
 import { z } from "zod";
-import { asc, desc, eq, ilike, or, count, sql, getTableName } from "drizzle-orm";
+import { asc, desc, eq, ilike, or, count, sql, getTableName, inArray } from "drizzle-orm";
 import { TRPCError } from "@trpc/server";
 import { createTRPCRouter, adminProcedure } from "~/server/api/trpc";
 import { crmContacts, contactSubmissions, crmNotes } from "~/server/db/schema";
@@ -199,4 +199,28 @@ export const crmRouter = createTRPCRouter({
       }
       return { success: true };
     }),
+
+  bulkDelete: adminProcedure
+    .input(z.object({ ids: z.array(z.string().uuid()).min(1).max(100) }))
+    .mutation(async ({ ctx, input }) => {
+      // Notes cascade-delete, submissions set crmContactId=null via DB FK constraints
+      await ctx.db.delete(crmContacts).where(inArray(crmContacts.id, input.ids));
+      return { success: true, count: input.ids.length };
+    }),
+
+  exportCsv: adminProcedure.query(async ({ ctx }) => {
+    const rows = await ctx.db
+      .select({
+        name: crmContacts.name,
+        email: crmContacts.email,
+        phone: crmContacts.phone,
+        organization: crmContacts.organization,
+        source: crmContacts.source,
+        firstContactAt: crmContacts.firstContactAt,
+        lastContactAt: crmContacts.lastContactAt,
+      })
+      .from(crmContacts)
+      .orderBy(desc(crmContacts.lastContactAt));
+    return rows;
+  }),
 });

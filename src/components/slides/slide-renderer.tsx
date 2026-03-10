@@ -43,13 +43,13 @@ function getContentScale(body: string, layout?: string): string {
   // Split layouts have half the width — much more aggressive scaling
   const isCompact = layout === "split-left" || layout === "split-right";
   if (isCompact) {
-    if (density > 15) return "text-xs";
-    if (density > 8) return "text-sm";
+    if (density > 12) return "text-xs";
+    if (density > 6) return "text-sm";
     return "text-sm";
   }
 
-  if (density > 30) return "text-xs";
-  if (density > 18) return "text-sm";
+  if (density > 22) return "text-xs";
+  if (density > 12) return "text-sm";
   return "text-base";
 }
 
@@ -58,42 +58,70 @@ function isDenseContent(body: string): boolean {
   const lineCount = body.split("\n").filter((l) => l.trim()).length;
   const blockCount = (body.match(/:::/g) ?? []).length / 2;
   const blockItemScore = countBlockItems(body);
-  return lineCount + blockCount * 3 + blockItemScore > 10;
+  return lineCount + blockCount * 3 + blockItemScore > 7;
 }
 
 /** Safety-net wrapper: shrinks content via CSS scale if it overflows its container.
- *  Uses flex: 1 to fill available space (so it can detect overflow), and when
- *  content fits, applies internal flex centering for balanced vertical placement. */
+ *  Measures at natural width (no width compensation) to avoid oscillation loops.
+ *  When content fits, applies flex centering for balanced vertical placement. */
 function ContentFitter({ children, className }: { children: ReactNode; className?: string }) {
   const outerRef = useRef<HTMLDivElement>(null);
   const innerRef = useRef<HTMLDivElement>(null);
   const [shrink, setShrink] = useState(1);
+  const stableRef = useRef(1);
 
   const measure = useCallback(() => {
     const outer = outerRef.current;
     const inner = innerRef.current;
     if (!outer || !inner) return;
     const available = outer.clientHeight;
+    if (available <= 0) return;
+
+    // Temporarily reset to natural layout for accurate measurement
+    const prevTransform = inner.style.transform;
+    const prevWidth = inner.style.width;
+    const prevOrigin = inner.style.transformOrigin;
+    inner.style.transform = "none";
+    inner.style.width = "100%";
+    inner.style.transformOrigin = "";
+
     const needed = inner.scrollHeight;
-    if (needed > available && available > 0) {
-      setShrink(Math.max(0.45, available / needed));
-    } else {
-      setShrink(1);
+
+    // Restore
+    inner.style.transform = prevTransform;
+    inner.style.width = prevWidth;
+    inner.style.transformOrigin = prevOrigin;
+
+    if (needed > available) {
+      const raw = available / needed;
+      // Snap to 0.05 increments to reduce sub-pixel artifacts, floor for safety
+      const snapped = Math.floor(raw * 20) / 20;
+      const clamped = Math.max(0.4, snapped);
+      // Only update if meaningfully different (avoid flicker from micro-changes)
+      if (Math.abs(clamped - stableRef.current) > 0.02) {
+        stableRef.current = clamped;
+        setShrink(clamped);
+      }
+    } else if (stableRef.current < 1) {
+      // Content fits — but only reset to 1 if we're sure (add 5% buffer)
+      if (needed <= available * 0.95) {
+        stableRef.current = 1;
+        setShrink(1);
+      }
     }
   }, []);
 
   useEffect(() => {
     const outer = outerRef.current;
-    const inner = innerRef.current;
-    if (!outer || !inner) return;
+    if (!outer) return;
     const ro = new ResizeObserver(measure);
     ro.observe(outer);
-    ro.observe(inner);
-    // Measure after first paint + delayed for late-rendering content (SVGs, fonts)
+    // Staggered measurements for late-rendering content (SVGs, fonts, images)
     requestAnimationFrame(measure);
-    const timer1 = setTimeout(measure, 300);
-    const timer2 = setTimeout(measure, 600);
-    return () => { ro.disconnect(); clearTimeout(timer1); clearTimeout(timer2); };
+    const t1 = setTimeout(measure, 100);
+    const t2 = setTimeout(measure, 350);
+    const t3 = setTimeout(measure, 700);
+    return () => { ro.disconnect(); clearTimeout(t1); clearTimeout(t2); clearTimeout(t3); };
   }, [measure]);
 
   return (
@@ -102,7 +130,11 @@ function ContentFitter({ children, className }: { children: ReactNode; className
         ref={innerRef}
         style={
           shrink < 1
-            ? { transform: `scale(${shrink})`, transformOrigin: "top left", width: `${100 / shrink}%` }
+            ? {
+                transform: `scale(${shrink})`,
+                transformOrigin: "top left",
+                width: `${100 / shrink}%`,
+              }
             : { minHeight: "100%", display: "flex", flexDirection: "column", justifyContent: "center" }
         }
       >
@@ -184,8 +216,6 @@ function renderLayout(
   footerText?: string,
 ): React.ReactNode {
   switch (slide.layout) {
-    case "centered":
-      return <CenteredLayout slide={slide} theme={theme} hasBlocks={hasBlocks} footerText={footerText} />;
     case "split-left":
       return <SplitLayout slide={slide} theme={theme} hasBlocks={hasBlocks} imagePosition="left" footerText={footerText} />;
     case "split-right":
@@ -196,6 +226,7 @@ function renderLayout(
       return <ImageFullLayout slide={slide} theme={theme} hasBlocks={hasBlocks} footerText={footerText} />;
     case "image-top":
       return <ImageTopLayout slide={slide} theme={theme} hasBlocks={hasBlocks} footerText={footerText} />;
+    case "centered": // Legacy — map to full layout for backward compat
     default:
       return <FullLayout slide={slide} theme={theme} hasBlocks={hasBlocks} footerText={footerText} />;
   }
@@ -426,43 +457,6 @@ function FullLayout({
   );
 }
 
-function CenteredLayout({
-  slide,
-  theme,
-  hasBlocks,
-  footerText,
-}: {
-  slide: SlideData;
-  theme: SlideTheme;
-  hasBlocks: boolean;
-  footerText?: string;
-}) {
-  const isQuote = slide.type === "quote";
-  const { bodyContent, footerText: extractedFooter } = extractFooter(slide.body);
-  const bodySlide = { ...slide, body: bodyContent };
-  const resolvedFooter = extractedFooter ?? (slide.type !== "title" ? footerText : undefined);
-  const contentScale = getContentScale(slide.body);
-
-  const dense = isDenseContent(slide.body);
-
-  return (
-    <div className="flex h-full w-full flex-col items-center overflow-hidden text-center p-12">
-      <div className="flex flex-1 flex-col items-center justify-center min-h-0">
-        {isQuote && (
-          <span className="mb-2 text-5xl shrink-0" style={{ color: theme.colors.accent }}>
-            &ldquo;
-          </span>
-        )}
-        <SlideTitle slide={slide} theme={theme} />
-        <ContentFitter className={`${dense ? "mt-3" : "mt-5"} max-w-[80%] ${contentScale} leading-relaxed`}>
-          <SlideBody slide={bodySlide} theme={theme} hasBlocks={hasBlocks} dense={dense} />
-        </ContentFitter>
-      </div>
-      {resolvedFooter && <SlideFooter text={resolvedFooter} theme={theme} />}
-    </div>
-  );
-}
-
 function SplitLayout({
   slide,
   theme,
@@ -488,6 +482,8 @@ function SplitLayout({
         alt={slide.imagePrompt ?? "Slide image"}
         className="h-full w-full object-cover"
         style={focalStyle}
+        loading="lazy"
+        decoding="async"
       />
     </div>
   ) : (
@@ -585,6 +581,22 @@ function ImageFullLayout({
   const bodySlide = { ...slide, body: bodyContent };
   const resolvedFooter = extractedFooter ?? (slide.type !== "title" ? footerText : undefined);
 
+  // Override theme colors for white-on-dark readability inside the frosted card
+  const imageFullTheme: SlideTheme = {
+    ...theme,
+    colors: {
+      ...theme.colors,
+      primary: "#FFFFFF",
+      secondary: "rgba(255,255,255,0.8)",
+      text: "#FFFFFF",
+      textMuted: "rgba(255,255,255,0.75)",
+      accent: "#FFFFFF",
+      surface: "rgba(255,255,255,0.1)",
+      background: "transparent",
+    },
+    palette: ["#FFFFFF", "rgba(255,255,255,0.85)", "rgba(255,255,255,0.7)", "rgba(255,255,255,0.55)"],
+  };
+
   return (
     <div className="relative h-full w-full">
       {/* Background image or placeholder */}
@@ -595,6 +607,8 @@ function ImageFullLayout({
           alt={slide.imagePrompt ?? "Slide image"}
           className="absolute inset-0 h-full w-full object-cover"
           style={slide.imageFocalPoint ? { objectPosition: `${slide.imageFocalPoint.x}% ${slide.imageFocalPoint.y}%` } : undefined}
+          loading="lazy"
+          decoding="async"
         />
       ) : (
         <div className="absolute inset-0">
@@ -603,13 +617,13 @@ function ImageFullLayout({
       )}
 
       {/* Softened gradient overlay */}
-      <div className="absolute inset-0 bg-gradient-to-t from-black/50 via-black/20 to-transparent" />
+      <div className="absolute inset-0 bg-gradient-to-t from-black/40 via-black/10 to-transparent" />
 
       {/* Content positioned at bottom with frosted-glass card */}
-      <div className="relative flex h-full flex-col justify-end p-10">
-        <div className="rounded-xl bg-black/50 p-8 ring-1 ring-white/10 backdrop-blur-md">
+      <div className="relative flex h-full flex-col justify-end overflow-hidden p-10">
+        <div className="flex max-h-full flex-col rounded-xl bg-black/60 p-8 ring-1 ring-white/10 backdrop-blur-md">
           <h2
-            className={`${slide.type === "title" ? "text-5xl" : slide.type === "section" ? "text-4xl" : "text-2xl"} font-bold leading-tight tracking-tight text-white`}
+            className={`shrink-0 ${slide.type === "title" ? "text-5xl" : slide.type === "section" ? "text-4xl" : "text-2xl"} font-bold leading-tight tracking-tight text-white`}
             style={{
               fontFamily: theme.typography.headingFont,
               fontWeight: theme.typography.headingWeight,
@@ -638,12 +652,12 @@ function ImageFullLayout({
             )}
           </h2>
           {bodyContent.trim() && (
-            <div className="mt-4 max-w-[85%] text-base leading-relaxed text-white/85">
-              <SlideBody slide={bodySlide} theme={theme} hasBlocks={hasBlocks} />
-            </div>
+            <ContentFitter className="mt-4 max-w-[85%] text-base leading-relaxed text-white/85">
+              <SlideBody slide={bodySlide} theme={imageFullTheme} hasBlocks={hasBlocks} />
+            </ContentFitter>
           )}
           {resolvedFooter && (
-            <div className="mt-4 pt-2 text-[10px] leading-tight text-white/40">
+            <div className="shrink-0 mt-4 pt-2 text-[10px] leading-tight text-white/40">
               {resolvedFooter}
             </div>
           )}
@@ -680,6 +694,8 @@ function ImageTopLayout({
             alt={slide.imagePrompt ?? "Slide image"}
             className="h-full w-full object-cover"
             style={slide.imageFocalPoint ? { objectPosition: `${slide.imageFocalPoint.x}% ${slide.imageFocalPoint.y}%` } : undefined}
+            loading="lazy"
+            decoding="async"
           />
         ) : (
           <ImagePlaceholder theme={theme} />

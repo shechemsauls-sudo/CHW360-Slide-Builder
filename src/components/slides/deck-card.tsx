@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { Layers, Clock, Sparkles, Trash2, Loader2 } from "lucide-react";
+import { Layers, Clock, Sparkles, Trash2, Loader2, Copy } from "lucide-react";
 import { Button } from "~/components/ui/button";
 
 interface DeckCardProps {
@@ -17,6 +17,7 @@ interface DeckCardProps {
     updatedAt: Date;
   };
   onDelete: (id: string) => void;
+  onDuplicate?: (id: string) => void;
   selected?: boolean;
   onSelect?: (id: string) => void;
 }
@@ -34,7 +35,7 @@ const PROVIDER_LABELS: Record<string, string> = {
   xai: "Grok",
 };
 
-export function DeckCard({ deck, onDelete, selected, onSelect }: DeckCardProps) {
+export function DeckCard({ deck, onDelete, onDuplicate, selected, onSelect }: DeckCardProps) {
   const status = STATUS_COLORS[deck.status] ?? STATUS_COLORS.draft;
   const timeAgo = getRelativeTime(deck.updatedAt);
 
@@ -45,12 +46,14 @@ export function DeckCard({ deck, onDelete, selected, onSelect }: DeckCardProps) 
       }`}
     >
       {onSelect && (
-        <input
-          type="checkbox"
-          checked={selected}
-          onChange={() => onSelect(deck.id)}
-          className="h-4 w-4 shrink-0 cursor-pointer rounded border-white/20 bg-white/5 accent-[#2D5A5A]"
-        />
+        <label className="flex h-8 w-8 shrink-0 items-center justify-center cursor-pointer">
+          <input
+            type="checkbox"
+            checked={selected}
+            onChange={() => onSelect(deck.id)}
+            className="h-4 w-4 cursor-pointer rounded border-white/20 bg-white/5 accent-[#2D5A5A]"
+          />
+        </label>
       )}
       <Link href={`/admin/slides/${deck.id}`} className="min-w-0 flex-1">
         <div className="flex items-center gap-2">
@@ -82,6 +85,17 @@ export function DeckCard({ deck, onDelete, selected, onSelect }: DeckCardProps) 
           </span>
         </div>
       </Link>
+      {onDuplicate && (
+        <Button
+          variant="ghost"
+          size="icon"
+          className="h-7 w-7 shrink-0 text-gray-500 opacity-0 transition-opacity hover:text-[#5B8A8A] group-hover:opacity-100"
+          onClick={(e) => { e.preventDefault(); onDuplicate(deck.id); }}
+          aria-label={`Duplicate ${deck.title}`}
+        >
+          <Copy className="h-3.5 w-3.5" />
+        </Button>
+      )}
       <Button
         variant="ghost"
         size="icon"

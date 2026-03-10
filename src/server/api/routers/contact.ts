@@ -1,5 +1,5 @@
 import { z } from "zod";
-import { desc, eq, and, count, inArray, sql } from "drizzle-orm";
+import { desc, eq, and, count, inArray } from "drizzle-orm";
 import { TRPCError } from "@trpc/server";
 import {
   createTRPCRouter,
@@ -202,7 +202,7 @@ export const contactRouter = createTRPCRouter({
   bulkDelete: adminProcedure
     .input(z.object({ ids: z.array(z.string().uuid()).min(1).max(100) }))
     .mutation(async ({ ctx, input }) => {
-      const result = await ctx.db
+      await ctx.db
         .delete(contactSubmissions)
         .where(inArray(contactSubmissions.id, input.ids));
       return { success: true, count: input.ids.length };

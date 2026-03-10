@@ -69,8 +69,21 @@ test-content/               # Client sample inputs for testing (gitignored)
 ## Slide Layouts
 
 Image-eligible layouts: `split-left`, `split-right`, `image-full`, `image-top`.
-Non-image layouts: `full`, `centered`, `two-column`.
+Non-image layouts: `full`, `two-column`.
+`centered` is legacy — mapped to `full` at render time for backward compat.
 Server strips `imagePrompt` from non-eligible layouts post-generation (`cleanImagePrompts` in deck.ts).
+
+**Structural Slide Protocol:** Title, section, and closing slides MUST use `image-full` layout with an imagePrompt. These cinematic bookends create a unified visual rhythm across all decks. References slides use `full` layout, no images. All other slide types use any layout freely.
+All text is left-aligned — no centered body text.
+
+## Generation Architecture
+
+2-pass pipeline (see `docs/generation-guidelines.md` for full spec):
+- **Pass 1:** Full generation from source content — structure, 25 block types, images, citations, speaker notes, all in one LLM call. No JSON-in bottleneck.
+- **Pass 2:** Server-side TypeScript audit (`auditDeckQuality`) computes violations deterministically, then sends only violated slides to LLM in small 2-3 slide chunks for targeted fixes. Parallel chunk execution. References slides generated separately if missing. Skipped entirely if no violations.
+
+Defaults: 70 slides, "training" tone, "balanced" fidelity, 1000 char custom instructions.
+Images: realistic only, ~40% coverage, multi-engine rotation.
 
 ## Database Tables (prefix: `chw360_`)
 

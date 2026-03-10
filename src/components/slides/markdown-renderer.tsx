@@ -69,7 +69,7 @@ function renderMarkdown(md: string): string {
     if (ulMatch) {
       if (inList !== "ul") {
         if (inList) output.push("</ol>");
-        output.push('<ul class="list-disc pl-5 space-y-0.5">');
+        output.push('<ul class="list-disc pl-5 space-y-0.5 text-left">');
         inList = "ul";
       }
       output.push(`<li>${inlineFormat(ulMatch[1]!)}</li>`);
@@ -81,7 +81,7 @@ function renderMarkdown(md: string): string {
     if (olMatch) {
       if (inList !== "ol") {
         if (inList) output.push("</ul>");
-        output.push('<ol class="list-decimal pl-5 space-y-0.5">');
+        output.push('<ol class="list-decimal pl-5 space-y-0.5 text-left">');
         inList = "ol";
       }
       output.push(`<li>${inlineFormat(olMatch[1]!)}</li>`);
@@ -105,6 +105,9 @@ function renderMarkdown(md: string): string {
 }
 
 export function inlineFormat(text: string): string {
+  // Escape HTML entities to prevent XSS
+  text = text.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;");
+
   return (
     text
       // Bold: **text** or __text__

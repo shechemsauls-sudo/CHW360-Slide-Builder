@@ -1,21 +1,7 @@
 "use client";
 
-import { useState, useEffect } from "react";
-import { Loader2, Sparkles, AlertCircle, ArrowLeft, Clock } from "lucide-react";
+import { Loader2, Sparkles, AlertCircle, ArrowLeft } from "lucide-react";
 import Link from "next/link";
-
-/** Estimate generation time range in minutes based on slide count and provider */
-function estimateTime(slideCount: number, provider?: string): string {
-  // Base: ~2s per slide for OpenAI, ~3s per slide for Anthropic (streaming)
-  const perSlide = provider === "anthropic" ? 3 : 2;
-  const baseSeconds = slideCount * perSlide;
-  // Add overhead for prompt construction, retries, network
-  const minSeconds = baseSeconds + 15;
-  const maxSeconds = baseSeconds * 1.5 + 30;
-  const minMin = Math.max(1, Math.round(minSeconds / 60));
-  const maxMin = Math.max(minMin + 1, Math.round(maxSeconds / 60));
-  return `${minMin} \u2013 ${maxMin} minutes`;
-}
 
 interface GenerationStatusProps {
   status: "idle" | "generating" | "error";
@@ -24,22 +10,13 @@ interface GenerationStatusProps {
   slideCount?: number;
 }
 
-export function GenerationStatus({ status, error, provider, slideCount }: GenerationStatusProps) {
-  const [elapsed, setElapsed] = useState(0);
+const LLM_LABELS: Record<string, string> = {
+  anthropic: "Claude",
+  openai: "GPT-4o",
+  xai: "Grok",
+};
 
-  useEffect(() => {
-    if (status !== "generating") {
-      setElapsed(0);
-      return;
-    }
-
-    const interval = setInterval(() => {
-      setElapsed((prev) => prev + 1);
-    }, 1000);
-
-    return () => clearInterval(interval);
-  }, [status]);
-
+export function GenerationStatus({ status, error, provider }: GenerationStatusProps) {
   if (status === "idle") return null;
 
   if (status === "error") {
@@ -54,12 +31,6 @@ export function GenerationStatus({ status, error, provider, slideCount }: Genera
     );
   }
 
-  const formatTime = (s: number) => {
-    const mins = Math.floor(s / 60);
-    const secs = s % 60;
-    return mins > 0 ? `${mins}:${secs.toString().padStart(2, "0")}` : `${secs}s`;
-  };
-
   return (
     <div className="flex flex-col items-center justify-center py-16">
       <div className="relative mb-6">
@@ -70,24 +41,13 @@ export function GenerationStatus({ status, error, provider, slideCount }: Genera
       </div>
       <h3 className="mb-1 text-lg font-semibold text-white">Generating Slides</h3>
       <p className="mb-6 text-sm text-gray-400">
-        {provider === "anthropic" ? "Claude" : "GPT-4o"} is creating your presentation...
+        {LLM_LABELS[provider ?? "anthropic"] ?? "AI"} is creating your presentation...
       </p>
 
-      {/* Estimated wait + elapsed timer */}
-      <div className="flex flex-col items-center gap-3 rounded-xl bg-white/5 px-8 py-5">
-        <div className="flex items-center gap-2 text-sm text-gray-300">
-          <Clock className="h-4 w-4 text-[#5B8A8A]" />
-          <span>Estimated wait: <strong className="text-white">{estimateTime(slideCount ?? 20, provider)}</strong></span>
-        </div>
-        <div className="text-xs text-gray-500">
-          Elapsed: {formatTime(elapsed)}
-        </div>
-      </div>
-
       {/* Safe to leave */}
-      <div className="mt-8 flex flex-col items-center gap-2">
+      <div className="flex flex-col items-center gap-2">
         <p className="text-xs text-gray-500">
-          You&apos;ll receive an email when it&apos;s done. Safe to close this page.
+          This may take a minute. Safe to navigate away — your deck will be ready when you return.
         </p>
         <Link
           href="/admin/slides"

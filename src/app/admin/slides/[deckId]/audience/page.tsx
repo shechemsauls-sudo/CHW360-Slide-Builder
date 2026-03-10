@@ -16,7 +16,7 @@ export default function AudiencePage() {
 
   const slides = (deck?.slides ?? []) as SlideData[];
   const currentSlide = slides[currentIndex];
-  const theme = getTheme(deck?.themeId ?? "chw-teal");
+  const theme = getTheme(deck?.themeId ?? "chw-cream");
   const storageKey = `presenter-slide-${deckId}`;
 
   // Read initial value from localStorage
