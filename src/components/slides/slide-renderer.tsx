@@ -1,6 +1,6 @@
 "use client";
 
-import { useRef, useState, useEffect, useCallback, type ReactNode } from "react";
+import { useRef, useState, useEffect, useLayoutEffect, useCallback, type ReactNode } from "react";
 import type { SlideData } from "~/lib/ai/types";
 import type { SlideTheme } from "~/lib/themes";
 import { MarkdownRenderer } from "./markdown-renderer";
@@ -122,17 +122,18 @@ function ContentFitter({ children, className }: { children: ReactNode; className
     }
   }, []);
 
+  // Measure synchronously before first paint to prevent visible layout shift
+  useLayoutEffect(() => {
+    measure();
+  }, [measure]);
+
+  // ResizeObserver handles any later layout changes (container resize, dynamic content)
   useEffect(() => {
     const outer = outerRef.current;
     if (!outer) return;
     const ro = new ResizeObserver(measure);
     ro.observe(outer);
-    // Staggered measurements for late-rendering content (SVGs, fonts, images)
-    requestAnimationFrame(measure);
-    const t1 = setTimeout(measure, 100);
-    const t2 = setTimeout(measure, 350);
-    const t3 = setTimeout(measure, 700);
-    return () => { ro.disconnect(); clearTimeout(t1); clearTimeout(t2); clearTimeout(t3); };
+    return () => ro.disconnect();
   }, [measure]);
 
   return (
