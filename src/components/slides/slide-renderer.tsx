@@ -68,6 +68,7 @@ function ContentFitter({ children, className }: { children: ReactNode; className
   const outerRef = useRef<HTMLDivElement>(null);
   const innerRef = useRef<HTMLDivElement>(null);
   const [scale, setScale] = useState(1);
+  const [ready, setReady] = useState(false);
   const stableRef = useRef(1);
 
   const measure = useCallback(() => {
@@ -100,34 +101,32 @@ function ContentFitter({ children, className }: { children: ReactNode; className
       target = Math.max(0.4, snapped);
     } else if (needed > 0) {
       // Content fits — gently scale up ONLY if there's significant spare room.
-      // This fills dead space on sparse slides without overflowing dense ones.
       const ratio = available / needed;
       if (ratio > 1.3) {
         // Lots of spare room (content uses <77% of space) — scale up to fill ~85%
         const upscale = Math.min(ratio * 0.85, 1.2);
         target = upscale;
       } else {
-        // Content already fills most of the space — just center it, don't scale
         target = 1;
       }
     } else {
       target = 1;
     }
 
-    // Snap to 0.05 increments, only update if meaningfully different
     const snapped = Math.round(target * 20) / 20;
     if (Math.abs(snapped - stableRef.current) > 0.02) {
       stableRef.current = snapped;
       setScale(snapped);
     }
+    setReady(true);
   }, []);
 
-  // Measure synchronously before first paint to prevent visible layout shift
+  // Measure synchronously before first paint — content hidden until measured
   useLayoutEffect(() => {
     measure();
   }, [measure]);
 
-  // ResizeObserver handles any later layout changes (container resize, dynamic content)
+  // ResizeObserver handles later layout changes (container resize, dynamic content)
   useEffect(() => {
     const outer = outerRef.current;
     if (!outer) return;
@@ -137,7 +136,11 @@ function ContentFitter({ children, className }: { children: ReactNode; className
   }, [measure]);
 
   return (
-    <div ref={outerRef} className={`overflow-hidden ${className ?? ""}`} style={{ flex: "1 1 0%", minHeight: 0 }}>
+    <div
+      ref={outerRef}
+      className={`overflow-hidden ${className ?? ""}`}
+      style={{ flex: "1 1 0%", minHeight: 0, visibility: ready ? "visible" : "hidden" }}
+    >
       <div
         ref={innerRef}
         style={
