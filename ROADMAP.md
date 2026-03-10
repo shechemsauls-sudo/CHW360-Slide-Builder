@@ -154,8 +154,8 @@
 
 ### Export
 - [ ] **PPTX export** (pptxgenjs): Full deck with slides, speaker notes, theme colors, and images
-- [ ] **PDF export** (jspdf): One slide per page, themed rendering
-- [ ] **Export dialog**: Modal with format selection (PDF, PPTX, Web Link)
+- [x] **PDF export**: One slide per page, themed rendering
+- [x] **Export dialog**: Export button in deck viewer header
 
 ### Sharing
 - [ ] **Public share links**: Toggle a deck to public, generate a unique slug

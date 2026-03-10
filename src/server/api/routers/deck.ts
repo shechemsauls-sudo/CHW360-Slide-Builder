@@ -153,7 +153,7 @@ const CONTENT_TYPES = new Set(["content", "bullets", "comparison", "activity", "
 const IMAGE_ELIGIBLE_LAYOUTS = new Set(["split-left", "split-right", "image-full", "image-top"]);
 const IMAGE_REQUIRED_LAYOUTS = new Set(["image-full", "image-top"]);
 const NO_IMAGE_LAYOUTS = new Set(["full", "two-column"]);
-const CITATION_PATTERN = /\([A-Z][a-z]+(?:\s(?:&|and|et al\.?)\s[A-Z][a-z]+)*,\s*\d{4}[a-z]?\)/;
+const CITATION_PATTERN = /\((?:[A-Z][A-Za-z'-]+(?:\s(?:&|and|et al\.?)\s[A-Z][A-Za-z'-]+)*|[A-Z]{2,}),\s*\d{4}[a-z]?\)/;
 
 /** Extract the dominant block type from a slide body (first :::block-type found) */
 function getDominantBlock(body: string): string | null {
@@ -497,13 +497,16 @@ async function generateDeckInBackground(
       })
       .where(eq(decks.id, deckId));
 
+    // Send completion email BEFORE image gen (image gen can take minutes and may exceed serverless timeout)
+    if (opts.userEmail) {
+      sendDeckReadyEmail(opts.userEmail, opts.title, deckId, "ready").catch((err) => {
+        console.error(`[deck ${deckId}] Failed to send ready email:`, err instanceof Error ? err.message : err);
+      });
+    }
+
     // Auto-generate images for slides with prompts
     if (opts.imageProvider !== "disabled") {
       await generateImagesForDeck(db, deckId, processedSlides, opts.imageProvider);
-    }
-
-    if (opts.userEmail) {
-      sendDeckReadyEmail(opts.userEmail, opts.title, deckId, "ready").catch(() => {});
     }
   } catch (error) {
     await db
@@ -519,7 +522,9 @@ async function generateDeckInBackground(
       .where(eq(decks.id, deckId));
 
     if (opts.userEmail) {
-      sendDeckReadyEmail(opts.userEmail, opts.title, deckId, "error", error instanceof Error ? error.message : undefined).catch(() => {});
+      sendDeckReadyEmail(opts.userEmail, opts.title, deckId, "error", error instanceof Error ? error.message : undefined).catch((err) => {
+        console.error(`[deck ${deckId}] Failed to send error email:`, err instanceof Error ? err.message : err);
+      });
     }
   }
 }

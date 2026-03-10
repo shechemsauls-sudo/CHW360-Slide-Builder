@@ -85,6 +85,8 @@ export default function DeckViewPage() {
   const autoImageTriggered = useRef(false);
 
   // Auto-start image generation when deck transitions to "ready"
+  // Server-side generateDeckInBackground already generates images — we just track progress here.
+  // If server-side images are already being generated, show progress UI without re-triggering.
   useEffect(() => {
     if (!deck || isLoading) return;
 
@@ -96,10 +98,15 @@ export default function DeckViewPage() {
 
     if ((justFinished || isNewDeck) && !autoImageTriggered.current && !isGeneratingImages) {
       const slides = (deck.slides ?? []) as SlideData[];
-      const needsImages = slides.filter((s) => s.imagePrompt && !s.imageUrl).length;
+      const withPrompt = slides.filter((s) => s.imagePrompt);
+      const needsImages = withPrompt.filter((s) => !s.imageUrl).length;
       if (needsImages > 0) {
         autoImageTriggered.current = true;
-        void handleBatchGenerateImages();
+        // Show progress UI — server is already generating images in background
+        const alreadyDone = withPrompt.filter((s) => s.imageUrl).length;
+        setImageGenProgress({ done: alreadyDone, total: withPrompt.length });
+        setIsGeneratingImages(true);
+        setIsGeneratingImagesBg(true);
       }
       // Clean the URL param
       if (isNewDeck) {
@@ -226,6 +233,11 @@ export default function DeckViewPage() {
       if (data.started === 0) {
         toast.info("All slides with image prompts already have images");
       } else {
+        // Initialize progress from current deck data
+        const slides = (deck?.slides ?? []) as SlideData[];
+        const withPrompt = slides.filter((s) => s.imagePrompt);
+        const alreadyDone = withPrompt.filter((s) => s.imageUrl).length;
+        setImageGenProgress({ done: alreadyDone, total: withPrompt.length });
         toast.success(`Generating ${data.started} images in the background — you can navigate away safely`);
         setIsGeneratingImages(true);
         setIsGeneratingImagesBg(true);
@@ -234,12 +246,17 @@ export default function DeckViewPage() {
     onError: (err) => toast.error(err.message),
   });
 
-  // Detect when background image gen finishes (all prompts have URLs)
+  // Track image generation progress from polling data + detect completion
   useEffect(() => {
     if (!isGeneratingImagesBg || !deck) return;
     const slides = (deck.slides ?? []) as SlideData[];
-    const stillNeeded = slides.filter((s) => s.imagePrompt && !s.imageUrl).length;
-    if (stillNeeded === 0) {
+    const withPrompt = slides.filter((s) => s.imagePrompt);
+    const withImage = withPrompt.filter((s) => s.imageUrl);
+    const total = withPrompt.length;
+    const done = withImage.length;
+    setImageGenProgress({ done, total });
+
+    if (total > 0 && done >= total) {
       setIsGeneratingImagesBg(false);
       setIsGeneratingImages(false);
       toast.success("All images generated");

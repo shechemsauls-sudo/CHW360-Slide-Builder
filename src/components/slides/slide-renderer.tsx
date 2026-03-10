@@ -482,8 +482,6 @@ function SplitLayout({
         alt={slide.imagePrompt ?? "Slide image"}
         className="h-full w-full object-cover"
         style={focalStyle}
-        loading="lazy"
-        decoding="async"
       />
     </div>
   ) : (
@@ -607,8 +605,6 @@ function ImageFullLayout({
           alt={slide.imagePrompt ?? "Slide image"}
           className="absolute inset-0 h-full w-full object-cover"
           style={slide.imageFocalPoint ? { objectPosition: `${slide.imageFocalPoint.x}% ${slide.imageFocalPoint.y}%` } : undefined}
-          loading="lazy"
-          decoding="async"
         />
       ) : (
         <div className="absolute inset-0">
@@ -694,8 +690,6 @@ function ImageTopLayout({
             alt={slide.imagePrompt ?? "Slide image"}
             className="h-full w-full object-cover"
             style={slide.imageFocalPoint ? { objectPosition: `${slide.imageFocalPoint.x}% ${slide.imageFocalPoint.y}%` } : undefined}
-            loading="lazy"
-            decoding="async"
           />
         ) : (
           <ImagePlaceholder theme={theme} />

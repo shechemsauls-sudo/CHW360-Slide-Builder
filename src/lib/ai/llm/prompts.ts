@@ -607,8 +607,8 @@ Return ONLY the JSON object.`;
  * Build a prompt to generate References slides from citations found in the deck.
  */
 export function buildReferencesPrompt(slides: SlideData[]): string {
-  // Extract all citation patterns from slide bodies
-  const citationPattern = /\(([A-Z][a-z]+(?:\s(?:&|and|et al\.?)\s[A-Z][a-z]+)*,\s*\d{4}[a-z]?)\)/g;
+  // Extract all citation patterns from slide bodies — broad regex to catch org acronyms (CDC, WHO), hyphenated names, et al.
+  const citationPattern = /\(((?:[A-Z][A-Za-z'-]+(?:\s(?:&|and|et al\.?)\s[A-Z][A-Za-z'-]+)*|[A-Z]{2,}),\s*\d{4}[a-z]?)\)/g;
   const citations = new Set<string>();
   for (const slide of slides) {
     for (const match of slide.body.matchAll(citationPattern)) {

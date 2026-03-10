@@ -1,7 +1,8 @@
 # TODO — CHW360 Slide Builder
 
 ## Backlog (future phases)
-- [ ] PPTX/PDF export (Phase 2e)
+- [x] PDF export ✓ (implemented)
+- [ ] PPTX export (Phase 2e)
 - [ ] Public share links (Phase 2e)
 - [ ] Client-facing turnkey LMS-style interface (future phase)
 
