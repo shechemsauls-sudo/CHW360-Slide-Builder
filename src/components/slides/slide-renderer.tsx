@@ -237,6 +237,20 @@ export function SlideRenderer({ slide, theme, className, footerText }: SlideRend
           style={{ background: theme.gradient?.accent ?? theme.colors.accent }}
         />
 
+        {/* Brand mark — top-right (non-image-full layouts only) */}
+        {slide.layout !== "image-full" && (
+          <div className="absolute right-4 top-3 z-10 flex items-center gap-1" style={{ opacity: 0.7 }}>
+            {/* eslint-disable-next-line @next/next/no-img-element */}
+            <img src={theme.logo ?? "/chw/logo.png"} alt="" style={{ height: 20, width: 20 }} />
+            <span style={{
+              fontSize: 11, fontFamily: theme.typography.bodyFont, fontWeight: 600,
+              color: theme.colors.text, letterSpacing: '-0.02em'
+            }}>
+              CHW<span style={{ fontWeight: 300, opacity: 0.7 }}>360</span>
+            </span>
+          </div>
+        )}
+
         {/* Layout container */}
         <div className="flex h-full w-full">
           {renderLayout(slide, theme, hasBlocks, footerText)}
@@ -450,11 +464,12 @@ function ImagePlaceholder({ theme }: { theme: SlideTheme }) {
 function SurfaceCard({ theme, children, className }: { theme: SlideTheme; children: React.ReactNode; className?: string }) {
   return (
     <div
-      className={`rounded-lg border p-4 ${className ?? ""}`}
+      className={`rounded-xl border p-4 ${className ?? ""}`}
       style={{
         backgroundColor: theme.colors.surface,
-        borderColor: `${theme.colors.text}08`,
-        boxShadow: `0 1px 3px ${theme.colors.text}06`,
+        borderColor: `${theme.colors.text}12`,
+        borderTop: `3px solid ${theme.colors.accent}`,
+        boxShadow: `0 4px 12px ${theme.colors.text}10`,
       }}
     >
       {children}
@@ -522,8 +537,13 @@ function SplitLayout({
     ? { objectPosition: `${slide.imageFocalPoint.x}% ${slide.imageFocalPoint.y}%` }
     : undefined;
 
+  // Organic curved mask — ellipse clips the edge facing the content panel
+  const clipPath = imagePosition === "left"
+    ? "ellipse(95% 100% at 0% 50%)"   // curves right edge
+    : "ellipse(95% 100% at 100% 50%)"; // curves left edge
+
   const imagePanel = slide.imageUrl ? (
-    <div className="h-full">
+    <div className="h-full" style={{ clipPath }}>
       {/* eslint-disable-next-line @next/next/no-img-element */}
       <img
         src={slide.imageUrl}
@@ -533,7 +553,9 @@ function SplitLayout({
       />
     </div>
   ) : (
-    <ImagePlaceholder theme={theme} />
+    <div className="h-full" style={{ clipPath }}>
+      <ImagePlaceholder theme={theme} />
+    </div>
   );
 
   const { bodyContent, footerText: extractedFooter } = extractFooter(slide.body);
@@ -663,6 +685,19 @@ function ImageFullLayout({
 
       {/* Softened gradient overlay */}
       <div className="absolute inset-0 bg-gradient-to-t from-black/40 via-black/10 to-transparent" />
+
+      {/* Brand mark — top-right (image-full: white on dark) */}
+      <div className="absolute right-4 top-3 z-10 flex items-center gap-1" style={{ opacity: 0.85 }}>
+        {/* eslint-disable-next-line @next/next/no-img-element */}
+        <img src={theme.logo ?? "/chw/logo.png"} alt="" style={{ height: 20, width: 20 }} />
+        <span style={{
+          fontSize: 11, fontFamily: theme.typography.bodyFont, fontWeight: 600,
+          color: '#FFFFFF', letterSpacing: '-0.02em',
+          textShadow: '0 1px 4px rgba(0,0,0,0.5)',
+        }}>
+          CHW<span style={{ fontWeight: 300, opacity: 0.7 }}>360</span>
+        </span>
+      </div>
 
       {/* Content positioned at bottom with frosted-glass card */}
       <div className="relative flex h-full flex-col justify-end overflow-hidden p-10">
