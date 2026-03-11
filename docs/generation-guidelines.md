@@ -104,7 +104,7 @@ Title, section, and closing slides are cinematic **bookends** that frame the dec
 
 ---
 
-## 4. Visual Block System (25 types)
+## 4. Visual Block System (28 types)
 
 ### Block Syntax
 
@@ -116,7 +116,7 @@ Content here (one item per line, format varies by type)
 
 ### Complete Block Reference
 
-#### Text Blocks (18 types)
+#### Text Blocks (21 types)
 
 | Block | Syntax | Format | Use Case |
 |-------|--------|--------|----------|
@@ -130,7 +130,7 @@ Content here (one item per line, format varies by type)
 | `quote-block` | `:::quote-block Attribution` | Quote text | Quotes, testimonials |
 | `highlight-box` | `:::highlight-box` | Prose content | Key takeaways, emphasis callouts |
 | `timeline` | `:::timeline` | `Label: Description` per line | Phases, milestones, chronological events |
-| `icon-grid` | `:::icon-grid` | One item per line | Categories, roles, features (auto letter icons) |
+| `icon-grid` | `:::icon-grid` | One item per line | Categories, roles, features (auto-matched Lucide icons) |
 | `card-grid` | `:::card-grid` | `Title \| Description` per line (3-4 items) | Overview categories, pillars |
 | `chevron-flow` | `:::chevron-flow` | `Title \| Description` per line | Sequential processes, pipelines |
 | `accent-list` | `:::accent-list` | `Title \| Description` per line | Features, categorized items (colored left border) |
@@ -138,6 +138,9 @@ Content here (one item per line, format varies by type)
 | `stat-bubbles` | `:::stat-bubbles` | `Value \| Label` per line (2-4 items) | Key metrics as circular badges |
 | `tag-cloud` | `:::tag-cloud` | `Term` or `Term \| weight` per line (weight 1-3) | Keywords, themes, weighted topics |
 | `rounded-cards` | `:::rounded-cards` | `Title \| Description` per line | Soft cards with large radii and gradients |
+| `numbered-columns` | `:::numbered-columns` | `Title \| Description` per line | Key pillars, principles, top-N items |
+| `callout-banner` | `:::callout-banner` | Prose content | Standards, key takeaways, important notices |
+| `icon-steps` | `:::icon-steps` | `Title \| Description` per line | Processes with icon badges, scenario flows |
 
 #### Chart Blocks (5 types — Recharts)
 
@@ -172,6 +175,9 @@ For each content slide, match the content to the best visual structure:
 - Short labels/tags/skills → `pill-list` or `tag-cloud`
 - Key metrics as visual focal points → `stat-bubbles`
 - Soft overview cards → `rounded-cards`
+- Key pillars/principles → `numbered-columns`
+- Standards/important notices → `callout-banner`
+- Processes with visual icons → `icon-steps`
 - Numerical trends → `bar-chart`, `line-chart`, `pie-chart`, `area-chart`, `radar-chart`
 
 #### Structural Rules (MUST follow)
@@ -402,7 +408,7 @@ Every slide gets structured speaker notes:
 |-----|-------|
 | slideCount fallback | 70 |
 | Image range | 35-45% |
-| Bullets per slide | 4-6 max (soft) |
+| Bullets per slide | 2-3 max (soft) |
 | Blocks per slide | 1-2 max (soft) |
 
 ### Content Truncation
@@ -432,5 +438,5 @@ The feedback-based single-slide regeneration uses a separate prompt:
 
 ---
 
-*Last updated: 2026-03-09*
+*Last updated: 2026-03-10*
 *Source: Generation settings overhaul implementation*
