@@ -21,6 +21,9 @@ import {
   StatBubbles,
   TagCloud,
   RoundedCards,
+  NumberedColumns,
+  CalloutBanner,
+  IconSteps,
 } from "./text-blocks";
 import {
   BarChartBlock,
@@ -196,6 +199,12 @@ function renderBlock(
       return <TagCloud content={content} theme={theme} />;
     case "rounded-cards":
       return <RoundedCards content={content} theme={theme} />;
+    case "numbered-columns":
+      return <NumberedColumns content={content} theme={theme} />;
+    case "callout-banner":
+      return <CalloutBanner content={content} theme={theme} />;
+    case "icon-steps":
+      return <IconSteps content={content} theme={theme} />;
 
     // ── Chart blocks (Recharts) ──
     case "bar-chart":

@@ -51,6 +51,9 @@ export const VISUAL_BLOCK_TYPES = [
   "stat-bubbles",
   "tag-cloud",
   "rounded-cards",
+  "numbered-columns",
+  "callout-banner",
+  "icon-steps",
 ] as const;
 
 export type VisualBlockType = (typeof VISUAL_BLOCK_TYPES)[number];
