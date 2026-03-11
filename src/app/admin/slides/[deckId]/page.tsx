@@ -746,7 +746,7 @@ export default function DeckViewPage() {
                   <SlideRenderer
                     slide={activeSlide}
                     theme={getTheme(deck.themeId)}
-                    footerText={`\u00A9 CHW360 | ${deck.title} | Educational Use Only`}
+                    footerText={`\u00A9 CHW360 | ${deck.title} | Educational Use Only | Not Medical Advice`}
                   />
                   {/* Quick-access reposition button on image slides */}
                   {activeSlide.imageUrl && ["split-left", "split-right", "image-full", "image-top"].includes(activeSlide.layout) && (

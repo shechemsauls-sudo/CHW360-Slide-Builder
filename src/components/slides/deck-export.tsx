@@ -34,8 +34,10 @@ export function DeckExportButton({
     setRenderSlides(true);
     const toastId = toast.loading("Preparing slides for export...");
 
-    // Wait for slides to render in the offscreen container
-    await new Promise((r) => setTimeout(r, 500));
+    // Wait for fonts + render to settle before capturing
+    await document.fonts.ready;
+    await new Promise((r) => setTimeout(r, 100));
+    await new Promise((r) => requestAnimationFrame(() => requestAnimationFrame(r)));
 
     try {
       const container = containerRef.current;
@@ -104,7 +106,7 @@ export function DeckExportButton({
               data-slide-export
               style={{ width: 960, height: 540 }}
             >
-              <SlideRenderer slide={slide} theme={theme} />
+              <SlideRenderer slide={slide} theme={theme} footerText={`\u00A9 CHW360 | ${title} | Educational Use Only | Not Medical Advice`} />
             </div>
           ))}
         </div>

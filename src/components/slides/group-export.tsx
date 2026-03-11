@@ -59,8 +59,10 @@ export function GroupExportButton({ groupId, groupName }: GroupExportButtonProps
       setSlidesForExport(deckSlides);
       toast.loading("Rendering slides...", { id: toastId });
 
-      // Wait for render
-      await new Promise((r) => setTimeout(r, 800));
+      // Wait for fonts + render to settle before capturing
+      await document.fonts.ready;
+      await new Promise((r) => setTimeout(r, 100));
+      await new Promise((r) => requestAnimationFrame(() => requestAnimationFrame(r)));
 
       const container = containerRef.current;
       if (!container) throw new Error("Render container not found");
@@ -123,7 +125,7 @@ export function GroupExportButton({ groupId, groupName }: GroupExportButtonProps
                 data-slide-export
                 style={{ width: 960, height: 540 }}
               >
-                <SlideRenderer slide={slide} theme={theme} />
+                <SlideRenderer slide={slide} theme={theme} footerText={`\u00A9 CHW360 | ${groupName} | Educational Use Only | Not Medical Advice`} />
               </div>
             ));
           })}

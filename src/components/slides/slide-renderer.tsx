@@ -68,78 +68,89 @@ function ContentFitter({ children, className }: { children: ReactNode; className
   const outerRef = useRef<HTMLDivElement>(null);
   const innerRef = useRef<HTMLDivElement>(null);
   const [scale, setScale] = useState(1);
-  const [ready, setReady] = useState(false);
   const stableRef = useRef(1);
+  const measuringRef = useRef(false);
 
   const measure = useCallback(() => {
-    const outer = outerRef.current;
-    const inner = innerRef.current;
-    if (!outer || !inner) return;
-    const available = outer.clientHeight;
-    if (available <= 0) return;
+    if (measuringRef.current) return;
+    measuringRef.current = true;
+    try {
+      const outer = outerRef.current;
+      const inner = innerRef.current;
+      if (!outer || !inner) return;
+      const available = outer.clientHeight;
+      if (available <= 0) return;
 
-    // Temporarily reset to natural layout for accurate measurement
-    const prevTransform = inner.style.transform;
-    const prevWidth = inner.style.width;
-    const prevOrigin = inner.style.transformOrigin;
-    inner.style.transform = "none";
-    inner.style.width = "100%";
-    inner.style.transformOrigin = "";
+      // Temporarily reset inline styles for accurate measurement.
+      // Keep flex-column so margins don't collapse (block layout collapses them,
+      // giving a shorter scrollHeight than the actual flex render).
+      // Remove minHeight/justifyContent/transform that distort scrollHeight.
+      const prevCss = inner.style.cssText;
+      inner.style.cssText = "width: 100%; display: flex; flex-direction: column;";
 
-    const needed = inner.scrollHeight;
+      const needed = inner.scrollHeight;
 
-    // Restore
-    inner.style.transform = prevTransform;
-    inner.style.width = prevWidth;
-    inner.style.transformOrigin = prevOrigin;
+      // Restore React-managed styles
+      inner.style.cssText = prevCss;
 
-    let target: number;
-    if (needed > available) {
-      // Content overflows — scale DOWN to fit
-      const raw = available / needed;
-      const snapped = Math.floor(raw * 20) / 20;
-      target = Math.max(0.4, snapped);
-    } else if (needed > 0) {
-      // Content fits — gently scale up ONLY if there's significant spare room.
-      const ratio = available / needed;
-      if (ratio > 1.3) {
-        // Lots of spare room (content uses <77% of space) — scale up to fill ~85%
-        const upscale = Math.min(ratio * 0.85, 1.2);
-        target = upscale;
+      let target: number;
+      if (needed > available) {
+        // Content overflows — scale DOWN to fit
+        const raw = available / needed;
+        const snapped = Math.floor(raw * 20) / 20;
+        target = Math.max(0.4, snapped);
+      } else if (needed > 0) {
+        // Content fits — gently scale up ONLY if there's significant spare room.
+        const ratio = available / needed;
+        if (ratio > 1.3) {
+          // Lots of spare room (content uses <77% of space) — scale up to fill ~85%
+          const upscale = Math.min(ratio * 0.85, 1.2);
+          target = upscale;
+        } else {
+          target = 1;
+        }
       } else {
         target = 1;
       }
-    } else {
-      target = 1;
-    }
 
-    const snapped = Math.round(target * 20) / 20;
-    if (Math.abs(snapped - stableRef.current) > 0.02) {
-      stableRef.current = snapped;
-      setScale(snapped);
+      const snapped = Math.round(target * 20) / 20;
+      if (Math.abs(snapped - stableRef.current) > 0.02) {
+        stableRef.current = snapped;
+        setScale(snapped);
+      }
+    } finally {
+      measuringRef.current = false;
     }
-    setReady(true);
   }, []);
 
-  // Measure synchronously before first paint — content hidden until measured
+  // Synchronous measurement before every paint — fires when children change (slide navigation)
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   useLayoutEffect(() => {
+    stableRef.current = 1; // Reset so new content gets fresh measurement
     measure();
-  }, [measure]);
+  });
 
-  // ResizeObserver handles later layout changes (container resize, dynamic content)
+  // ResizeObserver on both outer AND inner divs — inner catches font-loading reflow
   useEffect(() => {
     const outer = outerRef.current;
+    const inner = innerRef.current;
     if (!outer) return;
     const ro = new ResizeObserver(measure);
     ro.observe(outer);
+    if (inner) ro.observe(inner);
     return () => ro.disconnect();
+  }, [measure]);
+
+  // Font loading fallback — re-measure after all fonts are ready
+  useEffect(() => {
+    document.fonts.ready.then(() => requestAnimationFrame(measure));
   }, [measure]);
 
   return (
     <div
       ref={outerRef}
       className={`overflow-hidden ${className ?? ""}`}
-      style={{ flex: "1 1 0%", minHeight: 0, visibility: ready ? "visible" : "hidden" }}
+      style={{ flex: "1 1 0%", minHeight: 0 }}
     >
       <div
         ref={innerRef}
@@ -149,6 +160,7 @@ function ContentFitter({ children, className }: { children: ReactNode; className
                 transform: `scale(${scale})`,
                 transformOrigin: "top left",
                 width: `${100 / scale}%`,
+                transition: "transform 150ms ease-out",
               }
             : { minHeight: "100%", display: "flex", flexDirection: "column", justifyContent: "center" }
         }
@@ -176,6 +188,16 @@ export function SlideRenderer({ slide, theme, className, footerText }: SlideRend
   const containerRef = useRef<HTMLDivElement>(null);
   const [scale, setScale] = useState(1);
 
+  // Synchronous initial measurement — container width is CSS-determined (available immediately)
+  useLayoutEffect(() => {
+    const container = containerRef.current;
+    if (container) {
+      const w = container.clientWidth;
+      if (w > 0) setScale(w / SLIDE_W);
+    }
+  }, []);
+
+  // ResizeObserver handles subsequent resizes (browser resize, fullscreen, etc.)
   useEffect(() => {
     const container = containerRef.current;
     if (!container) return;
@@ -183,7 +205,7 @@ export function SlideRenderer({ slide, theme, className, footerText }: SlideRend
     const observer = new ResizeObserver((entries) => {
       for (const entry of entries) {
         const w = entry.contentRect.width;
-        setScale(w / SLIDE_W);
+        if (w > 0) setScale(w / SLIDE_W);
       }
     });
 
@@ -324,15 +346,20 @@ function SlideBody({
 
 const FOOTER_PATTERN = /^(©|\(c\)|copyright|educational use only|not medical advice|for educational purposes)/i;
 const PIPE_COPYRIGHT_PATTERN = /\|.*©/;
+const FOOTER_SUFFIX_PATTERN = /^\(.*\)$/; // e.g. "(2026 DSHS Approved Edition)"
 
 function extractFooter(body: string): { bodyContent: string; footerText: string | null } {
   const lines = body.trimEnd().split("\n");
   const footerLines: string[] = [];
 
-  // Check last 1-3 lines for footer patterns
-  for (let i = lines.length - 1; i >= Math.max(0, lines.length - 3); i--) {
+  // Check last 1-4 lines for footer patterns, skipping parenthetical suffixes
+  for (let i = lines.length - 1; i >= Math.max(0, lines.length - 4); i--) {
     const line = lines[i]!.trim();
-    if (line && (FOOTER_PATTERN.test(line) || PIPE_COPYRIGHT_PATTERN.test(line))) {
+    if (!line) break;
+    if (FOOTER_PATTERN.test(line) || PIPE_COPYRIGHT_PATTERN.test(line)) {
+      footerLines.unshift(line);
+    } else if (FOOTER_SUFFIX_PATTERN.test(line)) {
+      // Parenthetical line like "(2026 DSHS Approved Edition)" — include and keep scanning
       footerLines.unshift(line);
     } else {
       break;
@@ -340,6 +367,12 @@ function extractFooter(body: string): { bodyContent: string; footerText: string 
   }
 
   if (footerLines.length === 0) return { bodyContent: body, footerText: null };
+
+  // Only extract if at least one line is a real footer (not just a suffix)
+  const hasRealFooter = footerLines.some(
+    (l) => FOOTER_PATTERN.test(l) || PIPE_COPYRIGHT_PATTERN.test(l),
+  );
+  if (!hasRealFooter) return { bodyContent: body, footerText: null };
 
   const bodyContent = lines.slice(0, lines.length - footerLines.length).join("\n");
   const footerText = footerLines.join("\n");
@@ -373,7 +406,7 @@ function splitTwoColumns(body: string): { left: string; right: string; hasSplit:
 function SlideFooter({ text, theme }: { text: string; theme: SlideTheme }) {
   return (
     <div
-      className="mt-auto border-t pt-2 text-[10px] leading-tight opacity-40"
+      className="mt-auto border-t pt-2 text-[8px] leading-tight opacity-40 whitespace-nowrap"
       style={{ color: theme.colors.textMuted, borderColor: `${theme.colors.text}10` }}
     >
       {text}
@@ -594,7 +627,9 @@ function ImageFullLayout({
   const bodySlide = { ...slide, body: bodyContent };
   const resolvedFooter = extractedFooter ?? (slide.type !== "title" ? footerText : undefined);
 
-  // Override theme colors for white-on-dark readability inside the frosted card
+  // Override theme colors for white-on-dark readability inside the frosted card.
+  // Keep original palette — those colors work as vibrant backgrounds for stat
+  // bubbles, numbered-step circles, accent-list borders etc. against the dark card.
   const imageFullTheme: SlideTheme = {
     ...theme,
     colors: {
@@ -607,7 +642,6 @@ function ImageFullLayout({
       surface: "rgba(255,255,255,0.1)",
       background: "transparent",
     },
-    palette: ["#FFFFFF", "rgba(255,255,255,0.85)", "rgba(255,255,255,0.7)", "rgba(255,255,255,0.55)"],
   };
 
   return (
@@ -668,7 +702,7 @@ function ImageFullLayout({
             </ContentFitter>
           )}
           {resolvedFooter && (
-            <div className="shrink-0 mt-4 pt-2 text-[10px] leading-tight text-white/40">
+            <div className="shrink-0 mt-4 pt-2 text-[8px] leading-tight text-white/40 whitespace-nowrap">
               {resolvedFooter}
             </div>
           )}
