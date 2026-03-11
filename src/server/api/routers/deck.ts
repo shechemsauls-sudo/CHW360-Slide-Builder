@@ -218,7 +218,7 @@ function auditDeckQuality(slides: SlideData[]): { violations: Violation[]; stats
   // Check 1: Block variety
   if (uniqueBlockTypes < 10 && contentSlideCount >= 10) {
     // Find overused block types — strict limit of 3 for common types, 4 for others
-    const STRICT_LIMIT_TYPES = new Set(["numbered-steps", "checklist", "info-box"]);
+    const STRICT_LIMIT_TYPES = new Set(["numbered-steps", "checklist", "info-box", "callout-banner"]);
     const overused = Object.entries(blockTypeFrequency)
       .filter(([type, cnt]) => cnt >= (STRICT_LIMIT_TYPES.has(type) ? 3 : 4))
       .sort(([, a], [, b]) => b - a);

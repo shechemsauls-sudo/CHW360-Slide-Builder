@@ -158,7 +158,7 @@ Week 3: Assessment
   },
   "icon-grid": {
     doc: `**:::icon-grid**
-Grid of items with icon circles. Use for categories, roles, or features.
+Grid of items with auto-matched Lucide icons. Use for categories, roles, or features. Use descriptive words — icons auto-matched from keywords (Prevention, Treatment, Education, Community, Safety, Health, Communication, etc.).
 \`\`\`
 :::icon-grid
 Prevention
@@ -256,6 +256,40 @@ Delivery | Execute interventions effectively
 :::
 \`\`\``,
     hint: "Soft rounded cards for overview items → `:::rounded-cards`",
+  },
+  "numbered-columns": {
+    doc: `**:::numbered-columns**
+Large numbered columns (01, 02, 03) with titles and descriptions. Use for key pillars, principles, or top-3/top-4 items.
+\`\`\`
+:::numbered-columns
+Community Engagement | Building trust through consistent presence
+Health Education | Teaching prevention and wellness strategies
+Resource Connection | Linking families to available services
+:::
+\`\`\``,
+    hint: "Key pillars, principles, or top-3/top-4 items → `:::numbered-columns`",
+  },
+  "callout-banner": {
+    doc: `**:::callout-banner**
+Full-width solid-color banner with icon. Use for standards, key takeaways, important notices, or cultural notes. More impactful than highlight-box.
+\`\`\`
+:::callout-banner
+All CHWs must complete 40 hours of continuing education annually to maintain certification.
+:::
+\`\`\``,
+    hint: "Standards, key takeaways, important notices → `:::callout-banner`",
+  },
+  "icon-steps": {
+    doc: `**:::icon-steps**
+Vertical process with auto-matched icon badges and connecting line. Use for processes, workflows, or scenario responses. Format: Title | Description per line.
+\`\`\`
+:::icon-steps
+Assessment | Evaluate the situation and gather information
+Communication | Share findings with the care team
+Follow-up | Schedule and conduct follow-up visit
+:::
+\`\`\``,
+    hint: "Processes with icon badges, scenario responses → `:::icon-steps`",
   },
   "bar-chart": {
     doc: `**:::bar-chart Title | Series1, Series2**
@@ -460,6 +494,7 @@ If the source content does NOT contain slide markers, generate up to ${slideCoun
 - Include "imagePrompt" on ${getImageRange(slideCount)} slides using ONLY image-eligible layouts (split-left, split-right, image-full, image-top)
 - Use image-top for content slides that benefit from a visual anchor
 - Set imagePrompt to null on full and two-column layouts
+- **Layout rhythm**: Never use the same layout 3+ times consecutively. Alternate image sides (if a slide uses split-left, the next image slide should use split-right or image-top). Use section dividers (type "section" with image-full) every 8-12 content slides. Use image-top layout at least 3 times per deck for variety.
 
 ## Image Prompt Guidelines — Brand Style
 CRITICAL: All imagePrompt values MUST be photorealistic and embody this visual style:
@@ -503,7 +538,8 @@ Guidelines for speaker notes:
 - Use a warm, pedagogical tone throughout
 - Body content should use Markdown formatting (bold, lists, etc.)
 - Keep slide titles concise (under 10 words)
-- Keep bullet points to 4-6 per slide maximum
+- **Breathing room rule**: Limit to 2-3 bullet points per slide maximum. Each slide should feel spacious with generous white space. Limit to ONE key idea per slide. If a topic has 6 points, spread across 2-3 slides.
+- **Block item limits**: icon-grid/card-grid: 3-4 items max. accent-list/numbered-steps: 2-3 items max. checklist: 3-4 items max. flow-diagram: 3-4 steps max. comparison-table: 3-4 rows max.
 - **CRITICAL: You MUST use :::block directives on at LEAST 50% of content/bullets/activity slides.** Use a WIDE VARIETY of block types (10+ different types per deck). The presentation must feel visually rich and professionally designed.
 - **BLOCK VARIETY RULES**: Do NOT over-rely on :::numbered-steps and :::checklist — use each NO MORE than 3 times per deck. Instead, spread usage across: accent-list, chevron-flow, card-grid, rounded-cards, pill-list, flow-diagram, timeline, icon-grid, comparison-table, stat-bubbles, tag-cloud, key-stat, highlight-box, quote-block, cycle, info-box. Every deck should use at least 10 different block types.
 - **NO consecutive repeats**: Never use the same block type on two slides in a row.
@@ -597,7 +633,7 @@ ${JSON.stringify({ slides }, null, 2)}
 ${violationList}
 
 ${needsBlockFix ? `## Block Reference (for swaps)
-Underused block types you should swap TO: pill-list, stat-bubbles, tag-cloud, rounded-cards, chevron-flow, accent-list, cycle, card-grid, timeline, icon-grid, highlight-box, flow-diagram, comparison-table, key-stat, quote-block, numbered-steps, checklist, info-box.
+Underused block types you should swap TO: pill-list, stat-bubbles, tag-cloud, rounded-cards, chevron-flow, accent-list, cycle, card-grid, timeline, icon-grid, highlight-box, flow-diagram, comparison-table, key-stat, quote-block, numbered-steps, checklist, info-box, numbered-columns, callout-banner, icon-steps.
 Choose types NOT already overused in the deck (see frequency above).` : ""}
 ${needsImageFix ? `## Image Guidelines
 ${IMAGE_STYLE_DIRECTIVE}
