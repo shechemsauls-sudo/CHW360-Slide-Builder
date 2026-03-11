@@ -1,7 +1,74 @@
 import { useId } from "react";
+import {
+  Shield, Heart, Users, GraduationCap, ShieldCheck, Brain,
+  MessageSquare, Apple, Pill, ClipboardCheck, ArrowRightLeft,
+  PhoneCall, BookOpen, BarChart3, Search, Ear, Mic, PenLine,
+  Hand, VolumeX, Handshake, Globe, MessageCircle, Eye,
+  HeartHandshake, ShieldOff, LifeBuoy, FileText, Link, Network,
+  Home, Star, Zap, Lightbulb, Compass, Target, Activity,
+  Stethoscope, Baby, Droplets, Thermometer, Syringe, Clock,
+  type LucideIcon,
+} from "lucide-react";
 import type { SlideTheme } from "~/lib/themes";
 import { getPaletteColor } from "~/lib/themes";
 import { MarkdownRenderer, inlineFormat } from "../markdown-renderer";
+
+// ── Icon mapping for IconGrid and IconSteps ──────────────────────
+
+const ICON_MAP: [string, LucideIcon][] = [
+  ["prevent", Shield],
+  ["health", Heart],
+  ["community", Users],
+  ["education", GraduationCap],
+  ["training", GraduationCap],
+  ["safety", ShieldCheck],
+  ["mental", Brain],
+  ["communicat", MessageSquare],
+  ["nutrition", Apple],
+  ["treatment", Pill],
+  ["medic", Pill],
+  ["assess", ClipboardCheck],
+  ["referral", ArrowRightLeft],
+  ["follow", PhoneCall],
+  ["data", BarChart3],
+  ["screen", Search],
+  ["listen", Ear],
+  ["speak", Mic],
+  ["write", PenLine],
+  ["gesture", Hand],
+  ["silence", VolumeX],
+  ["trust", Handshake],
+  ["culture", Globe],
+  ["verbal", MessageCircle],
+  ["nonverbal", Eye],
+  ["empathy", HeartHandshake],
+  ["barrier", ShieldOff],
+  ["support", LifeBuoy],
+  ["document", FileText],
+  ["resource", Link],
+  ["connect", Network],
+  ["family", Home],
+  ["child", Baby],
+  ["water", Droplets],
+  ["hygiene", Droplets],
+  ["fever", Thermometer],
+  ["vaccin", Syringe],
+  ["immuniz", Syringe],
+  ["monitor", Activity],
+  ["diagnos", Stethoscope],
+  ["time", Clock],
+  ["schedul", Clock],
+];
+
+const FALLBACK_ICONS: LucideIcon[] = [Star, Zap, Lightbulb, Compass, Target];
+
+export function getIconForItem(item: string, index: number): LucideIcon {
+  const lower = item.toLowerCase();
+  for (const [keyword, icon] of ICON_MAP) {
+    if (lower.includes(keyword)) return icon;
+  }
+  return FALLBACK_ICONS[index % FALLBACK_ICONS.length]!;
+}
 
 export function InfoBox({ title, content, theme }: { title?: string; content: string; theme: SlideTheme }) {
   return (
@@ -495,6 +562,7 @@ export function IconGrid({ content, theme }: { content: string; theme: SlideThem
     }`}>
       {items.map((item, i) => {
         const color = getPaletteColor(theme, i);
+        const Icon = getIconForItem(item, i);
         return (
         <div
           key={i}
@@ -505,14 +573,13 @@ export function IconGrid({ content, theme }: { content: string; theme: SlideThem
           }}
         >
           <div
-            className="mx-auto mb-2.5 flex h-10 w-10 items-center justify-center rounded-xl text-base font-bold"
+            className="mx-auto mb-2.5 flex h-10 w-10 items-center justify-center rounded-xl"
             style={{
               background: `linear-gradient(135deg, ${color}40, ${color}25)`,
-              color: color,
               boxShadow: `0 2px 8px ${color}25`,
             }}
           >
-            {item.charAt(0).toUpperCase()}
+            <Icon className="h-5 w-5" style={{ color }} />
           </div>
           <p className="text-xs font-semibold tracking-wide" style={{ color: theme.colors.text }} dangerouslySetInnerHTML={{ __html: inlineFormat(item) }} />
         </div>
@@ -741,8 +808,8 @@ export function CardGrid({ content, theme }: { content: string; theme: SlideThem
         return (
           <div
             key={i}
-            className={`rounded-xl shadow-sm ${items.length > 3 ? "p-3" : "p-5"}`}
-            style={{ backgroundColor: color }}
+            className={`rounded-2xl shadow-sm ${items.length > 3 ? "p-3" : "p-5"}`}
+            style={{ backgroundColor: color, boxShadow: `0 4px 12px ${color}30` }}
           >
             <MarkdownRenderer
               content={item.title}
@@ -976,8 +1043,8 @@ export function AccentList({ content, theme }: { content: string; theme: SlideTh
             key={i}
             className={`rounded-lg ${compact ? "px-3 py-1.5" : "px-4 py-2.5"}`}
             style={{
-              backgroundColor: `${color}15`,
-              borderLeft: `4px solid ${color}`,
+              backgroundColor: `${color}22`,
+              borderLeft: `5px solid ${color}`,
             }}
           >
             <MarkdownRenderer
@@ -992,6 +1059,109 @@ export function AccentList({ content, theme }: { content: string; theme: SlideTh
                 style={{ color: theme.colors.textMuted }}
               />
             )}
+          </div>
+        );
+      })}
+    </div>
+  );
+}
+
+export function NumberedColumns({ content, theme }: { content: string; theme: SlideTheme }) {
+  const items = content.split("\n").filter((l) => l.trim()).map((line) => {
+    const pipeIdx = line.indexOf("|");
+    if (pipeIdx === -1) return { title: line.trim(), description: "" };
+    return { title: line.slice(0, pipeIdx).trim(), description: line.slice(pipeIdx + 1).trim() };
+  });
+
+  const cols = items.length <= 2 ? 2 : items.length <= 3 ? 3 : 4;
+
+  return (
+    <div className={`grid gap-6 ${cols === 2 ? "grid-cols-2" : cols === 3 ? "grid-cols-3" : "grid-cols-4"}`}>
+      {items.map((item, i) => {
+        const color = getPaletteColor(theme, i);
+        return (
+          <div key={i} className="space-y-2">
+            <p className="text-3xl font-extrabold tracking-tight" style={{ color }}>
+              {String(i + 1).padStart(2, "0")}
+            </p>
+            <div className="h-0.5 w-10 rounded-full" style={{ backgroundColor: color }} />
+            <p className="text-sm font-bold" style={{ color: theme.colors.text }}
+               dangerouslySetInnerHTML={{ __html: inlineFormat(item.title) }} />
+            {item.description && (
+              <p className="text-xs leading-relaxed" style={{ color: theme.colors.textMuted }}
+                 dangerouslySetInnerHTML={{ __html: inlineFormat(item.description) }} />
+            )}
+          </div>
+        );
+      })}
+    </div>
+  );
+}
+
+export function CalloutBanner({ content, theme }: { content: string; theme: SlideTheme }) {
+  return (
+    <div
+      className="flex items-center gap-3 rounded-xl px-5 py-4"
+      style={{
+        backgroundColor: theme.colors.accent,
+        color: theme.colors.background,
+      }}
+    >
+      <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full"
+           style={{ backgroundColor: "rgba(255,255,255,0.2)" }}>
+        <svg viewBox="0 0 24 24" className="h-4 w-4" fill="none" stroke="currentColor" strokeWidth={2.5} strokeLinecap="round">
+          <circle cx="12" cy="12" r="10" />
+          <line x1="12" y1="16" x2="12" y2="12" />
+          <line x1="12" y1="8" x2="12.01" y2="8" />
+        </svg>
+      </div>
+      <MarkdownRenderer
+        content={content}
+        className="text-sm font-semibold leading-relaxed"
+        style={{ color: theme.colors.background }}
+      />
+    </div>
+  );
+}
+
+export function IconSteps({ content, theme }: { content: string; theme: SlideTheme }) {
+  const items = content.split("\n").filter((l) => l.trim()).map((line) => {
+    const pipeIdx = line.indexOf("|");
+    if (pipeIdx === -1) return { title: line.trim(), description: "" };
+    return { title: line.slice(0, pipeIdx).trim(), description: line.slice(pipeIdx + 1).trim() };
+  });
+
+  return (
+    <div className="relative space-y-1">
+      {/* Connector line */}
+      {items.length > 1 && (
+        <div
+          className="absolute left-[15px] top-5 bottom-5 w-0.5 rounded-full"
+          style={{ backgroundColor: `${theme.colors.textMuted}20` }}
+        />
+      )}
+      {items.map((item, i) => {
+        const color = getPaletteColor(theme, i);
+        const Icon = getIconForItem(item.title, i);
+        return (
+          <div key={i} className="relative flex items-start gap-3 py-1.5">
+            <div
+              className="relative z-10 flex h-8 w-8 shrink-0 items-center justify-center rounded-full shadow-sm"
+              style={{
+                background: `linear-gradient(135deg, ${color}, ${color}cc)`,
+                boxShadow: `0 2px 8px ${color}30`,
+              }}
+            >
+              <Icon className="h-4 w-4" style={{ color: theme.colors.background }} />
+            </div>
+            <div className="flex-1 pt-0.5">
+              <p className="text-sm font-bold" style={{ color: theme.colors.text }}
+                 dangerouslySetInnerHTML={{ __html: inlineFormat(item.title) }} />
+              {item.description && (
+                <p className="mt-0.5 text-xs leading-relaxed" style={{ color: theme.colors.textMuted }}
+                   dangerouslySetInnerHTML={{ __html: inlineFormat(item.description) }} />
+              )}
+            </div>
           </div>
         );
       })}
