@@ -24,4 +24,5 @@ export interface SlideTheme {
     headingWeight: number;
     bodyWeight: number;
   };
+  logo?: string; // URL to brand logo
 }
