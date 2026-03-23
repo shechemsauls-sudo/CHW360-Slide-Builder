@@ -16,3 +16,4 @@
 - [ ] Set Turnstile keys in Vercel to activate spam protection (code is wired)
 - [ ] Push deck_groups schema to Supabase (migration applied via MCP, verify with drizzle push when network allows)
 - [ ] Run production build to verify all session changes compile cleanly
+- [ ] Remove `?v=2` cache-bust params from logo refs once CDN cache is fully flushed
