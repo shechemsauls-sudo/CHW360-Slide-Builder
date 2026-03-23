@@ -150,9 +150,9 @@ export default function SubmissionsPage() {
   return (
     <div className="space-y-4">
       {/* Header */}
-      <div className="flex items-center justify-between">
-        <div className="flex items-center gap-2">
-          <h1 className="text-2xl font-bold text-white">Submissions</h1>
+      <div className="flex flex-wrap items-center justify-between gap-2">
+        <h1 className="text-2xl font-bold text-white">Submissions</h1>
+        <div className="flex items-center gap-1 sm:gap-2">
           <Button
             variant="ghost"
             size="sm"
@@ -161,7 +161,7 @@ export default function SubmissionsPage() {
             onClick={handleExport}
           >
             <Download className="mr-1.5 h-4 w-4" />
-            {isExporting ? "Exporting…" : "Export CSV"}
+            <span className="hidden sm:inline">{isExporting ? "Exporting…" : "Export CSV"}</span>
           </Button>
           <Button
             variant="ghost"
@@ -173,10 +173,8 @@ export default function SubmissionsPage() {
             }}
           >
             <CheckSquare className="mr-1.5 h-4 w-4" />
-            {selectMode ? "Cancel" : "Select"}
+            <span className="hidden sm:inline">{selectMode ? "Cancel" : "Select"}</span>
           </Button>
-        </div>
-        <div className="flex items-center gap-3">
           {unreadItems.length > 0 && selected.size === 0 && (
             <Button
               variant="ghost"
@@ -191,10 +189,10 @@ export default function SubmissionsPage() {
               }
             >
               <MailCheck className="mr-1.5 h-4 w-4" />
-              Mark all as read ({unreadItems.length})
+              <span className="hidden sm:inline">Mark all read ({unreadItems.length})</span>
             </Button>
           )}
-          <span className="text-sm text-gray-500">{(data?.total ?? 0).toLocaleString()} total</span>
+          <span className="hidden text-sm text-gray-500 sm:inline">{(data?.total ?? 0).toLocaleString()} total</span>
         </div>
       </div>
 
@@ -423,7 +421,7 @@ export default function SubmissionsPage() {
                     ) : (
                       <Mail className="h-4 w-4 flex-shrink-0 text-[#C9725B]" />
                     )}
-                    <span className={`w-32 flex-shrink-0 truncate text-sm ${sub.isRead ? "text-gray-400" : "font-medium text-white"}`}>
+                    <span className={`w-24 flex-shrink-0 truncate text-sm sm:w-32 ${sub.isRead ? "text-gray-400" : "font-medium text-white"}`}>
                       {sub.name}
                     </span>
                     {!sub.isRead && (
@@ -458,8 +456,8 @@ export default function SubmissionsPage() {
 
                 {/* Expanded detail */}
                 {isExpanded && (
-                  <div className="border-t border-white/5 px-12 py-3">
-                    <div className="mb-2 flex items-baseline gap-3">
+                  <div className="border-t border-white/5 px-4 py-3 sm:px-12">
+                    <div className="mb-2 flex flex-wrap items-baseline gap-x-3 gap-y-1">
                       <span className="text-sm font-medium text-white">{sub.name}</span>
                       <span className="text-xs text-gray-500">{sub.email}</span>
                       {sub.organization && (

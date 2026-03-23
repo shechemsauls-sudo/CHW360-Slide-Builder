@@ -34,7 +34,7 @@ export default async function AdminSettingsPage() {
         <CardContent className="space-y-4">
           <div>
             <label className="text-sm font-medium" style={{ color: "#8AACAC" }}>User ID</label>
-            <p className="mt-1 font-mono text-sm text-gray-300">{user.id}</p>
+            <p className="mt-1 truncate font-mono text-sm text-gray-300">{user.id}</p>
           </div>
           <div>
             <label className="text-sm font-medium" style={{ color: "#8AACAC" }}>Last Sign In</label>

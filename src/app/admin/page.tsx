@@ -147,30 +147,30 @@ export default function AdminOverview() {
   const viewsData = analyticsOverview?.viewsPerDay ?? [];
 
   return (
-    <div className="space-y-5">
+    <div className="space-y-4">
       <h1 className="text-2xl font-bold text-white">Overview</h1>
 
       {/* KPI Row */}
       <div className="grid grid-cols-2 gap-3 lg:grid-cols-4">
         {kpis.map((kpi) => (
-          <div key={kpi.label} className="flex items-center gap-3 rounded-lg bg-white/5 px-4 py-3">
+          <div key={kpi.label} className="flex items-center gap-2.5 rounded-lg bg-white/5 px-3 py-2.5 sm:gap-3 sm:px-4 sm:py-3">
             <div
-              className="flex h-9 w-9 flex-shrink-0 items-center justify-center rounded-md"
+              className="flex h-8 w-8 flex-shrink-0 items-center justify-center rounded-md sm:h-9 sm:w-9"
               style={{ backgroundColor: `${kpi.color}15` }}
             >
-              <kpi.icon className="h-4.5 w-4.5" style={{ color: kpi.color }} />
+              <kpi.icon className="h-4 w-4 sm:h-4.5 sm:w-4.5" style={{ color: kpi.color }} />
             </div>
-            <div>
-              <p className="text-2xl font-bold leading-none text-white">{kpi.value}</p>
+            <div className="min-w-0">
+              <p className="truncate text-xl font-bold leading-none text-white sm:text-2xl">{kpi.value}</p>
               <p className="mt-0.5 text-[11px] text-gray-500">{kpi.label}</p>
             </div>
           </div>
         ))}
       </div>
 
-      <div className="grid gap-4 lg:grid-cols-5">
+      <div className="grid gap-3 lg:grid-cols-3">
         {/* Line Chart */}
-        <div className="rounded-lg bg-white/5 p-4 lg:col-span-3">
+        <div className="flex flex-col rounded-lg bg-white/5 px-2.5 py-1.5 sm:px-3 sm:py-2 lg:col-span-2">
           <div className="mb-2 flex items-center justify-between">
             <h2 className="text-sm font-medium text-gray-300">Page Views</h2>
             <div className="flex gap-0.5 rounded-md bg-white/5 p-0.5">
@@ -189,22 +189,22 @@ export default function AdminOverview() {
               ))}
             </div>
           </div>
-          <div className={`transition-opacity ${chartLoading ? "opacity-50" : ""}`}>
+          <div className={`flex-1 transition-opacity ${chartLoading ? "opacity-50" : ""}`}>
             <LineChart data={viewsData} />
           </div>
         </div>
 
         {/* Recent Submissions */}
-        <div className="rounded-lg bg-white/5 p-4 lg:col-span-2">
+        <div className="flex flex-col rounded-lg bg-white/5 px-2.5 py-1.5 sm:px-3 sm:py-2 lg:col-span-1">
           <h2 className="mb-3 text-sm font-medium text-gray-300">Recent Submissions</h2>
           {!recentSubmissions || recentSubmissions.length === 0 ? (
-            <p className="py-10 text-center text-sm text-gray-600">No submissions yet</p>
+            <p className="flex flex-1 items-center justify-center text-sm text-gray-600">No submissions yet</p>
           ) : (
-            <div className="space-y-1">
+            <div className="flex-1 space-y-0.5">
               {recentSubmissions.map((sub) => (
                 <div
                   key={sub.id}
-                  className="flex items-center gap-2 rounded-md px-2 py-2 hover:bg-white/5"
+                  className="flex items-center gap-2 rounded-md px-2 py-1.5 hover:bg-white/5"
                 >
                   <div className="min-w-0 flex-1">
                     <div className="flex items-center gap-1.5">

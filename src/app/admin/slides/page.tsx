@@ -328,7 +328,7 @@ export default function SlidesPage() {
       {/* Toolbar */}
       <div className="flex flex-wrap items-center gap-2">
         {/* Search */}
-        <div className="relative min-w-[180px] flex-1 max-w-xs">
+        <div className="relative w-full flex-1 sm:min-w-[180px] sm:max-w-xs">
           <Search className="absolute left-2.5 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-gray-500" />
           <Input
             placeholder="Search decks..."
@@ -347,7 +347,7 @@ export default function SlidesPage() {
         </div>
 
         {/* Status pills */}
-        <div className="flex items-center gap-1">
+        <div className="flex items-center gap-1 overflow-x-auto">
           {STATUS_FILTERS.map((f) => (
             <button
               key={f.label}

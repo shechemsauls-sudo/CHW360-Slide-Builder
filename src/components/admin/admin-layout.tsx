@@ -25,7 +25,7 @@ function DeployBanner() {
 
   return (
     <div
-      className="fixed top-0 left-0 right-0 z-40 flex items-center justify-center gap-1.5 text-xs"
+      className="fixed inset-x-0 top-0 z-50 flex items-center justify-center gap-1.5 text-xs"
       style={{
         height: DEPLOY_BANNER_HEIGHT,
         backgroundColor: "#2D5A5A",
@@ -64,7 +64,7 @@ function DashboardContent({ children }: { children: ReactNode }) {
           minHeight: "100vh",
         }}
       >
-        <div className="p-6">{children}</div>
+        <div className="p-4 sm:p-6">{children}</div>
       </main>
 
       <style jsx>{`

@@ -31,6 +31,7 @@ export const usersRouter = createTRPCRouter({
     .input(
       z.object({
         email: z.string().email(),
+        displayName: z.string().max(100).trim().optional(),
         role: z.enum(["user", "admin"]).default("user"),
         sendEmail: z.boolean().default(true),
       }),
@@ -69,6 +70,7 @@ export const usersRouter = createTRPCRouter({
         .values({
           authId: authUser.user.id,
           email: input.email,
+          displayName: input.displayName || null,
           role: input.role,
         })
         .returning();

@@ -334,7 +334,7 @@ export default function BulkUploadPage() {
                   Writing Tone
                 </label>
               </div>
-              <div className="grid grid-cols-2 gap-2 sm:grid-cols-4">
+              <div className="grid grid-cols-2 gap-2 md:grid-cols-4">
                 {([
                   { value: "training" as const, label: "Training", desc: "Step-by-step, pedagogical" },
                   { value: "academic" as const, label: "Academic", desc: "Formal, citations-style" },

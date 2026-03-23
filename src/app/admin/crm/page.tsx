@@ -545,7 +545,7 @@ export default function CRMPage() {
                   }}
                   aria-expanded={isExpanded}
                 >
-                  <span className="w-36 flex-shrink-0 truncate text-sm font-medium text-white">
+                  <span className="w-24 flex-shrink-0 truncate sm:w-36 text-sm font-medium text-white">
                     {contact.name}
                   </span>
                   <span className="hidden flex-shrink-0 text-xs text-gray-500 sm:inline">
