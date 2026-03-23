@@ -36,14 +36,6 @@ export default function UsersPage() {
     onError: (err) => toast.error(err.message),
   });
 
-  const updateRoleMutation = api.users.updateRole.useMutation({
-    onSuccess: () => {
-      toast.success("Role updated");
-      utils.users.list.invalidate();
-    },
-    onError: (err) => toast.error(err.message),
-  });
-
   const deleteMutation = api.users.delete.useMutation({
     onSuccess: () => {
       toast.success("User deleted");
@@ -241,20 +233,6 @@ export default function UsersPage() {
                         aria-label="Send claim email"
                       >
                         <Mail className="h-4 w-4" />
-                      </button>
-                      <button
-                        onClick={() =>
-                          updateRoleMutation.mutate({
-                            profileId: user.id,
-                            role: user.role === "admin" ? "user" : "admin",
-                          })
-                        }
-                        disabled={updateRoleMutation.isPending}
-                        className="rounded p-2 text-xs text-[#5B8A8A] hover:bg-white/10"
-                        title={user.role === "admin" ? "Demote to user" : "Promote to admin"}
-                        aria-label={user.role === "admin" ? "Demote to user" : "Promote to admin"}
-                      >
-                        <Shield className="h-4 w-4" />
                       </button>
                       {deleteConfirm === user.id ? (
                         <div className="flex items-center gap-1">
