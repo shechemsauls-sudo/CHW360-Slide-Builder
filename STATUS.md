@@ -26,11 +26,11 @@ Scale: 9 modules × ~4 parts each ≈ 2,250 slides total.
 ### Recent Changes
 | Date | Change |
 |------|--------|
+| 2026-03-23 | Settings: profile editing (display name), removed generation prefs card, removed admin promote button. Mobile responsiveness audit + fixes across all admin pages (users card layout, submissions header, overview compactness, responsive padding/grids) |
 | 2026-03-23 | Brand overhaul: new logo, favicons, cache busting, wordmark sizing, logo aspect ratio fix, 3 logo variants (transparent/cream/teal) + icon-only variants, social banners (LinkedIn/Facebook/OG/email sig), solid teal deploy banner |
 | 2026-03-10 | ContentFitter overhaul: fix re-measurement on navigation, font-loading reflow, margin-collapse measurement bug, footer suffix extraction, export timing, image-full palette fix |
 | 2026-03-09 | 2-pass generation overhaul: server-side QA audit, 25 block types, structural slide protocol, CHW Slate fix, BlockSelector UI, image resilience |
 | 2026-03-09 | Bug fixes (bulk group assignment, dropdown styling, ContentFitter oscillation, image-full overflow), background image gen, CHW-targeted YouTube search |
-| 2026-03-08 | Sprints 5-6 + final polish: deck groups, YouTube, bulk upload, review, 3 image providers, presenter fix, focal point |
 
 ### Image Style Prompt (from Shechem)
 Warm natural lighting, clean minimal design, smooth edges, soft color palette, Texas-inspired places/landmarks/objects, human-centered composition, calm and supportive atmosphere, community-focused scenes (schools, churches, clinics, parks, school gym, school cafeteria, rec centers, hospitals), inclusive everyday environments, clear visual storytelling, friendly contemporary style. Diverse individuals (Hispanic, Black, Asian, young adults, older adults, Middle Eastern) and community groups.
@@ -49,4 +49,4 @@ Add evidence-based citations (2020–2025, APA 7th edition) to presentations. 1�
 - Reference slides: Communication Skills Parts 1–4 (PPTX, Gamma) → `test-content/reference-slides/` — quality benchmark, ours must exceed these
 
 ---
-*Last updated: 2026-03-23 by Matthew Miceli (session 8)*
+*Last updated: 2026-03-23 by Matthew Miceli (session 9)*
