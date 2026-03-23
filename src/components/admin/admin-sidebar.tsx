@@ -211,13 +211,14 @@ function SidebarContent({ isCollapsed }: { isCollapsed: boolean }) {
         className={cn("flex items-center gap-3 border-b px-4 py-4", isCollapsed && "justify-center px-2")}
         style={{ borderColor: "rgba(45, 90, 90, 0.3)" }}
       >
-        <div className="relative h-8 w-8 flex-shrink-0">
-          <Image src="/chw/logo.png" alt="CHW360" fill className="object-contain" />
-        </div>
+        <Image src="/chw/logo.png?v=2" alt="CHW360" width={550} height={454} className="h-8 w-auto flex-shrink-0" />
         {!isCollapsed && (
           <div>
-            <p className="text-sm font-semibold text-white">CHW360</p>
-            <p className="text-xs text-gray-500">{isAdmin ? "Admin" : "Dashboard"}</p>
+            <p className="text-[1.35rem] leading-none tracking-tight text-white">
+              <span className="font-semibold">CHW</span>
+              <span className="font-light text-white/70">360</span>
+            </p>
+            <p className="mt-1 text-xs text-gray-500">{isAdmin ? "Admin" : "Dashboard"}</p>
           </div>
         )}
       </div>

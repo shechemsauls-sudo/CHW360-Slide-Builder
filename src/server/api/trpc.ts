@@ -6,7 +6,10 @@ import { db } from "~/server/db";
 import { profiles } from "~/server/db/schema";
 import { createClient } from "~/lib/supabase/server";
 
-export const createTRPCContext = async (opts: { headers: Headers }) => {
+export const createTRPCContext = async (opts: {
+  headers: Headers;
+  waitUntil?: (promise: Promise<unknown>) => void;
+}) => {
   const supabase = await createClient();
   const {
     data: { user },
@@ -16,6 +19,8 @@ export const createTRPCContext = async (opts: { headers: Headers }) => {
     db,
     supabase,
     user,
+    /** Register a promise with the serverless runtime so it stays alive after the response is sent */
+    waitUntil: opts.waitUntil ?? (() => {}),
     ...opts,
   };
 };

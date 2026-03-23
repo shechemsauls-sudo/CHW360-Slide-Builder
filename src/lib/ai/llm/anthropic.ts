@@ -95,7 +95,13 @@ async function parseWithRetry(
       const tokensUsed = (response.usage?.input_tokens ?? 0) + (response.usage?.output_tokens ?? 0);
       return { slides: validated.slides as SlideData[], tokensUsed };
     } catch (e) {
-      lastError = e instanceof Error ? e : new Error("Parse error");
+      const detail = e instanceof z.ZodError
+        ? `Zod validation failed: ${e.errors.map((err) => `${err.path.join(".")}: ${err.message}`).join("; ")}`
+        : e instanceof SyntaxError
+          ? `JSON parse error: ${e.message}`
+          : e instanceof Error ? e.message : "Parse error";
+      console.error(`[anthropic] Parse attempt ${i + 1}/${retries + 1} failed: ${detail}`);
+      lastError = new Error(detail);
     }
   }
 

@@ -239,12 +239,12 @@ export function SlideRenderer({ slide, theme, className, footerText }: SlideRend
 
         {/* Brand mark — top-right (non-image-full layouts only) */}
         {slide.layout !== "image-full" && (
-          <div className="absolute right-4 top-3 z-10 flex items-center gap-1" style={{ opacity: 0.7 }}>
+          <div className="absolute right-4 top-3 z-10 flex items-center gap-1.5" style={{ opacity: 0.7 }}>
             {/* eslint-disable-next-line @next/next/no-img-element */}
-            <img src={theme.logo ?? "/chw/logo.png"} alt="" style={{ height: 20, width: 20 }} />
+            <img src={theme.logo ?? "/chw/logo.png?v=2"} alt="" style={{ height: 28, width: 'auto' }} />
             <span style={{
-              fontSize: 11, fontFamily: theme.typography.bodyFont, fontWeight: 600,
-              color: theme.colors.text, letterSpacing: '-0.02em'
+              fontSize: 22, fontFamily: theme.typography.bodyFont, fontWeight: 600,
+              color: theme.colors.text, letterSpacing: '-0.02em', lineHeight: 1
             }}>
               CHW<span style={{ fontWeight: 300, opacity: 0.7 }}>360</span>
             </span>
@@ -687,12 +687,12 @@ function ImageFullLayout({
       <div className="absolute inset-0 bg-gradient-to-t from-black/40 via-black/10 to-transparent" />
 
       {/* Brand mark — top-right (image-full: white on dark) */}
-      <div className="absolute right-4 top-3 z-10 flex items-center gap-1" style={{ opacity: 0.85 }}>
+      <div className="absolute right-4 top-3 z-10 flex items-center gap-1.5" style={{ opacity: 0.85 }}>
         {/* eslint-disable-next-line @next/next/no-img-element */}
-        <img src={theme.logo ?? "/chw/logo.png"} alt="" style={{ height: 20, width: 20 }} />
+        <img src={theme.logo ?? "/chw/logo.png?v=2"} alt="" style={{ height: 28, width: 'auto' }} />
         <span style={{
-          fontSize: 11, fontFamily: theme.typography.bodyFont, fontWeight: 600,
-          color: '#FFFFFF', letterSpacing: '-0.02em',
+          fontSize: 22, fontFamily: theme.typography.bodyFont, fontWeight: 600,
+          color: '#FFFFFF', letterSpacing: '-0.02em', lineHeight: 1,
           textShadow: '0 1px 4px rgba(0,0,0,0.5)',
         }}>
           CHW<span style={{ fontWeight: 300, opacity: 0.7 }}>360</span>

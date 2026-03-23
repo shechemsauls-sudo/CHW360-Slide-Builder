@@ -28,8 +28,8 @@ function DeployBanner() {
       className="fixed top-0 left-0 right-0 z-40 flex items-center justify-center gap-1.5 text-xs"
       style={{
         height: DEPLOY_BANNER_HEIGHT,
-        backgroundColor: "rgba(45, 90, 90, 0.45)",
-        color: "rgba(255,255,255,0.65)",
+        backgroundColor: "#2D5A5A",
+        color: "rgba(255,255,255,0.75)",
       }}
     >
       <Rocket className="h-3 w-3" />

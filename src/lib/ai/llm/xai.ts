@@ -86,7 +86,13 @@ async function parseWithRetry(
         tokensUsed: response.usage?.total_tokens ?? 0,
       };
     } catch (e) {
-      lastError = e instanceof Error ? e : new Error("Parse error");
+      const detail = e instanceof z.ZodError
+        ? `Zod validation failed: ${e.errors.map((err) => `${err.path.join(".")}: ${err.message}`).join("; ")}`
+        : e instanceof SyntaxError
+          ? `JSON parse error: ${e.message}`
+          : e instanceof Error ? e.message : "Parse error";
+      console.error(`[xai] Parse attempt ${i + 1}/${retries + 1} failed: ${detail}`);
+      lastError = new Error(detail);
     }
   }
 

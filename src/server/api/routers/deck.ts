@@ -509,20 +509,28 @@ async function generateDeckInBackground(
       await generateImagesForDeck(db, deckId, processedSlides, opts.imageProvider);
     }
   } catch (error) {
-    await db
-      .update(decks)
-      .set({
-        status: "error",
-        generationLog: {
-          error: error instanceof Error ? error.message : "Unknown error",
-          failedAt: new Date().toISOString(),
-        },
-        updatedAt: new Date(),
-      })
-      .where(eq(decks.id, deckId));
+    const errorMsg = error instanceof Error ? error.message : "Unknown error";
+    const errorStack = error instanceof Error ? error.stack : undefined;
+    console.error(`[deck ${deckId}] Generation failed: ${errorMsg}`, errorStack ?? "");
+
+    try {
+      await db
+        .update(decks)
+        .set({
+          status: "error",
+          generationLog: {
+            error: errorMsg,
+            failedAt: new Date().toISOString(),
+          },
+          updatedAt: new Date(),
+        })
+        .where(eq(decks.id, deckId));
+    } catch (dbErr) {
+      console.error(`[deck ${deckId}] Failed to write error status to DB:`, dbErr instanceof Error ? dbErr.message : dbErr);
+    }
 
     if (opts.userEmail) {
-      sendDeckReadyEmail(opts.userEmail, opts.title, deckId, "error", error instanceof Error ? error.message : undefined).catch((err) => {
+      sendDeckReadyEmail(opts.userEmail, opts.title, deckId, "error", errorMsg).catch((err) => {
         console.error(`[deck ${deckId}] Failed to send error email:`, err instanceof Error ? err.message : err);
       });
     }
@@ -694,8 +702,8 @@ export const deckRouter = createTRPCRouter({
 
       if (!deck) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR" });
 
-      // Fire-and-forget: generate slides + images in background
-      void generateDeckInBackground(ctx.db, deck.id, {
+      // Background generation — waitUntil keeps the serverless function alive
+      ctx.waitUntil(generateDeckInBackground(ctx.db, deck.id, {
         content: input.content,
         sourceFormat: input.sourceFormat,
         title: input.title,
@@ -708,7 +716,7 @@ export const deckRouter = createTRPCRouter({
         customInstructions: input.customInstructions,
         tone: input.tone,
         userEmail: ctx.user.email,
-      });
+      }));
 
       return deck;
     }),
@@ -1142,8 +1150,8 @@ Respond with ONLY the image prompt, no explanation.`;
         .set({ status: "generating", llmProvider: llmId, imageProvider: imageProviderId, updatedAt: new Date() })
         .where(eq(decks.id, deck.id));
 
-      // Fire-and-forget: 3-pass generation in background
-      void generateDeckInBackground(ctx.db, deck.id, {
+      // Background generation — waitUntil keeps the serverless function alive
+      ctx.waitUntil(generateDeckInBackground(ctx.db, deck.id, {
         content: deck.sourceContent,
         sourceFormat: deck.sourceFormat ?? "plaintext",
         title: deck.title,
@@ -1156,7 +1164,7 @@ Respond with ONLY the image prompt, no explanation.`;
         customInstructions: input.customInstructions,
         tone: input.tone,
         userEmail: ctx.user.email,
-      });
+      }));
 
       // Return the deck immediately (status: generating)
       const [updated] = await ctx.db
@@ -1611,25 +1619,23 @@ Return ONLY valid JSON array. If no issues, return [].`;
         if (deck) deckIds.push(deck.id);
       }
 
-      // Fire-and-forget: generate all decks sequentially in background
-      void (async () => {
-        for (let i = 0; i < input.items.length; i++) {
-          const item = input.items[i]!;
-          const deckId = deckIds[i]!;
-          await generateDeckInBackground(ctx.db, deckId, {
-            content: item.content,
-            sourceFormat: item.sourceFormat,
-            title: item.title,
-            slideCount: input.slideCount,
-            llmProvider: input.llmProvider,
-            imageProvider: input.imageProvider,
-            fidelity: input.fidelity,
-            customInstructions: input.customInstructions,
-            tone: input.tone,
-            userEmail: i === input.items.length - 1 ? ctx.user.email : null,
-          });
-        }
-      })();
+      // Generate all decks in parallel — waitUntil keeps the function alive for each
+      for (let i = 0; i < input.items.length; i++) {
+        const item = input.items[i]!;
+        const deckId = deckIds[i]!;
+        ctx.waitUntil(generateDeckInBackground(ctx.db, deckId, {
+          content: item.content,
+          sourceFormat: item.sourceFormat,
+          title: item.title,
+          slideCount: input.slideCount,
+          llmProvider: input.llmProvider,
+          imageProvider: input.imageProvider,
+          fidelity: input.fidelity,
+          customInstructions: input.customInstructions,
+          tone: input.tone,
+          userEmail: ctx.user.email,
+        }));
+      }
 
       return { deckIds, count: deckIds.length };
     }),

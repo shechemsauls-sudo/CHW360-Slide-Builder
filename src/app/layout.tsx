@@ -26,6 +26,13 @@ export const metadata: Metadata = {
   description:
     "CHW360 provides training, resources, and support to help Community Health Workers learn, grow, and make a difference in their communities.",
   authors: [{ name: "Shechem Community Health" }],
+  icons: {
+    icon: [
+      { url: "/icon-192.png", sizes: "192x192", type: "image/png" },
+      { url: "/icon-512.png", sizes: "512x512", type: "image/png" },
+    ],
+    apple: "/apple-icon.png",
+  },
   openGraph: {
     title: "CHW360 — Empowering Community Health Workers Across Texas",
     description:

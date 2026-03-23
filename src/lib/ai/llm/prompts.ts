@@ -383,42 +383,6 @@ Dashboard-style metric cards in a row. Each line: \`Value | Label\`.
 \`\`\``,
     hint: "KPI summaries or dashboard metrics → `:::metric-row`",
   },
-  "numbered-columns": {
-    doc: `**:::numbered-columns**
-Numbered column layout with bold "01", "02" style headings and optional descriptions. Each line: \`Title | Description\`.
-\`\`\`
-:::numbered-columns
-Assessment | Evaluate community health needs
-Planning | Develop intervention strategies
-Implementation | Execute health programs
-Evaluation | Measure outcomes and impact
-:::
-\`\`\``,
-    hint: "Sequential phases or numbered categories → `:::numbered-columns`",
-  },
-  "callout-banner": {
-    doc: `**:::callout-banner**
-Full-width accent-colored banner for important announcements or key takeaways. Single paragraph of text.
-\`\`\`
-:::callout-banner
-Remember: Every interaction is an opportunity to build trust and improve community health outcomes.
-:::
-\`\`\``,
-    hint: "Key takeaway or important reminder → `:::callout-banner`",
-  },
-  "icon-steps": {
-    doc: `**:::icon-steps**
-Vertical steps with contextual icons (auto-matched from keywords) and a connecting line. Each line: \`Title | Description\`.
-\`\`\`
-:::icon-steps
-Health Assessment | Conduct initial screening and vital signs check
-Community Education | Provide health literacy and prevention guidance
-Referral Support | Connect families to appropriate healthcare services
-Follow-up Monitoring | Track progress and ensure continuity of care
-:::
-\`\`\``,
-    hint: "Process steps with contextual icons → `:::icon-steps`",
-  },
 };
 
 function buildBlockDocs(selectedBlocks?: VisualBlockType[]): string {

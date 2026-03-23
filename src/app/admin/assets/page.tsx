@@ -1,90 +1,14 @@
 "use client";
 
-import { useCallback, useEffect } from "react";
+import { useCallback, useEffect, useState } from "react";
 import Image from "next/image";
-import { Download } from "lucide-react";
+import { Download, Loader2 } from "lucide-react";
 import { Card, CardContent } from "~/components/ui/card";
 import { brand } from "~/lib/brand";
 
-function DownloadButton({ href, label }: { href: string; label?: string }) {
-  return (
-    <a
-      href={href}
-      download
-      className="inline-flex items-center gap-1 rounded-md px-2 py-1 text-[11px] text-gray-400 transition-colors hover:bg-white/10 hover:text-white"
-      aria-label={label ?? `Download ${href}`}
-    >
-      <Download className="h-3 w-3" />
-      Download
-    </a>
-  );
-}
+// --- Constants ---
 
-function CanvasDownloadButton({
-  variant,
-  label,
-}: {
-  variant: "light" | "dark";
-  label: string;
-}) {
-  const download = useCallback(async () => {
-    const W = 800;
-    const H = 320;
-    const canvas = document.createElement("canvas");
-    canvas.width = W;
-    canvas.height = H;
-    const ctx = canvas.getContext("2d")!;
-
-    // Background
-    ctx.fillStyle = variant === "light" ? brand.cream : brand.teal;
-    ctx.fillRect(0, 0, W, H);
-
-    // Load logo
-    const img = new window.Image();
-    img.crossOrigin = "anonymous";
-    await new Promise<void>((resolve, reject) => {
-      img.onload = () => resolve();
-      img.onerror = reject;
-      img.src = "/chw/logo.png";
-    });
-
-    const logoSize = 64;
-    const textX = W / 2 + 10;
-    const centerY = H / 2;
-
-    // Draw logo
-    ctx.drawImage(img, textX - logoSize - 24 - 60, centerY - logoSize / 2, logoSize, logoSize);
-
-    // Draw "CHW" bold
-    ctx.font = "600 42px system-ui, -apple-system, sans-serif";
-    ctx.fillStyle = variant === "light" ? brand.teal : "#FFFFFF";
-    ctx.textBaseline = "middle";
-    const chwWidth = ctx.measureText("CHW").width;
-    ctx.fillText("CHW", textX - 60, centerY);
-
-    // Draw "360" light
-    ctx.font = "300 42px system-ui, -apple-system, sans-serif";
-    ctx.fillStyle = variant === "light" ? "#6B8A8A" : "rgba(255,255,255,0.7)";
-    ctx.fillText("360", textX - 60 + chwWidth, centerY);
-
-    // Trigger download
-    const link = document.createElement("a");
-    link.download = `chw360-logo-${variant}.png`;
-    link.href = canvas.toDataURL("image/png");
-    link.click();
-  }, [variant]);
-
-  return (
-    <button
-      onClick={download}
-      className="inline-flex items-center gap-1 rounded-md px-2 py-1 text-[11px] text-gray-400 transition-colors hover:bg-white/10 hover:text-white"
-      aria-label={label}
-    >
-      <Download className="h-3 w-3" />
-      Download
-    </button>
-  );
-}
+const LOGO_RATIO = 550 / 454; // natural width/height
 
 const serif = "var(--font-libre-baskerville)";
 
@@ -113,6 +37,447 @@ const icons = [
   { src: "/chw/icon-training.png", name: "Training Programs" },
 ];
 
+// --- Helpers ---
+
+function loadImg(src: string) {
+  return new Promise<HTMLImageElement>((resolve, reject) => {
+    const img = new window.Image();
+    img.crossOrigin = "anonymous";
+    img.onload = () => resolve(img);
+    img.onerror = reject;
+    img.src = src;
+  });
+}
+
+function coverDraw(
+  ctx: CanvasRenderingContext2D,
+  img: HTMLImageElement,
+  dx: number, dy: number, dw: number, dh: number,
+  focusY = 0.5,
+) {
+  const imgRatio = img.naturalWidth / img.naturalHeight;
+  const boxRatio = dw / dh;
+  let sx = 0, sy = 0, sw = img.naturalWidth, sh = img.naturalHeight;
+  if (imgRatio > boxRatio) {
+    sw = img.naturalHeight * boxRatio;
+    sx = (img.naturalWidth - sw) / 2;
+  } else {
+    sh = img.naturalWidth / boxRatio;
+    sy = (img.naturalHeight - sh) * focusY;
+  }
+  ctx.drawImage(img, sx, sy, sw, sh, dx, dy, dw, dh);
+}
+
+function drawWordmark(
+  ctx: CanvasRenderingContext2D,
+  x: number, y: number,
+  fontSize: number,
+  tealColor: string, lightColor: string,
+) {
+  // Nudge down slightly — "middle" baseline aligns to typographic center
+  // which sits high for all-caps text. Shift by ~5% of font size to
+  // optically center the cap-height against the icon.
+  const nudge = fontSize * -0.0375;
+  ctx.textBaseline = "middle";
+  ctx.font = `600 ${fontSize}px system-ui, -apple-system, sans-serif`;
+  ctx.fillStyle = tealColor;
+  const chwW = ctx.measureText("CHW").width;
+  ctx.fillText("CHW", x, y + nudge);
+  ctx.font = `300 ${fontSize}px system-ui, -apple-system, sans-serif`;
+  ctx.fillStyle = lightColor;
+  ctx.fillText("360", x + chwW, y + nudge);
+}
+
+function DownloadBtn({ onClick, loading, label }: { onClick?: () => void; loading?: boolean; label: string }) {
+  return (
+    <button
+      onClick={onClick}
+      disabled={loading}
+      className="inline-flex items-center gap-1 rounded-md px-2 py-1 text-[11px] text-gray-400 transition-colors hover:bg-white/10 hover:text-white disabled:opacity-50"
+      aria-label={label}
+    >
+      {loading ? <Loader2 className="h-3 w-3 animate-spin" /> : <Download className="h-3 w-3" />}
+      Download
+    </button>
+  );
+}
+
+function DownloadLink({ href, label }: { href: string; label?: string }) {
+  return (
+    <a
+      href={href}
+      download
+      className="inline-flex items-center gap-1 rounded-md px-2 py-1 text-[11px] text-gray-400 transition-colors hover:bg-white/10 hover:text-white"
+      aria-label={label ?? `Download ${href}`}
+    >
+      <Download className="h-3 w-3" />
+      Download
+    </a>
+  );
+}
+
+// --- Logo Variant Download ---
+
+type LogoVariant = "transparent" | "cream" | "teal";
+
+const logoVariantConfig: Record<LogoVariant, {
+  label: string;
+  bgColor: string | null;
+  tealColor: string;
+  lightColor: string;
+  previewBg: string;
+  previewPattern?: boolean;
+}> = {
+  transparent: {
+    label: "Transparent",
+    bgColor: null,
+    tealColor: brand.teal,
+    lightColor: "#6B8A8A",
+    previewBg: "transparent",
+    previewPattern: true,
+  },
+  cream: {
+    label: "On Cream",
+    bgColor: brand.cream,
+    tealColor: brand.teal,
+    lightColor: "#6B8A8A",
+    previewBg: brand.cream,
+  },
+  teal: {
+    label: "On Dark Teal",
+    bgColor: brand.teal,
+    tealColor: "#FFFFFF",
+    lightColor: "rgba(255,255,255,0.7)",
+    previewBg: brand.teal,
+  },
+};
+
+function LogoVariantCard({ variant }: { variant: LogoVariant }) {
+  const cfg = logoVariantConfig[variant];
+
+  const download = useCallback(async () => {
+    const scale = 3;
+    const W = 800;
+    const H = 320;
+    const canvas = document.createElement("canvas");
+    canvas.width = W * scale;
+    canvas.height = H * scale;
+    const ctx = canvas.getContext("2d")!;
+    ctx.scale(scale, scale);
+
+    if (cfg.bgColor) {
+      ctx.fillStyle = cfg.bgColor;
+      ctx.fillRect(0, 0, W, H);
+    }
+
+    const img = await loadImg("/chw/logo.png?v=2");
+
+    const logoH = 96;
+    const logoW = logoH * LOGO_RATIO;
+    const centerY = H / 2;
+
+    ctx.imageSmoothingEnabled = true;
+    ctx.imageSmoothingQuality = "high";
+
+    // Measure text to center the whole lockup
+    ctx.font = "600 80px system-ui, -apple-system, sans-serif";
+    const chwWidth = ctx.measureText("CHW").width;
+    ctx.font = "300 80px system-ui, -apple-system, sans-serif";
+    const threeWidth = ctx.measureText("360").width;
+    const gap = 20;
+    const totalW = logoW + gap + chwWidth + threeWidth;
+    const startX = (W - totalW) / 2;
+
+    ctx.drawImage(img, startX, centerY - logoH / 2, logoW, logoH);
+    drawWordmark(ctx, startX + logoW + gap, centerY, 80, cfg.tealColor, cfg.lightColor);
+
+    const link = document.createElement("a");
+    link.download = `chw360-logo-${variant}.png`;
+    link.href = canvas.toDataURL("image/png", 1.0);
+    link.click();
+  }, [variant, cfg]);
+
+  return (
+    <Card className="overflow-hidden border-0">
+      <CardContent className="p-0">
+        <div
+          className="flex h-40 items-center justify-center"
+          style={cfg.previewPattern ? {
+            backgroundImage: "linear-gradient(45deg, #2a2a2a 25%, transparent 25%), linear-gradient(-45deg, #2a2a2a 25%, transparent 25%), linear-gradient(45deg, transparent 75%, #2a2a2a 75%), linear-gradient(-45deg, transparent 75%, #2a2a2a 75%)",
+            backgroundSize: "16px 16px",
+            backgroundPosition: "0 0, 0 8px, 8px -8px, -8px 0px",
+            backgroundColor: "#222",
+          } : { backgroundColor: cfg.previewBg }}
+        >
+          <div className="flex items-center gap-4">
+            <Image src="/chw/logo.png?v=2" alt="CHW360 Logo" width={550} height={454} className="h-16 w-auto" />
+            <span className="-translate-y-0.5 text-[4rem] leading-none tracking-tight" style={{ color: cfg.tealColor }}>
+              <span className="font-semibold">CHW</span>
+              <span className="font-light" style={{ color: cfg.lightColor }}>360</span>
+            </span>
+          </div>
+        </div>
+        <div className="flex items-center justify-between bg-white/10 p-4">
+          <p className="text-sm text-gray-400">{cfg.label}</p>
+          <DownloadBtn onClick={download} label={`Download logo ${cfg.label.toLowerCase()}`} />
+        </div>
+      </CardContent>
+    </Card>
+  );
+}
+
+// --- Icon Only Variant ---
+
+function IconVariantCard({ variant }: { variant: LogoVariant }) {
+  const cfg = logoVariantConfig[variant];
+
+  const download = useCallback(async () => {
+    const scale = 3;
+    const size = 512;
+    const canvas = document.createElement("canvas");
+    canvas.width = size * scale;
+    canvas.height = size * scale;
+    const ctx = canvas.getContext("2d")!;
+    ctx.scale(scale, scale);
+
+    if (cfg.bgColor) {
+      ctx.fillStyle = cfg.bgColor;
+      ctx.fillRect(0, 0, size, size);
+    }
+
+    const img = await loadImg("/chw/logo.png?v=2");
+    ctx.imageSmoothingEnabled = true;
+    ctx.imageSmoothingQuality = "high";
+
+    const pad = 64;
+    const iconH = size - pad * 2;
+    const iconW = iconH * LOGO_RATIO;
+    ctx.drawImage(img, (size - iconW) / 2, pad, iconW, iconH);
+
+    const link = document.createElement("a");
+    link.download = `chw360-icon-${variant}.png`;
+    link.href = canvas.toDataURL("image/png", 1.0);
+    link.click();
+  }, [variant, cfg]);
+
+  return (
+    <Card className="overflow-hidden border-0">
+      <CardContent className="p-0">
+        <div
+          className="flex h-32 items-center justify-center"
+          style={cfg.previewPattern ? {
+            backgroundImage: "linear-gradient(45deg, #2a2a2a 25%, transparent 25%), linear-gradient(-45deg, #2a2a2a 25%, transparent 25%), linear-gradient(45deg, transparent 75%, #2a2a2a 75%), linear-gradient(-45deg, transparent 75%, #2a2a2a 75%)",
+            backgroundSize: "16px 16px",
+            backgroundPosition: "0 0, 0 8px, 8px -8px, -8px 0px",
+            backgroundColor: "#222",
+          } : { backgroundColor: cfg.previewBg }}
+        >
+          <Image src="/chw/logo.png?v=2" alt="CHW360 Icon" width={550} height={454} className="h-20 w-auto" />
+        </div>
+        <div className="flex items-center justify-between bg-white/10 p-4">
+          <p className="text-sm text-gray-400">{cfg.label}</p>
+          <DownloadBtn onClick={download} label={`Download icon ${cfg.label.toLowerCase()}`} />
+        </div>
+      </CardContent>
+    </Card>
+  );
+}
+
+// --- Social Banner Generator ---
+
+type BannerType = "linkedin" | "facebook" | "og-image" | "email-sig";
+
+const bannerConfig: Record<BannerType, {
+  label: string;
+  w: number;
+  h: number;
+  filename: string;
+  description: string;
+}> = {
+  linkedin: { label: "LinkedIn Banner", w: 1584, h: 396, filename: "chw360-linkedin-banner.png", description: "1584 × 396 · Personal & Company pages" },
+  facebook: { label: "Facebook Cover", w: 820, h: 312, filename: "chw360-facebook-cover.png", description: "820 × 312 · Page & Profile cover" },
+  "og-image": { label: "Social Share (OG Image)", w: 1200, h: 630, filename: "chw360-og-share.png", description: "1200 × 630 · Link previews on all platforms" },
+  "email-sig": { label: "Email Signature Banner", w: 600, h: 100, filename: "chw360-email-signature.png", description: "600 × 100 · Gmail, Outlook, Apple Mail" },
+};
+
+function SocialBanner({ type }: { type: BannerType }) {
+  const [generating, setGenerating] = useState(false);
+  const [previewUrl, setPreviewUrl] = useState<string | null>(null);
+  const cfg = bannerConfig[type];
+
+  const generate = useCallback(async () => {
+    const W = cfg.w;
+    const H = cfg.h;
+    const scale = 2;
+    const canvas = document.createElement("canvas");
+    canvas.width = W * scale;
+    canvas.height = H * scale;
+    const ctx = canvas.getContext("2d")!;
+    ctx.scale(scale, scale);
+    ctx.imageSmoothingEnabled = true;
+    ctx.imageSmoothingQuality = "high";
+
+    // Cream background
+    ctx.fillStyle = brand.cream;
+    ctx.fillRect(0, 0, W, H);
+
+    const [logo, hero] = await Promise.all([
+      loadImg("/chw/logo.png?v=2"),
+      loadImg("/chw/hero-1.png"),
+    ]);
+
+    if (type === "email-sig") {
+      // Compact horizontal layout: logo + wordmark + tagline
+      const logoH = 60;
+      const logoW = logoH * LOGO_RATIO;
+      const pad = 20;
+
+      // Teal left accent bar
+      ctx.fillStyle = brand.teal;
+      ctx.fillRect(0, 0, 6, H);
+
+      ctx.drawImage(logo, pad + 6, (H - logoH) / 2, logoW, logoH);
+      drawWordmark(ctx, pad + 6 + logoW + 14, H / 2 - 8, 36, brand.teal, "#6B8A8A");
+
+      ctx.font = "400 14px system-ui, -apple-system, sans-serif";
+      ctx.fillStyle = "#5A6A6A";
+      ctx.textBaseline = "top";
+      ctx.fillText("Empowering Community Health Workers Across Texas", pad + 6 + logoW + 14, H / 2 + 16);
+
+      // Coral accent dot
+      ctx.fillStyle = brand.coral;
+      ctx.beginPath();
+      ctx.arc(W - 30, H / 2, 4, 0, Math.PI * 2);
+      ctx.fill();
+
+      return canvas;
+    }
+
+    // --- Standard banner layout (LinkedIn, Facebook, OG) ---
+    // Adjust proportions based on aspect ratio
+    const isWide = W / H > 3; // very wide like LinkedIn
+    const isTall = W / H < 2; // more square like OG image
+
+    const imgStartPct = isTall ? 0.45 : isWide ? 0.42 : 0.44;
+    const imgX = W * imgStartPct;
+    const imgW = W - imgX;
+
+    // Draw hero image
+    coverDraw(ctx, hero, imgX, 0, imgW, H, 0.15);
+
+    // Fade gradient
+    const fadeW = isTall ? W * 0.25 : 320;
+    const fadeGrad = ctx.createLinearGradient(imgX - 20, 0, imgX + fadeW, 0);
+    fadeGrad.addColorStop(0, brand.cream);
+    fadeGrad.addColorStop(0.35, brand.cream);
+    fadeGrad.addColorStop(1, "rgba(245,237,230,0)");
+    ctx.fillStyle = fadeGrad;
+    ctx.fillRect(imgX - 20, 0, fadeW + 20, H);
+
+    // Top/bottom edge fades
+    const edgeFade = 40;
+    const topGrad = ctx.createLinearGradient(0, 0, 0, edgeFade);
+    topGrad.addColorStop(0, "rgba(245,237,230,0.5)");
+    topGrad.addColorStop(1, "rgba(245,237,230,0)");
+    ctx.fillStyle = topGrad;
+    ctx.fillRect(imgX + fadeW, 0, W - imgX - fadeW, edgeFade);
+
+    const botGrad = ctx.createLinearGradient(0, H - edgeFade, 0, H);
+    botGrad.addColorStop(0, "rgba(245,237,230,0)");
+    botGrad.addColorStop(1, "rgba(245,237,230,0.5)");
+    ctx.fillStyle = botGrad;
+    ctx.fillRect(imgX + fadeW, H - edgeFade, W - imgX - fadeW, edgeFade);
+
+    // --- Left branding ---
+    const leftPad = isTall ? 56 : 72;
+
+    // Scale text relative to canvas height
+    const scale0 = H / 396; // normalize against LinkedIn height
+    const logoH = Math.round(52 * scale0);
+    const logoW2 = logoH * LOGO_RATIO;
+    const wordmarkSize = Math.round(44 * scale0);
+    const headingSize = Math.round(40 * scale0);
+    const taglineSize = Math.round(16 * scale0);
+
+    const logoY = Math.round(H * 0.16);
+    ctx.drawImage(logo, leftPad, logoY, logoW2, logoH);
+    drawWordmark(ctx, leftPad + logoW2 + 14, logoY + logoH / 2, wordmarkSize, brand.teal, "#6B8A8A");
+
+    // Coral accent line
+    const accentY = logoY + logoH + Math.round(24 * scale0);
+    ctx.fillStyle = brand.coral;
+    ctx.beginPath();
+    ctx.roundRect(leftPad, accentY, 48, 3, 2);
+    ctx.fill();
+
+    // Heading
+    ctx.textBaseline = "top";
+    ctx.font = `normal ${headingSize}px 'Libre Baskerville', Georgia, serif`;
+    ctx.fillStyle = brand.teal;
+    const headingY = accentY + Math.round(18 * scale0);
+    const lineH = Math.round(headingSize * 1.3);
+
+    if (isTall) {
+      // OG has more vertical space — 3 lines
+      ctx.fillText("Empowering", leftPad, headingY);
+      ctx.fillText("Community", leftPad, headingY + lineH);
+      ctx.fillText("Health Workers", leftPad, headingY + lineH * 2);
+    } else {
+      ctx.fillText("Empowering Community", leftPad, headingY);
+      ctx.fillText("Health Workers", leftPad, headingY + lineH);
+    }
+
+    // Tagline
+    ctx.font = `400 ${taglineSize}px system-ui, -apple-system, sans-serif`;
+    ctx.fillStyle = "#5A6A6A";
+    ctx.fillText("Training · Resources · Support", leftPad, H - Math.round(48 * scale0));
+
+    return canvas;
+  }, [type, cfg]);
+
+  useEffect(() => {
+    generate().then((c) => setPreviewUrl(c.toDataURL("image/png", 1.0)));
+  }, [generate]);
+
+  const handleDownload = useCallback(async () => {
+    setGenerating(true);
+    try {
+      const canvas = await generate();
+      const link = document.createElement("a");
+      link.download = cfg.filename;
+      link.href = canvas.toDataURL("image/png", 1.0);
+      link.click();
+    } finally {
+      setGenerating(false);
+    }
+  }, [generate, cfg.filename]);
+
+  return (
+    <Card className="overflow-hidden border-0">
+      <CardContent className="p-0">
+        <div className="relative w-full overflow-hidden rounded-t-lg" style={{ aspectRatio: `${cfg.w}/${cfg.h}` }}>
+          {previewUrl ? (
+            <img src={previewUrl} alt={`${cfg.label} Preview`} className="h-full w-full object-cover" />
+          ) : (
+            <div className="flex h-full min-h-[60px] items-center justify-center bg-white/5">
+              <Loader2 className="h-5 w-5 animate-spin text-gray-400" />
+            </div>
+          )}
+        </div>
+        <div className="flex items-center justify-between bg-white/10 p-4">
+          <div>
+            <p className="text-sm text-white">{cfg.label}</p>
+            <p className="mt-0.5 font-mono text-xs text-gray-500">{cfg.description}</p>
+          </div>
+          <DownloadBtn onClick={handleDownload} loading={generating} label={`Download ${cfg.label}`} />
+        </div>
+      </CardContent>
+    </Card>
+  );
+}
+
+// --- Page ---
+
 export default function BrandAssetsPage() {
   useEffect(() => { document.title = "Brand Assets — CHW360"; }, []);
 
@@ -123,65 +488,34 @@ export default function BrandAssetsPage() {
         <p className="text-gray-400">Logo, colors, typography, and imagery for CHW360</p>
       </div>
 
-      {/* Logo Section */}
+      {/* Logo Variants */}
       <section>
-        <h2 className="mb-6 text-xl font-semibold text-white">Logo</h2>
-        <div className="grid gap-6 sm:grid-cols-2">
-          <Card className="overflow-hidden border-0">
-            <CardContent className="p-0">
-              <div className="flex h-40 items-center justify-center" style={{ backgroundColor: brand.cream }}>
-                <div className="flex items-center gap-3">
-                  <Image src="/chw/logo.png" alt="CHW360 Logo" width={50} height={50} />
-                  <span className="text-3xl tracking-tight" style={{ color: brand.teal }}>
-                    <span className="font-semibold">CHW</span>
-                    <span className="font-light" style={{ color: "#6B8A8A" }}>360</span>
-                  </span>
-                </div>
-              </div>
-              <div className="flex items-center justify-between bg-white/10 p-4">
-                <p className="text-sm text-gray-400">On Light Background</p>
-                <CanvasDownloadButton variant="light" label="Download logo on light background" />
-              </div>
-            </CardContent>
-          </Card>
-
-          <Card className="overflow-hidden border-0">
-            <CardContent className="p-0">
-              <div className="flex h-40 items-center justify-center" style={{ backgroundColor: brand.teal }}>
-                <div className="flex items-center gap-3">
-                  <Image src="/chw/logo.png" alt="CHW360 Logo" width={50} height={50} />
-                  <span className="text-3xl tracking-tight text-white">
-                    <span className="font-semibold">CHW</span>
-                    <span className="font-light text-white/70">360</span>
-                  </span>
-                </div>
-              </div>
-              <div className="flex items-center justify-between bg-white/10 p-4">
-                <p className="text-sm text-gray-400">On Dark Background</p>
-                <CanvasDownloadButton variant="dark" label="Download logo on dark background" />
-              </div>
-            </CardContent>
-          </Card>
+        <h2 className="mb-2 text-xl font-semibold text-white">Logo</h2>
+        <p className="mb-6 text-sm text-gray-400">Full lockup with icon + wordmark. Each variant downloads at 3x (2400 × 960) for print quality.</p>
+        <div className="grid gap-6 sm:grid-cols-3">
+          <LogoVariantCard variant="transparent" />
+          <LogoVariantCard variant="cream" />
+          <LogoVariantCard variant="teal" />
         </div>
 
-        <div className="mt-6">
-          <Card className="overflow-hidden border-0">
-            <CardContent className="p-0">
-              <div className="flex items-center gap-8 bg-white/5 p-6">
-                <div className="flex h-24 w-24 items-center justify-center rounded-xl" style={{ backgroundColor: brand.cream }}>
-                  <Image src="/chw/logo.png" alt="CHW360 Logo Icon" width={60} height={60} />
-                </div>
-                <div>
-                  <p className="mb-2 font-medium text-white">Logo Icon</p>
-                  <p className="text-sm text-gray-400">5-petal pinwheel design representing community, diversity, and health</p>
-                  <div className="mt-2 flex items-center gap-2">
-                    <p className="font-mono text-xs text-gray-500">File: /chw/logo.png</p>
-                    <DownloadButton href="/chw/logo.png" label="Download logo icon" />
-                  </div>
-                </div>
-              </div>
-            </CardContent>
-          </Card>
+        <h3 className="mb-2 mt-8 text-base font-medium text-white">Icon Only</h3>
+        <p className="mb-4 text-sm text-gray-400">5-petal pinwheel — use when wordmark is already established nearby. Downloads at 3x (1536 × 1536).</p>
+        <div className="grid gap-6 sm:grid-cols-3">
+          <IconVariantCard variant="transparent" />
+          <IconVariantCard variant="cream" />
+          <IconVariantCard variant="teal" />
+        </div>
+      </section>
+
+      {/* Social Media & Marketing */}
+      <section>
+        <h2 className="mb-2 text-xl font-semibold text-white">Social Media & Marketing</h2>
+        <p className="mb-6 text-sm text-gray-400">Ready-to-use banners and share images. All export at 2x retina.</p>
+        <div className="space-y-6">
+          <SocialBanner type="linkedin" />
+          <SocialBanner type="facebook" />
+          <SocialBanner type="og-image" />
+          <SocialBanner type="email-sig" />
         </div>
       </section>
 
@@ -252,7 +586,7 @@ export default function BrandAssetsPage() {
                     <p className="text-sm text-white">{image.name}</p>
                     <p className="mt-0.5 font-mono text-xs text-gray-500">{image.src}</p>
                   </div>
-                  <DownloadButton href={image.src} label={`Download ${image.name}`} />
+                  <DownloadLink href={image.src} label={`Download ${image.name}`} />
                 </div>
               </CardContent>
             </Card>
@@ -277,7 +611,7 @@ export default function BrandAssetsPage() {
                     <p className="font-medium text-white">{icon.name}</p>
                     <p className="mt-0.5 font-mono text-xs text-gray-500">{icon.src}</p>
                   </div>
-                  <DownloadButton href={icon.src} label={`Download ${icon.name}`} />
+                  <DownloadLink href={icon.src} label={`Download ${icon.name}`} />
                 </div>
               </CardContent>
             </Card>

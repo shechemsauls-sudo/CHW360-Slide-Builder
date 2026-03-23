@@ -74,8 +74,8 @@ export default function ResetPasswordPage() {
       <div className="flex min-h-screen items-center justify-center" style={{ backgroundColor: "#F5EDE6" }}>
         <div className="w-full max-w-sm space-y-4 rounded-xl p-8 text-center" style={{ backgroundColor: "#EDE4DA" }}>
           <div className="mb-4 flex items-center justify-center gap-2">
-            <Image src="/chw/logo.png" alt="CHW360" width={40} height={40} />
-            <span className="text-2xl tracking-tight" style={{ color: "#2D5A5A" }}>
+            <Image src="/chw/logo.png?v=2" alt="CHW360" width={550} height={454} className="h-10 w-auto" />
+            <span className="text-[2.5rem] leading-none tracking-tight" style={{ color: "#2D5A5A" }}>
               <span className="font-semibold">CHW</span>
               <span className="font-light" style={{ color: "#6B8A8A" }}>360</span>
             </span>
@@ -94,8 +94,8 @@ export default function ResetPasswordPage() {
       <div className="flex min-h-screen items-center justify-center" style={{ backgroundColor: "#F5EDE6" }}>
         <div className="w-full max-w-sm space-y-4 rounded-xl p-8 text-center" style={{ backgroundColor: "#EDE4DA" }}>
           <div className="mb-4 flex items-center justify-center gap-2">
-            <Image src="/chw/logo.png" alt="CHW360" width={40} height={40} />
-            <span className="text-2xl tracking-tight" style={{ color: "#2D5A5A" }}>
+            <Image src="/chw/logo.png?v=2" alt="CHW360" width={550} height={454} className="h-10 w-auto" />
+            <span className="text-[2.5rem] leading-none tracking-tight" style={{ color: "#2D5A5A" }}>
               <span className="font-semibold">CHW</span>
               <span className="font-light" style={{ color: "#6B8A8A" }}>360</span>
             </span>
@@ -127,8 +127,8 @@ export default function ResetPasswordPage() {
       <div className="w-full max-w-sm space-y-6 rounded-xl p-8" style={{ backgroundColor: "#EDE4DA" }}>
         <div className="text-center">
           <div className="mb-4 flex items-center justify-center gap-2">
-            <Image src="/chw/logo.png" alt="CHW360" width={40} height={40} />
-            <span className="text-2xl tracking-tight" style={{ color: "#2D5A5A" }}>
+            <Image src="/chw/logo.png?v=2" alt="CHW360" width={550} height={454} className="h-10 w-auto" />
+            <span className="text-[2.5rem] leading-none tracking-tight" style={{ color: "#2D5A5A" }}>
               <span className="font-semibold">CHW</span>
               <span className="font-light" style={{ color: "#6B8A8A" }}>360</span>
             </span>

@@ -1,3 +1,6 @@
+# direnv (machine-specific)
+.envrc
+
 # dependencies
 /node_modules
 /.pnp

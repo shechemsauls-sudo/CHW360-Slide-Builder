@@ -307,17 +307,17 @@ export default function LandingPage() {
       {/* Navigation */}
       <nav className="sticky top-0 z-40 px-4 py-3" style={{ backgroundColor: "#2D5A5A" }}>
         <div className="mx-auto flex max-w-6xl items-center justify-between">
-          <div className="flex items-center gap-2">
-            <Image src="/chw/logo.png" alt="CHW360" width={40} height={40} className="h-10 w-10" />
-            <span className="text-2xl tracking-tight text-white">
+          <div className="flex items-center gap-2.5">
+            <Image src="/chw/logo.png?v=2" alt="CHW360" width={550} height={454} className="h-10 w-auto" />
+            <span className="text-[2.5rem] leading-none tracking-tight text-white">
               <span className="font-semibold">CHW</span>
               <span className="font-light text-white/80">360</span>
             </span>
           </div>
 
           <div className="flex items-center gap-3">
-            {/* Language Toggle */}
-            <div className="flex items-center gap-1 rounded-full bg-white/10 p-0.5 text-sm">
+            {/* Language Toggle — desktop only */}
+            <div className="hidden items-center gap-1 rounded-full bg-white/10 p-0.5 text-sm md:flex">
               <button
                 onClick={() => setLanguage("en")}
                 className={`rounded-full px-3 py-2 font-medium transition-colors ${lang === "en" ? "bg-white/20 text-white" : "text-white/60 hover:text-white/80"}`}
@@ -335,7 +335,7 @@ export default function LandingPage() {
             </div>
 
             <Button
-              className="rounded-full px-5 py-2 text-sm font-medium transition-all hover:opacity-90"
+              className="hidden rounded-full px-5 py-2 text-sm font-medium transition-all hover:opacity-90 md:inline-flex"
               style={{ backgroundColor: "#C9725B", color: "white" }}
               onClick={() => document.getElementById("contact")?.scrollIntoView({ behavior: "smooth" })}
             >
@@ -354,6 +354,22 @@ export default function LandingPage() {
 
         {mobileMenuOpen && (
           <div className="absolute left-0 right-0 top-full px-4 py-4 shadow-lg md:hidden" style={{ backgroundColor: "#2D5A5A" }}>
+            <div className="mb-4 flex items-center justify-center gap-1 rounded-full bg-white/10 p-0.5 text-sm">
+              <button
+                onClick={() => setLanguage("en")}
+                className={`rounded-full px-4 py-2 font-medium transition-colors ${lang === "en" ? "bg-white/20 text-white" : "text-white/60 hover:text-white/80"}`}
+                aria-label="English"
+              >
+                EN
+              </button>
+              <button
+                onClick={() => setLanguage("es")}
+                className={`rounded-full px-4 py-2 font-medium transition-colors ${lang === "es" ? "bg-white/20 text-white" : "text-white/60 hover:text-white/80"}`}
+                aria-label="Español"
+              >
+                ES
+              </button>
+            </div>
             <Button
               className="w-full rounded-full"
               style={{ backgroundColor: "#C9725B", color: "white" }}
@@ -621,8 +637,8 @@ export default function LandingPage() {
         <div className="mx-auto max-w-6xl px-4 py-8">
           <div className="flex flex-col items-center gap-4">
             <div className="flex items-center gap-2">
-              <Image src="/chw/logo.png" alt="CHW360" width={32} height={32} className="h-8 w-8 brightness-0 invert" />
-              <span className="text-xl tracking-tight text-white">
+              <Image src="/chw/logo.png?v=2" alt="CHW360" width={550} height={454} className="h-8 w-auto brightness-0 invert" />
+              <span className="text-[2rem] leading-none tracking-tight text-white">
                 <span className="font-semibold">CHW</span>
                 <span className="font-light text-white/80">360</span>
               </span>
