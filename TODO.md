@@ -11,6 +11,8 @@
 - [ ] Image gen progress visibility — poll for newly arrived images in UI
 
 ## Tech Debt
+- [ ] Enable leaked password protection in Supabase Auth dashboard (HaveIBeenPwned check) — dashboard-only toggle
+- [ ] (Optional) Move `pg_net` extension out of `public` schema — cosmetic advisory, no security impact
 - [ ] Clean up broken Vercel Supabase integration vars (POSTGRES_URL etc.)
 - [ ] Set Turnstile keys in Vercel to activate spam protection (code is wired)
 - [ ] Push deck_groups schema to Supabase (migration applied via MCP, verify with drizzle push when network allows)
